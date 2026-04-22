@@ -64,6 +64,12 @@ CORS_ALLOWED_ORIGINS = os.environ.get(
 
 CORS_ALLOW_ALL_ORIGINS = DEBUG
 
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'content-type',
+    'x-admin-token',
+]
+
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_TZ = True
