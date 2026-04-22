@@ -88,4 +88,11 @@ export const api = {
       body: JSON.stringify(data),
       adminToken: getAdminToken(sessionId) ?? undefined,
     }),
+
+  setMatchResult: (sessionId: string, matchId: string, winner: 'team1' | 'team2' | null) =>
+    request<Match>(`/sessions/${sessionId}/matches/${matchId}/result/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ winner }),
+      adminToken: getAdminToken(sessionId) ?? undefined,
+    }),
 }

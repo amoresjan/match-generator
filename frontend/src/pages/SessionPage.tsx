@@ -1,17 +1,18 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { RefreshCw, Settings, Users, ChevronDown, LogOut, Copy, Check, ShieldCheck } from 'lucide-react'
+import { RefreshCw, Settings, Users, ChevronDown, LogOut, Copy, Check, ShieldCheck, Trophy } from 'lucide-react'
 import { useSession, useGenerateRound, useUpdateSession } from '@/hooks/useSession'
 import { CurrentRound } from '@/components/CurrentRound'
 import { PlayerList } from '@/components/PlayerList'
 import { RoundHistory } from '@/components/RoundHistory'
+import { Leaderboard } from '@/components/Leaderboard'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { saveAdminToken, BASE } from '@/lib/api'
 
-type Tab = 'round' | 'players' | 'history' | 'settings'
+type Tab = 'round' | 'players' | 'history' | 'leaderboard' | 'settings'
 
 function getStoredToken(sessionId: string): string | null {
   return localStorage.getItem(`admin_token:${sessionId}`)
@@ -55,6 +56,7 @@ export function SessionPage() {
     { key: 'round', label: 'Round', icon: <RefreshCw className="h-4 w-4" /> },
     { key: 'players', label: 'Players', icon: <Users className="h-4 w-4" /> },
     { key: 'history', label: 'History', icon: <ChevronDown className="h-4 w-4" /> },
+    { key: 'leaderboard', label: 'Board', icon: <Trophy className="h-4 w-4" /> },
     ...(admin ? [{ key: 'settings' as Tab, label: 'Settings', icon: <Settings className="h-4 w-4" /> }] : []),
   ]
 
@@ -124,7 +126,8 @@ export function SessionPage() {
             ? <PlayerList session={session} />
             : <PublicPlayerList players={session.players} />
         )}
-        {tab === 'history' && <RoundHistory rounds={session.rounds} players={session.players} />}
+        {tab === 'history' && <RoundHistory sessionId={session.id} rounds={session.rounds} players={session.players} isAdmin={admin} />}
+        {tab === 'leaderboard' && <Leaderboard players={session.players} rounds={session.rounds} />}
         {tab === 'settings' && admin && (
           <SessionSettings
             sessionId={sessionId!}

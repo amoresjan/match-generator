@@ -59,6 +59,11 @@ class Match(models.Model):
     # Store ordered list of player IDs per side as JSON
     team1_players = models.JSONField()  # list of player UUIDs (str)
     team2_players = models.JSONField()  # list of player UUIDs (str)
+    winner = models.CharField(
+        max_length=5,
+        choices=[('team1', 'team1'), ('team2', 'team2')],
+        null=True, blank=True,
+    )
 
     class Meta:
         unique_together = ('round', 'court_number')

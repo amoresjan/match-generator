@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { CourtCard } from './CourtCard'
 import { OverrideMatchDialog } from './OverrideMatchDialog'
 import { Badge } from '@/components/ui/badge'
+import { useSetMatchResult } from '@/hooks/useSession'
 import type { Match, Player, Round, Session } from '@/lib/types'
 
 interface Props {
@@ -16,6 +17,7 @@ function getByePlayers(round: Round, players: Player[]): Player[] {
 
 export function CurrentRound({ session, isAdmin }: Props) {
   const [editingMatch, setEditingMatch] = useState<Match | null>(null)
+  const setResult = useSetMatchResult(session.id)
 
   const rounds = session.rounds
   if (rounds.length === 0) {
@@ -45,6 +47,7 @@ export function CurrentRound({ session, isAdmin }: Props) {
             matchType={session.match_type}
             isAdmin={isAdmin}
             onEdit={isAdmin ? setEditingMatch : undefined}
+            onSetResult={isAdmin ? (matchId, winner) => setResult.mutate({ matchId, winner }) : undefined}
           />
         ))}
       </div>

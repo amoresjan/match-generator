@@ -73,6 +73,15 @@ export function useOverrideMatch(sessionId: string) {
   })
 }
 
+export function useSetMatchResult(sessionId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ matchId, winner }: { matchId: string; winner: 'team1' | 'team2' | null }) =>
+      api.setMatchResult(sessionId, matchId, winner),
+    onSuccess: () => qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) }),
+  })
+}
+
 export function useUpdateSession(sessionId: string) {
   const qc = useQueryClient()
   return useMutation({

@@ -1,27 +1,89 @@
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, Trophy } from 'lucide-react'
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { Round, Player } from '@/lib/types'
+import { useSetMatchResult } from '@/hooks/useSession'
+import type { Match, Round, Player } from '@/lib/types'
 
 interface Props {
+  sessionId: string
   rounds: Round[]
   players: Player[]
+  isAdmin: boolean
 }
 
 function resolveNames(ids: string[], players: Player[]): string {
   return ids.map((id) => players.find((p) => p.id === id)?.name ?? '?').join(' & ')
 }
 
-export function RoundHistory({ rounds, players }: Props) {
-  const [expanded, setExpanded] = useState<string | null>(null)
-  const pastRounds = [...rounds].reverse().slice(1) // all except latest
+function MatchRow({ sessionId, match, players, isAdmin }: { sessionId: string; match: Match; players: Player[]; isAdmin: boolean }) {
+  const setResult = useSetMatchResult(sessionId)
+  const team1 = resolveNames(match.team1_players, players)
+  const team2 = resolveNames(match.team2_players, players)
+  const team1Won = match.winner === 'team1'
+  const team2Won = match.winner === 'team2'
+  const hasResult = match.winner !== null
 
-  if (pastRounds.length === 0) return null
+  function handleTeamClick(side: 'team1' | 'team2') {
+    const next = match.winner === side ? null : side
+    setResult.mutate({ matchId: match.id, winner: next })
+  }
+
+  return (
+    <div className="space-y-1">
+      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Court {match.court_number}</p>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+        {/* Team 1 */}
+        <button
+          disabled={!isAdmin}
+          onClick={() => isAdmin && handleTeamClick('team1')}
+          className={[
+            'rounded px-2 py-1 text-xs text-left transition-colors',
+            isAdmin ? 'cursor-pointer' : 'cursor-default',
+            team1Won
+              ? 'bg-green-100 text-green-800 font-semibold dark:bg-green-900/40 dark:text-green-300'
+              : hasResult
+                ? 'text-muted-foreground/50'
+                : isAdmin ? 'hover:bg-muted' : '',
+          ].join(' ')}
+        >
+          {team1Won && <Trophy className="inline h-3 w-3 mr-1 mb-0.5 text-yellow-500" />}
+          {team1}
+        </button>
+
+        <span className="text-[10px] text-muted-foreground font-bold">vs</span>
+
+        {/* Team 2 */}
+        <button
+          disabled={!isAdmin}
+          onClick={() => isAdmin && handleTeamClick('team2')}
+          className={[
+            'rounded px-2 py-1 text-xs text-right transition-colors',
+            isAdmin ? 'cursor-pointer' : 'cursor-default',
+            team2Won
+              ? 'bg-green-100 text-green-800 font-semibold dark:bg-green-900/40 dark:text-green-300'
+              : hasResult
+                ? 'text-muted-foreground/50'
+                : isAdmin ? 'hover:bg-muted' : '',
+          ].join(' ')}
+        >
+          {team2}
+          {team2Won && <Trophy className="inline h-3 w-3 ml-1 mb-0.5 text-yellow-500" />}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export function RoundHistory({ sessionId, rounds, players, isAdmin }: Props) {
+  const [expanded, setExpanded] = useState<string | null>(null)
+  const allRounds = [...rounds].reverse()
+
+  if (allRounds.length === 0) return null
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Past Rounds</h3>
-      {pastRounds.map((round) => (
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">All Rounds</h3>
+      {allRounds.map((round) => (
         <Card key={round.id} className="overflow-hidden">
           <CardHeader
             className="py-3 px-4 cursor-pointer flex-row items-center justify-between"
@@ -31,15 +93,15 @@ export function RoundHistory({ rounds, players }: Props) {
             {expanded === round.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </CardHeader>
           {expanded === round.id && (
-            <CardContent className="pt-0 pb-3">
-              <div className="space-y-1">
-                {round.matches.map((m) => (
-                  <div key={m.id} className="text-xs text-muted-foreground">
-                    Court {m.court_number}: {resolveNames(m.team1_players, players)} vs{' '}
-                    {resolveNames(m.team2_players, players)}
-                  </div>
-                ))}
-              </div>
+            <CardContent className="pt-0 pb-3 space-y-3">
+              {round.matches.map((m) => (
+                <MatchRow key={m.id} sessionId={sessionId} match={m} players={players} isAdmin={isAdmin} />
+              ))}
+              {isAdmin && (
+                <p className="text-[10px] text-muted-foreground text-center pt-1">
+                  Tap a team to mark as winner
+                </p>
+              )}
             </CardContent>
           )}
         </Card>

@@ -164,6 +164,22 @@ def generate_next_round(request, session_id):
 # ---------------------------------------------------------------------------
 
 @api_view(['PATCH'])
+def set_match_result(request, session_id, match_id):
+    session = get_object_or_404(Session, id=session_id)
+    err = _require_admin(request, session)
+    if err:
+        return err
+
+    match = get_object_or_404(Match, id=match_id, round__session=session)
+    winner = request.data.get('winner')
+    if winner not in ('team1', 'team2', None):
+        return Response({'detail': 'winner must be "team1", "team2", or null.'}, status=400)
+    match.winner = winner
+    match.save(update_fields=['winner'])
+    return Response(MatchSerializer(match).data)
+
+
+@api_view(['PATCH'])
 def override_match(request, session_id, match_id):
     session = get_object_or_404(Session, id=session_id)
     err = _require_admin(request, session)

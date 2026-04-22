@@ -12,6 +12,7 @@ export interface Match {
   court_number: number
   team1_players: string[]
   team2_players: string[]
+  winner: 'team1' | 'team2' | null
 }
 
 export interface Round {

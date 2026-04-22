@@ -22,7 +22,7 @@ class PlayerSerializer(serializers.ModelSerializer):
 class MatchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Match
-        fields = ['id', 'court_number', 'team1_players', 'team2_players']
+        fields = ['id', 'court_number', 'team1_players', 'team2_players', 'winner']
 
 
 class RoundSerializer(serializers.ModelSerializer):
