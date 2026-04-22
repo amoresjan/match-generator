@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 export function HomePage() {
   const navigate = useNavigate()
@@ -29,9 +30,12 @@ export function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex flex-col items-center justify-center p-4 gap-6">
+    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white dark:from-green-950/30 dark:to-background flex flex-col items-center justify-center p-4 gap-6 relative">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-green-700">Pickleball</h1>
+        <h1 className="text-3xl font-bold text-green-700 dark:text-green-400">Pickleball</h1>
         <p className="text-muted-foreground">Match Generator</p>
       </div>
 

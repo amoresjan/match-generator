@@ -6,6 +6,7 @@ import { CurrentRound } from '@/components/CurrentRound'
 import { PlayerList } from '@/components/PlayerList'
 import { RoundHistory } from '@/components/RoundHistory'
 import { Leaderboard } from '@/components/Leaderboard'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -75,6 +76,7 @@ export function SessionPage() {
             >
               <LogOut className="h-4 w-4" />
             </Button>
+            <ThemeToggle />
             <div className="min-w-0">
               <h1 className="font-bold text-base leading-tight truncate">{session.name}</h1>
               <div className="flex items-center gap-1.5 mt-0.5">
