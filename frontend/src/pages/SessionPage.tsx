@@ -241,6 +241,33 @@ interface SettingsProps {
   saving: boolean
 }
 
+function ShareField({ sessionId }: { sessionId: string }) {
+  const [copied, setCopied] = useState(false)
+  const link = `${window.location.origin}/session/${sessionId}`
+
+  function copy() {
+    navigator.clipboard.writeText(link)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <button
+      onClick={copy}
+      className="w-full rounded-md bg-muted p-3 text-left transition-colors hover:bg-muted/70 active:bg-muted/50 group"
+    >
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-xs text-muted-foreground font-medium">Session ID — tap to copy & share with players</p>
+        {copied
+          ? <Check className="h-3.5 w-3.5 text-primary shrink-0" />
+          : <Copy className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+        }
+      </div>
+      <p className="text-xs font-mono break-all">{link}</p>
+    </button>
+  )
+}
+
 function CopyField({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false)
 
@@ -307,7 +334,7 @@ function SessionSettings({ sessionId, session, onSave, saving }: SettingsProps) 
           </div>
         </div>
 
-        <CopyField label="Session ID — tap to copy & share with players" value={session.id} />
+        <ShareField sessionId={session.id} />
         <CopyField label="Admin Code — tap to copy & share with co-hosts" value={adminToken} />
 
         <Button
