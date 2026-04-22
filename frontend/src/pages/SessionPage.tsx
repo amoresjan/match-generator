@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { saveAdminToken } from '@/lib/api'
+import { saveAdminToken, BASE } from '@/lib/api'
 
 type Tab = 'round' | 'players' | 'history' | 'settings'
 
@@ -162,7 +162,7 @@ function AdminCodeEntry({ sessionId, onUnlocked }: { sessionId: string; onUnlock
 
     try {
       // Validate by attempting an authenticated no-op update
-      const res = await fetch(`/api/sessions/${sessionId}/update/`, {
+      const res = await fetch(`${BASE}/sessions/${sessionId}/update/`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'X-Admin-Token': trimmed },
         body: JSON.stringify({}),

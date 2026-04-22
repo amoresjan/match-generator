@@ -1,6 +1,6 @@
 import type { Match, Player, Round, Session, SessionWithToken } from './types'
 
-const BASE = import.meta.env.VITE_API_URL ?? '/api'
+export const BASE = import.meta.env.VITE_API_URL ?? '/api'
 
 function getAdminToken(sessionId: string): string | null {
   return localStorage.getItem(`admin_token:${sessionId}`)
