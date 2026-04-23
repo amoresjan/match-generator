@@ -94,7 +94,7 @@ export function SessionPage() {
               className="shrink-0"
             >
               <RefreshCw className={`h-3.5 w-3.5 mr-1 ${generateRound.isPending ? 'animate-spin' : ''}`} />
-              {session.rounds.length === 0 ? 'Start' : 'Next Round'}
+              {session.rounds.length === 0 ? 'Start' : 'Next'}
             </Button>
           )}
         </div>

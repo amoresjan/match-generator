@@ -193,8 +193,11 @@ def _generate_2v2(
             'last_sat_out': hist['last_sat_out'][s],
         })
     # Sort: fewest byes first; ties broken by cost (singles before pairs) then by
-    # recency of last sit-out (sat out recently → larger value → sorted last → plays this round)
-    units.sort(key=lambda u: (u['wait'], u['cost'], u['last_sat_out']))
+    # recency of last sit-out (sat out recently → larger value → sorted last → plays this round).
+    # Jitter breaks ties within equal-priority groups so the same players aren't always chosen.
+    for unit in units:
+        unit['jitter'] = random.random()
+    units.sort(key=lambda u: (u['wait'], u['cost'], u['last_sat_out'], u['jitter']))
 
     bye_players: list[str] = []
     active_pairs: list[list[str]] = list(pairs)
@@ -289,7 +292,8 @@ def _generate_1v1(
     players_needed = min(num_courts * 2, total - (total % 2))
     bye_count = total - players_needed
 
-    sorted_ids = sorted(all_ids, key=lambda pid: (hist['wait'][pid], hist['last_sat_out'][pid]))
+    jitter = {pid: random.random() for pid in all_ids}
+    sorted_ids = sorted(all_ids, key=lambda pid: (hist['wait'][pid], hist['last_sat_out'][pid], jitter[pid]))
     bye_players = sorted_ids[:bye_count]
     active = sorted_ids[bye_count:]
 
