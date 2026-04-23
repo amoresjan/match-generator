@@ -58,13 +58,13 @@ export function CourtCard({ match, players, matchType, isAdmin, onEdit, onSetRes
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-sm">
+        <div className="flex flex-col gap-1.5 text-sm">
           {/* Team 1 */}
           <button
             disabled={!isAdmin || !onSetResult}
             onClick={() => handleTeamClick('team1')}
             className={[
-              'rounded-md px-2 py-2 text-center font-medium transition-colors',
+              'rounded-md px-3 py-2 text-center font-medium transition-colors w-full',
               isAdmin && onSetResult ? 'cursor-pointer' : 'cursor-default',
               team1Won
                 ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
@@ -73,21 +73,21 @@ export function CourtCard({ match, players, matchType, isAdmin, onEdit, onSetRes
                   : 'bg-muted/40 hover:bg-muted',
             ].join(' ')}
           >
-            <span className="flex items-center justify-center gap-1.5 flex-wrap">
+            <span className="flex items-center justify-center gap-1.5">
               {team1Won && <Trophy className="h-3 w-3 shrink-0" />}
-              <span className="truncate">{team1}</span>
+              <span>{team1}</span>
               {team1IsDuo && <Users className="h-3 w-3 shrink-0 opacity-40" />}
             </span>
           </button>
 
-          <span className="text-muted-foreground font-bold text-xs">vs</span>
+          <span className="text-muted-foreground font-bold text-xs text-center">vs</span>
 
           {/* Team 2 */}
           <button
             disabled={!isAdmin || !onSetResult}
             onClick={() => handleTeamClick('team2')}
             className={[
-              'rounded-md px-2 py-2 text-center font-medium transition-colors',
+              'rounded-md px-3 py-2 text-center font-medium transition-colors w-full',
               isAdmin && onSetResult ? 'cursor-pointer' : 'cursor-default',
               team2Won
                 ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
@@ -96,9 +96,9 @@ export function CourtCard({ match, players, matchType, isAdmin, onEdit, onSetRes
                   : 'bg-muted/40 hover:bg-muted',
             ].join(' ')}
           >
-            <span className="flex items-center justify-center gap-1.5 flex-wrap">
+            <span className="flex items-center justify-center gap-1.5">
               {team2Won && <Trophy className="h-3 w-3 shrink-0" />}
-              <span className="truncate">{team2}</span>
+              <span>{team2}</span>
               {team2IsDuo && <Users className="h-3 w-3 shrink-0 opacity-40" />}
             </span>
           </button>
