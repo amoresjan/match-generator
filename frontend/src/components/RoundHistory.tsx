@@ -39,45 +39,49 @@ function MatchRow({ sessionId, match, players, isAdmin }: { sessionId: string; m
   return (
     <div className="space-y-1">
       <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Court {match.court_number}</p>
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+      <div className="flex flex-col gap-1">
         {/* Team 1 */}
         <button
           disabled={!isAdmin}
           onClick={() => isAdmin && handleTeamClick('team1')}
           className={[
-            'rounded px-2 py-1 text-xs text-left transition-colors',
+            'relative rounded px-3 py-1.5 text-xs text-center font-medium transition-colors w-full',
             isAdmin ? 'cursor-pointer' : 'cursor-default',
             team1Won
-              ? 'bg-green-100 text-green-800 font-semibold dark:bg-green-900/40 dark:text-green-300'
+              ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
               : hasResult
-                ? 'text-muted-foreground/50'
-                : isAdmin ? 'hover:bg-muted' : '',
+                ? 'bg-muted/40 text-muted-foreground/50'
+                : isAdmin ? 'bg-muted/40 hover:bg-muted' : 'bg-muted/40',
           ].join(' ')}
         >
-          {team1Won && <Trophy className="inline h-3 w-3 mr-1 mb-0.5 text-yellow-500" />}
-          {team1}
-          {team1IsDuo && <Users className="inline h-3 w-3 ml-1 mb-0.5 opacity-40" />}
+          {team1Won && <Trophy className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-yellow-500" />}
+          <span className="flex items-center justify-center gap-1">
+            {team1}
+            {team1IsDuo && <Users className="h-3 w-3 opacity-40 shrink-0" />}
+          </span>
         </button>
 
-        <span className="text-[10px] text-muted-foreground font-bold">vs</span>
+        <span className="text-[10px] text-muted-foreground font-bold text-center">vs</span>
 
         {/* Team 2 */}
         <button
           disabled={!isAdmin}
           onClick={() => isAdmin && handleTeamClick('team2')}
           className={[
-            'rounded px-2 py-1 text-xs text-right transition-colors',
+            'relative rounded px-3 py-1.5 text-xs text-center font-medium transition-colors w-full',
             isAdmin ? 'cursor-pointer' : 'cursor-default',
             team2Won
-              ? 'bg-green-100 text-green-800 font-semibold dark:bg-green-900/40 dark:text-green-300'
+              ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
               : hasResult
-                ? 'text-muted-foreground/50'
-                : isAdmin ? 'hover:bg-muted' : '',
+                ? 'bg-muted/40 text-muted-foreground/50'
+                : isAdmin ? 'bg-muted/40 hover:bg-muted' : 'bg-muted/40',
           ].join(' ')}
         >
-          {team2IsDuo && <Users className="inline h-3 w-3 mr-1 mb-0.5 opacity-40" />}
-          {team2}
-          {team2Won && <Trophy className="inline h-3 w-3 ml-1 mb-0.5 text-yellow-500" />}
+          {team2Won && <Trophy className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-yellow-500" />}
+          <span className="flex items-center justify-center gap-1">
+            {team2}
+            {team2IsDuo && <Users className="h-3 w-3 opacity-40 shrink-0" />}
+          </span>
         </button>
       </div>
     </div>

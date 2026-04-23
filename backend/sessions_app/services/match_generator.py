@@ -205,7 +205,7 @@ def _select_byes_2v2(
 
     for unit in units:
         unit['jitter'] = random.random()
-    units.sort(key=lambda u: (u['wait'], u['cost'], u['last_sat_out'], u['jitter']))
+    units.sort(key=lambda u: (u['wait'], u['last_sat_out'], u['jitter']))
 
     bye_players: list[str] = []
     active_pairs: list[list[str]] = list(pairs)

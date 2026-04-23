@@ -40,7 +40,7 @@ export function HomePage() {
         <ThemeToggle />
       </div>
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-green-700 dark:text-green-400">Pickleball</h1>
+        <h1 className="text-3xl font-bold text-green-700 dark:text-green-400">Rally</h1>
         <p className="text-muted-foreground">Match Generator</p>
       </div>
 
@@ -114,6 +114,7 @@ export function HomePage() {
           </form>
         </CardContent>
       </Card>
+      <p className="text-xs text-muted-foreground/50">by @amoresjan</p>
     </div>
   )
 }

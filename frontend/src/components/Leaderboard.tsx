@@ -1,5 +1,6 @@
-import { Trophy } from 'lucide-react'
-import type { Player, Round } from '@/lib/types'
+import { ChevronDown, ChevronUp, Trophy } from 'lucide-react'
+import { useState } from 'react'
+import type { Match, Player, Round } from '@/lib/types'
 
 interface PlayerStat {
   player: Player
@@ -75,7 +76,41 @@ const RANK_ICON_CLASS: Record<number, string> = {
   3: 'text-amber-700',
 }
 
+function resolveNames(ids: string[], players: Player[]): string {
+  return ids.map((id) => players.find((p) => p.id === id)?.name ?? '?').join(' & ')
+}
+
+interface PlayerMatch {
+  match: Match
+  roundNumber: number
+  result: 'W' | 'L'
+  myTeam: string
+  theirTeam: string
+}
+
+function getPlayerMatches(playerId: string, players: Player[], rounds: Round[]): PlayerMatch[] {
+  const result: PlayerMatch[] = []
+  for (const round of rounds) {
+    for (const match of round.matches) {
+      if (match.winner === null) continue
+      const onTeam1 = match.team1_players.includes(playerId)
+      const onTeam2 = match.team2_players.includes(playerId)
+      if (!onTeam1 && !onTeam2) continue
+      const won = (onTeam1 && match.winner === 'team1') || (onTeam2 && match.winner === 'team2')
+      result.push({
+        match,
+        roundNumber: round.number,
+        result: won ? 'W' : 'L',
+        myTeam: resolveNames(onTeam1 ? match.team1_players : match.team2_players, players),
+        theirTeam: resolveNames(onTeam1 ? match.team2_players : match.team1_players, players),
+      })
+    }
+  }
+  return result
+}
+
 export function Leaderboard({ players, rounds }: { players: Player[]; rounds: Round[] }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const stats = computeStats(players, rounds)
 
   if (stats.length === 0) {
@@ -105,27 +140,74 @@ export function Leaderboard({ players, rounds }: { players: Player[]; rounds: Ro
           const style = RANK_STYLES[rank]
           const border = style?.border ?? 'border-border'
           const bg = style?.bg ?? 'bg-card'
+          const isExpanded = expandedId === s.player.id
+          const playerMatches = isExpanded ? getPlayerMatches(s.player.id, players, rounds) : []
 
           return (
-            <tr key={s.player.id}>
-              <td className={`text-center font-bold text-muted-foreground py-2.5 pl-3 rounded-l-lg border-y border-l w-8 ${border} ${bg}`}>
-                {rank <= 3
-                  ? <Trophy className={`h-4 w-4 mx-auto ${RANK_ICON_CLASS[rank]}`} />
-                  : rank}
-              </td>
-              <td className={`font-medium truncate py-2.5 border-y ${border} ${bg}`}>
-                {s.player.name}
-              </td>
-              <td className={`text-center text-muted-foreground py-2.5 w-10 border-y ${border} ${bg}`}>
-                {s.played}
-              </td>
-              <td className={`text-center font-semibold text-green-600 py-2.5 w-10 border-y ${border} ${bg}`}>
-                {s.wins}
-              </td>
-              <td className={`text-center text-muted-foreground py-2.5 pr-3 rounded-r-lg border-y border-r w-10 ${border} ${bg}`}>
-                {s.losses}
-              </td>
-            </tr>
+            <>
+              <tr
+                key={s.player.id}
+                className="cursor-pointer"
+                onClick={() => setExpandedId(isExpanded ? null : s.player.id)}
+              >
+                <td className={`text-center font-bold text-muted-foreground py-2.5 pl-3 rounded-l-lg border-y border-l w-8 ${border} ${bg}`}>
+                  {rank <= 3
+                    ? <Trophy className={`h-4 w-4 mx-auto ${RANK_ICON_CLASS[rank]}`} />
+                    : rank}
+                </td>
+                <td className={`font-medium truncate py-2.5 border-y ${border} ${bg}`}>
+                  {s.player.name}
+                </td>
+                <td className={`text-center text-muted-foreground py-2.5 w-10 border-y ${border} ${bg}`}>
+                  {s.played}
+                </td>
+                <td className={`text-center font-semibold text-green-600 py-2.5 w-10 border-y ${border} ${bg}`}>
+                  {s.wins}
+                </td>
+                <td className={`text-center text-muted-foreground py-2.5 pr-3 rounded-r-lg border-y border-r w-10 ${border} ${bg}`}>
+                  <span className="flex items-center justify-end gap-1">
+                    {s.losses}
+                    {isExpanded
+                      ? <ChevronUp className="h-3 w-3 shrink-0 text-muted-foreground/60" />
+                      : <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/60" />}
+                  </span>
+                </td>
+              </tr>
+              {isExpanded && (
+                <tr key={`${s.player.id}-matches`}>
+                  <td colSpan={5} className="pb-2 pt-0">
+                    <div className="rounded-md border border-border bg-muted/30 px-3 py-2 space-y-1.5">
+                      {playerMatches.length === 0 ? (
+                        <p className="text-xs text-muted-foreground text-center py-1">No recorded results yet</p>
+                      ) : (
+                        <table className="w-full text-xs border-separate border-spacing-y-0.5">
+                          <colgroup>
+                            <col className="w-5" />
+                            <col className="w-8" />
+                            <col />
+                            <col className="w-6" />
+                            <col />
+                          </colgroup>
+                          <tbody>
+                            {playerMatches.map((pm) => (
+                              <tr key={pm.match.id}>
+                                <td className={`font-bold pr-1 ${pm.result === 'W' ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                  {pm.result}
+                                </td>
+                                <td className="text-muted-foreground pr-2">R{pm.roundNumber}</td>
+                                <td className="font-medium">{pm.myTeam}</td>
+                                <td className="text-muted-foreground text-center px-1">vs</td>
+                                <td className="text-muted-foreground">{pm.theirTeam}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </>
           )
         })}
       </tbody>

@@ -357,6 +357,7 @@ function GuestSettings({ sessionId }: { sessionId: string }) {
         <LogOut className="h-4 w-4 mr-2" />
         Leave Session
       </Button>
+      <p className="text-center text-xs text-muted-foreground/50 pt-4">by @amoresjan</p>
     </div>
   )
 }
@@ -446,7 +447,7 @@ function SessionSettings({ sessionId, session, onSave, saving }: SettingsProps) 
           Leave Session
         </Button>
       </div>
-
+      <p className="text-center text-xs text-muted-foreground/50 pt-4">by @amoresjan</p>
     </div>
   )
 }

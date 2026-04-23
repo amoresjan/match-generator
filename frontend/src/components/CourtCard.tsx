@@ -1,4 +1,4 @@
-import { Pencil, Trophy, Users } from 'lucide-react'
+import { Flame, Pencil, Trophy, Users } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -9,14 +9,13 @@ interface Props {
   players: Player[]
   matchType: '1v1' | '2v2'
   isAdmin?: boolean
+  streakPlayerIds?: Set<string>
   onEdit?: (match: Match) => void
   onSetResult?: (matchId: string, winner: 'team1' | 'team2' | null) => void
 }
 
-function resolveNames(ids: string[], players: Player[]): string {
-  return ids
-    .map((id) => players.find((p) => p.id === id)?.name ?? '?')
-    .join(' & ')
+function resolveMembers(ids: string[], players: Player[]): { id: string; name: string }[] {
+  return ids.map((id) => ({ id, name: players.find((p) => p.id === id)?.name ?? '?' }))
 }
 
 function isDuo(ids: string[], players: Player[]): boolean {
@@ -25,9 +24,9 @@ function isDuo(ids: string[], players: Player[]): boolean {
   return a?.permanent_partner_id === ids[1]
 }
 
-export function CourtCard({ match, players, matchType, isAdmin, onEdit, onSetResult }: Props) {
-  const team1 = resolveNames(match.team1_players, players)
-  const team2 = resolveNames(match.team2_players, players)
+export function CourtCard({ match, players, matchType, isAdmin, streakPlayerIds, onEdit, onSetResult }: Props) {
+  const team1 = resolveMembers(match.team1_players, players)
+  const team2 = resolveMembers(match.team2_players, players)
   const team1IsDuo = isDuo(match.team1_players, players)
   const team2IsDuo = isDuo(match.team2_players, players)
 
@@ -64,7 +63,7 @@ export function CourtCard({ match, players, matchType, isAdmin, onEdit, onSetRes
             disabled={!isAdmin || !onSetResult}
             onClick={() => handleTeamClick('team1')}
             className={[
-              'rounded-md px-3 py-2 text-center font-medium transition-colors w-full',
+              'relative rounded-md px-3 py-2 text-center font-medium transition-colors w-full',
               isAdmin && onSetResult ? 'cursor-pointer' : 'cursor-default',
               team1Won
                 ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
@@ -73,9 +72,17 @@ export function CourtCard({ match, players, matchType, isAdmin, onEdit, onSetRes
                   : 'bg-muted/40 hover:bg-muted',
             ].join(' ')}
           >
-            <span className="flex items-center justify-center gap-1.5">
-              {team1Won && <Trophy className="h-3 w-3 shrink-0" />}
-              <span>{team1}</span>
+            {team1Won && <Trophy className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 shrink-0" />}
+            <span className="flex items-center justify-center gap-1">
+              {team1.map((m, i) => (
+                <span key={m.id} className="flex items-center gap-0.5">
+                  {i > 0 && <span className="text-muted-foreground/60">&amp;</span>}
+                  <span>{m.name}</span>
+                  {streakPlayerIds?.has(m.id) && (
+                    <Flame className="h-3 w-3 text-orange-500 shrink-0" />
+                  )}
+                </span>
+              ))}
               {team1IsDuo && <Users className="h-3 w-3 shrink-0 opacity-40" />}
             </span>
           </button>
@@ -87,7 +94,7 @@ export function CourtCard({ match, players, matchType, isAdmin, onEdit, onSetRes
             disabled={!isAdmin || !onSetResult}
             onClick={() => handleTeamClick('team2')}
             className={[
-              'rounded-md px-3 py-2 text-center font-medium transition-colors w-full',
+              'relative rounded-md px-3 py-2 text-center font-medium transition-colors w-full',
               isAdmin && onSetResult ? 'cursor-pointer' : 'cursor-default',
               team2Won
                 ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
@@ -96,9 +103,17 @@ export function CourtCard({ match, players, matchType, isAdmin, onEdit, onSetRes
                   : 'bg-muted/40 hover:bg-muted',
             ].join(' ')}
           >
-            <span className="flex items-center justify-center gap-1.5">
-              {team2Won && <Trophy className="h-3 w-3 shrink-0" />}
-              <span>{team2}</span>
+            {team2Won && <Trophy className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 shrink-0" />}
+            <span className="flex items-center justify-center gap-1">
+              {team2.map((m, i) => (
+                <span key={m.id} className="flex items-center gap-0.5">
+                  {i > 0 && <span className="text-muted-foreground/60">&amp;</span>}
+                  <span>{m.name}</span>
+                  {streakPlayerIds?.has(m.id) && (
+                    <Flame className="h-3 w-3 text-orange-500 shrink-0" />
+                  )}
+                </span>
+              ))}
               {team2IsDuo && <Users className="h-3 w-3 shrink-0 opacity-40" />}
             </span>
           </button>
