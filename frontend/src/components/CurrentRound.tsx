@@ -1,13 +1,17 @@
 import { useState } from 'react'
+import { RefreshCw } from 'lucide-react'
 import { CourtCard } from './CourtCard'
 import { OverrideMatchDialog } from './OverrideMatchDialog'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { useSetMatchResult } from '@/hooks/useSession'
 import type { Match, Player, Round, Session } from '@/lib/types'
 
 interface Props {
   session: Session
   isAdmin: boolean
+  onGenerateRound?: () => void
+  isGenerating?: boolean
 }
 
 function getByePlayers(round: Round, players: Player[]): Player[] {
@@ -15,15 +19,23 @@ function getByePlayers(round: Round, players: Player[]): Player[] {
   return players.filter((p) => !playingIds.has(p.id))
 }
 
-export function CurrentRound({ session, isAdmin }: Props) {
+export function CurrentRound({ session, isAdmin, onGenerateRound, isGenerating }: Props) {
   const [editingMatch, setEditingMatch] = useState<Match | null>(null)
   const setResult = useSetMatchResult(session.id)
 
   const rounds = session.rounds
   if (rounds.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground text-sm">
-        No rounds yet. {isAdmin ? 'Generate the first round!' : 'Waiting for the host to start.'}
+      <div className="text-center py-12 space-y-4">
+        <p className="text-muted-foreground text-sm">
+          {isAdmin ? 'Ready to start? Generate the first round.' : 'Waiting for the host to start.'}
+        </p>
+        {onGenerateRound && (
+          <Button onClick={onGenerateRound} disabled={isGenerating}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
+            Start
+          </Button>
+        )}
       </div>
     )
   }

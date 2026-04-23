@@ -27,6 +27,7 @@ export interface Session {
   name: string
   match_type: '1v1' | '2v2'
   num_courts: number
+  generation_mode: 'fair' | 'competitive'
   is_active: boolean
   created_at: string
   players: Player[]

@@ -32,7 +32,7 @@ async function request<T>(
 
 // Sessions
 export const api = {
-  createSession: (data: { name: string; match_type: '1v1' | '2v2'; num_courts: number }) =>
+  createSession: (data: { name: string; match_type: '1v1' | '2v2'; num_courts: number; generation_mode: 'fair' | 'competitive' }) =>
     request<SessionWithToken>('/sessions/', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -40,7 +40,7 @@ export const api = {
 
   getSession: (id: string) => request<Session>(`/sessions/${id}/`),
 
-  updateSession: (id: string, data: Partial<{ name: string; match_type: '1v1' | '2v2'; num_courts: number }>) =>
+  updateSession: (id: string, data: Partial<{ name: string; match_type: '1v1' | '2v2'; num_courts: number; generation_mode: 'fair' | 'competitive' }>) =>
     request<Session>(`/sessions/${id}/update/`, {
       method: 'PATCH',
       body: JSON.stringify(data),

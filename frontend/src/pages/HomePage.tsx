@@ -13,10 +13,11 @@ export function HomePage() {
   const [name, setName] = useState('')
   const [matchType, setMatchType] = useState<'1v1' | '2v2'>('2v2')
   const [numCourts, setNumCourts] = useState(1)
+  const [mode, setMode] = useState<'fair' | 'competitive'>('fair')
   const [joinId, setJoinId] = useState('')
 
   const create = useMutation({
-    mutationFn: () => api.createSession({ name, match_type: matchType, num_courts: numCourts }),
+    mutationFn: () => api.createSession({ name, match_type: matchType, num_courts: numCourts, generation_mode: mode }),
     onSuccess: (data) => {
       saveAdminToken(data.id, data.admin_token)
       navigate(`/session/${data.id}`)
@@ -25,8 +26,12 @@ export function HomePage() {
 
   function handleJoin(e: React.FormEvent) {
     e.preventDefault()
-    const id = joinId.trim()
-    if (id) navigate(`/session/${id}`)
+    const raw = joinId.trim()
+    if (!raw) return
+    // Extract UUID from a full URL if pasted (e.g. https://…/session/<uuid>)
+    const match = raw.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)
+    const id = match ? match[0] : raw
+    navigate(`/session/${id}`)
   }
 
   return (
@@ -68,6 +73,18 @@ export function HomePage() {
                 onChange={(e) => setNumCourts(Number(e.target.value))}
               />
             </div>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Mode</label>
+            <Select value={mode} onValueChange={(v) => setMode(v as 'fair' | 'competitive')}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="fair">Fair Rotation</SelectItem>
+                <SelectItem value="competitive">Competitive</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <Button
             className="w-full"

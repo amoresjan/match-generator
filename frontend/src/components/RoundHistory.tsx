@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Trophy } from 'lucide-react'
+import { ChevronDown, ChevronUp, Trophy, Users } from 'lucide-react'
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useSetMatchResult } from '@/hooks/useSession'
@@ -15,10 +15,18 @@ function resolveNames(ids: string[], players: Player[]): string {
   return ids.map((id) => players.find((p) => p.id === id)?.name ?? '?').join(' & ')
 }
 
+function isDuo(ids: string[], players: Player[]): boolean {
+  if (ids.length !== 2) return false
+  const a = players.find((p) => p.id === ids[0])
+  return a?.permanent_partner_id === ids[1]
+}
+
 function MatchRow({ sessionId, match, players, isAdmin }: { sessionId: string; match: Match; players: Player[]; isAdmin: boolean }) {
   const setResult = useSetMatchResult(sessionId)
   const team1 = resolveNames(match.team1_players, players)
   const team2 = resolveNames(match.team2_players, players)
+  const team1IsDuo = isDuo(match.team1_players, players)
+  const team2IsDuo = isDuo(match.team2_players, players)
   const team1Won = match.winner === 'team1'
   const team2Won = match.winner === 'team2'
   const hasResult = match.winner !== null
@@ -48,6 +56,7 @@ function MatchRow({ sessionId, match, players, isAdmin }: { sessionId: string; m
         >
           {team1Won && <Trophy className="inline h-3 w-3 mr-1 mb-0.5 text-yellow-500" />}
           {team1}
+          {team1IsDuo && <Users className="inline h-3 w-3 ml-1 mb-0.5 opacity-40" />}
         </button>
 
         <span className="text-[10px] text-muted-foreground font-bold">vs</span>
@@ -66,6 +75,7 @@ function MatchRow({ sessionId, match, players, isAdmin }: { sessionId: string; m
                 : isAdmin ? 'hover:bg-muted' : '',
           ].join(' ')}
         >
+          {team2IsDuo && <Users className="inline h-3 w-3 mr-1 mb-0.5 opacity-40" />}
           {team2}
           {team2Won && <Trophy className="inline h-3 w-3 ml-1 mb-0.5 text-yellow-500" />}
         </button>

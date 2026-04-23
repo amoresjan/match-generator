@@ -41,6 +41,40 @@ function computeStats(players: Player[], rounds: Round[]): PlayerStat[] {
     })
 }
 
+function isTied(a: PlayerStat, b: PlayerStat): boolean {
+  if (a.wins !== b.wins) return false
+  const aRate = a.played ? a.wins / a.played : 0
+  const bRate = b.played ? b.wins / b.played : 0
+  if (aRate !== bRate) return false
+  return a.played === b.played
+}
+
+function assignRanks(stats: PlayerStat[]): number[] {
+  const ranks: number[] = []
+  for (let i = 0; i < stats.length; i++) {
+    if (i === 0) {
+      ranks.push(1)
+    } else if (isTied(stats[i], stats[i - 1])) {
+      ranks.push(ranks[i - 1])
+    } else {
+      ranks.push(i + 1)
+    }
+  }
+  return ranks
+}
+
+const RANK_STYLES: Record<number, { border: string; bg: string }> = {
+  1: { border: 'border-yellow-300', bg: 'bg-yellow-50 dark:bg-yellow-900/20' },
+  2: { border: 'border-slate-400',  bg: 'bg-slate-50  dark:bg-slate-700/20'  },
+  3: { border: 'border-amber-700',  bg: 'bg-amber-50  dark:bg-amber-900/20'  },
+}
+
+const RANK_ICON_CLASS: Record<number, string> = {
+  1: 'text-yellow-500',
+  2: 'text-slate-400',
+  3: 'text-amber-700',
+}
+
 export function Leaderboard({ players, rounds }: { players: Player[]; rounds: Round[] }) {
   const stats = computeStats(players, rounds)
 
@@ -52,36 +86,49 @@ export function Leaderboard({ players, rounds }: { players: Player[]; rounds: Ro
     )
   }
 
-  return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-[auto_1fr_repeat(3,_auto)] gap-x-4 gap-y-0 px-3 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-        <span>#</span>
-        <span>Player</span>
-        <span className="text-center">W</span>
-        <span className="text-center">L</span>
-        <span className="text-center">GP</span>
-      </div>
+  const ranks = assignRanks(stats)
 
-      {stats.map((s, i) => {
-        const rank = i + 1
-        return (
-          <div
-            key={s.player.id}
-            className={[
-              'grid grid-cols-[auto_1fr_repeat(3,_auto)] gap-x-4 items-center rounded-lg border px-3 py-3',
-              rank === 1 ? 'border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20' : '',
-            ].join(' ')}
-          >
-            <span className="text-sm font-bold w-5 text-center text-muted-foreground">
-              {rank === 1 ? <Trophy className="h-4 w-4 text-yellow-500" /> : rank}
-            </span>
-            <span className="font-medium text-sm truncate">{s.player.name}</span>
-            <span className="text-sm font-semibold text-green-600 text-center w-6">{s.wins}</span>
-            <span className="text-sm text-muted-foreground text-center w-6">{s.losses}</span>
-            <span className="text-sm text-muted-foreground text-center w-6">{s.played}</span>
-          </div>
-        )
-      })}
-    </div>
+  return (
+    <table className="w-full text-sm border-separate border-spacing-y-1.5">
+      <thead>
+        <tr className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          <th className="text-center w-8 pb-1 font-medium">#</th>
+          <th className="text-left pb-1 font-medium">Player</th>
+          <th className="text-center w-10 pb-1 font-medium">GP</th>
+          <th className="text-center w-10 pb-1 font-medium">W</th>
+          <th className="text-center w-10 pb-1 font-medium">L</th>
+        </tr>
+      </thead>
+      <tbody>
+        {stats.map((s, i) => {
+          const rank = ranks[i]
+          const style = RANK_STYLES[rank]
+          const border = style?.border ?? 'border-border'
+          const bg = style?.bg ?? 'bg-card'
+
+          return (
+            <tr key={s.player.id}>
+              <td className={`text-center font-bold text-muted-foreground py-2.5 pl-3 rounded-l-lg border-y border-l w-8 ${border} ${bg}`}>
+                {rank <= 3
+                  ? <Trophy className={`h-4 w-4 mx-auto ${RANK_ICON_CLASS[rank]}`} />
+                  : rank}
+              </td>
+              <td className={`font-medium truncate py-2.5 border-y ${border} ${bg}`}>
+                {s.player.name}
+              </td>
+              <td className={`text-center text-muted-foreground py-2.5 w-10 border-y ${border} ${bg}`}>
+                {s.played}
+              </td>
+              <td className={`text-center font-semibold text-green-600 py-2.5 w-10 border-y ${border} ${bg}`}>
+                {s.wins}
+              </td>
+              <td className={`text-center text-muted-foreground py-2.5 pr-3 rounded-r-lg border-y border-r w-10 ${border} ${bg}`}>
+                {s.losses}
+              </td>
+            </tr>
+          )
+        })}
+      </tbody>
+    </table>
   )
 }

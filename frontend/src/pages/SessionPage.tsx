@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { RefreshCw, Settings, Users, ChevronDown, LogOut, Copy, Check, ShieldCheck, Trophy } from 'lucide-react'
+import { RefreshCw, Settings, Users, ChevronDown, LogOut, Copy, Check, ShieldCheck, Trophy, Moon, Sun } from 'lucide-react'
 import { useSession, useGenerateRound, useUpdateSession } from '@/hooks/useSession'
+import { useTheme } from '@/hooks/useTheme'
 import { CurrentRound } from '@/components/CurrentRound'
 import { PlayerList } from '@/components/PlayerList'
 import { RoundHistory } from '@/components/RoundHistory'
 import { Leaderboard } from '@/components/Leaderboard'
-import { ThemeToggle } from '@/components/ThemeToggle'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -30,7 +30,6 @@ export function SessionPage() {
   const updateSession = useUpdateSession(sessionId!)
   const [tab, setTab] = useState<Tab>('round')
   const [admin, setAdmin] = useState(() => isAdmin(sessionId!))
-  const navigate = useNavigate()
 
   if (isLoading) {
     return (
@@ -58,7 +57,7 @@ export function SessionPage() {
     { key: 'players', label: 'Players', icon: <Users className="h-4 w-4" /> },
     { key: 'history', label: 'History', icon: <ChevronDown className="h-4 w-4" /> },
     { key: 'leaderboard', label: 'Board', icon: <Trophy className="h-4 w-4" /> },
-    ...(admin ? [{ key: 'settings' as Tab, label: 'Settings', icon: <Settings className="h-4 w-4" /> }] : []),
+    { key: 'settings', label: 'Settings', icon: <Settings className="h-4 w-4" /> },
   ]
 
   return (
@@ -67,36 +66,16 @@ export function SessionPage() {
       <header className="sticky top-0 z-10 bg-background border-b px-4 py-3">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
           <div className="flex items-center gap-2 min-w-0">
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-8 w-8 shrink-0"
-              onClick={() => navigate('/')}
-              title="Exit session"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-            <ThemeToggle />
             <div className="min-w-0">
               <h1 className="font-bold text-base leading-tight truncate">{session.name}</h1>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <Badge variant="secondary" className="text-xs">{session.match_type}</Badge>
-                <Badge variant="outline" className="text-xs">{session.num_courts} court{session.num_courts !== 1 ? 's' : ''}</Badge>
-                {admin && <Badge className="text-xs">Host</Badge>}
+                {admin && <Badge className="text-xs shrink-0">Host</Badge>}
+                <Badge variant="secondary" className="text-xs shrink-0">{session.match_type}</Badge>
+                <Badge variant="outline" className="text-xs shrink-0">{session.num_courts} court{session.num_courts !== 1 ? 's' : ''}</Badge>
+                <Badge variant="outline" className="text-xs shrink-0">{session.generation_mode === 'competitive' ? 'Competitive' : 'Fair'}</Badge>
               </div>
             </div>
           </div>
-          {admin && (
-            <Button
-              size="sm"
-              onClick={() => generateRound.mutate()}
-              disabled={generateRound.isPending}
-              className="shrink-0"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 mr-1 ${generateRound.isPending ? 'animate-spin' : ''}`} />
-              {session.rounds.length === 0 ? 'Start' : 'Next'}
-            </Button>
-          )}
         </div>
       </header>
 
@@ -121,8 +100,15 @@ export function SessionPage() {
       </nav>
 
       {/* Content */}
-      <main className="max-w-2xl mx-auto p-4 space-y-6">
-        {tab === 'round' && <CurrentRound session={session} isAdmin={admin} />}
+      <main className={`max-w-2xl mx-auto p-4 space-y-6 ${admin && tab === 'round' ? 'pb-24' : ''}`}>
+        {tab === 'round' && (
+          <CurrentRound
+            session={session}
+            isAdmin={admin}
+            onGenerateRound={admin ? () => generateRound.mutate() : undefined}
+            isGenerating={generateRound.isPending}
+          />
+        )}
         {tab === 'players' && (
           admin
             ? <PlayerList session={session} />
@@ -130,13 +116,15 @@ export function SessionPage() {
         )}
         {tab === 'history' && <RoundHistory sessionId={session.id} rounds={session.rounds} players={session.players} isAdmin={admin} />}
         {tab === 'leaderboard' && <Leaderboard players={session.players} rounds={session.rounds} />}
-        {tab === 'settings' && admin && (
-          <SessionSettings
-            sessionId={sessionId!}
-            session={session}
-            onSave={(data) => updateSession.mutate(data)}
-            saving={updateSession.isPending}
-          />
+        {tab === 'settings' && (
+          admin
+            ? <SessionSettings
+                sessionId={sessionId!}
+                session={session}
+                onSave={(data) => updateSession.mutate(data)}
+                saving={updateSession.isPending}
+              />
+            : <GuestSettings sessionId={sessionId!} />
         )}
 
         {/* Admin code entry — always visible to non-admins */}
@@ -144,6 +132,22 @@ export function SessionPage() {
           <AdminCodeEntry sessionId={sessionId!} onUnlocked={handleAdminUnlocked} />
         )}
       </main>
+
+      {/* Sticky generate button — only on Round tab for admins */}
+      {admin && tab === 'round' && (
+        <div className="fixed bottom-0 left-0 right-0 z-20 p-4 bg-background/80 backdrop-blur border-t">
+          <div className="max-w-2xl mx-auto">
+            <Button
+              className="w-full"
+              onClick={() => generateRound.mutate()}
+              disabled={generateRound.isPending}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${generateRound.isPending ? 'animate-spin' : ''}`} />
+              {session.rounds.length === 0 ? 'Start' : 'Next Round'}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -213,22 +217,55 @@ function AdminCodeEntry({ sessionId, onUnlocked }: { sessionId: string; onUnlock
 // ---------------------------------------------------------------------------
 
 function PublicPlayerList({ players }: { players: import('@/lib/types').Player[] }) {
+  const seen = new Set<string>()
+  const duoPairs: [import('@/lib/types').Player, import('@/lib/types').Player][] = []
+  const solos: import('@/lib/types').Player[] = []
+
+  for (const player of players) {
+    if (seen.has(player.id)) continue
+    if (player.permanent_partner_id) {
+      const partner = players.find((p) => p.id === player.permanent_partner_id)
+      if (partner) {
+        duoPairs.push([player, partner])
+        seen.add(player.id)
+        seen.add(partner.id)
+        continue
+      }
+    }
+    solos.push(player)
+  }
+
+  function renderRow(p: import('@/lib/types').Player) {
+    return (
+      <>
+        <span className="text-sm font-medium">{p.name}</span>
+        {p.total_wait_rounds > 0 && (
+          <Badge variant="outline" className="text-xs">Wait: {p.total_wait_rounds}</Badge>
+        )}
+      </>
+    )
+  }
+
   return (
     <div className="space-y-2">
       <h2 className="font-semibold">Players ({players.length})</h2>
-      {players.map((p) => (
+
+      {duoPairs.map(([a, b]) => (
+        <div key={`${a.id}-${b.id}`} className="rounded-lg border-2 p-3 space-y-2">
+          <Badge variant="secondary" className="text-xs gap-1">
+            <Users className="h-3 w-3" />
+            Duo
+          </Badge>
+          <div className="space-y-1.5 border-t pt-2">
+            <div className="flex items-center justify-between">{renderRow(a)}</div>
+            <div className="flex items-center justify-between">{renderRow(b)}</div>
+          </div>
+        </div>
+      ))}
+
+      {solos.map((p) => (
         <div key={p.id} className="flex items-center justify-between rounded-lg border p-3">
-          <span className="text-sm font-medium">{p.name}</span>
-          {p.permanent_partner_name && (
-            <Badge variant="secondary" className="text-xs">
-              Partner: {p.permanent_partner_name}
-            </Badge>
-          )}
-          {p.total_wait_rounds > 0 && (
-            <Badge variant="outline" className="text-xs">
-              Wait: {p.total_wait_rounds}
-            </Badge>
-          )}
+          {renderRow(p)}
         </div>
       ))}
     </div>
@@ -242,7 +279,7 @@ function PublicPlayerList({ players }: { players: import('@/lib/types').Player[]
 interface SettingsProps {
   sessionId: string
   session: import('@/lib/types').Session
-  onSave: (data: Partial<{ name: string; match_type: '1v1' | '2v2'; num_courts: number }>) => void
+  onSave: (data: Partial<{ name: string; match_type: '1v1' | '2v2'; num_courts: number; generation_mode: 'fair' | 'competitive' }>) => void
   saving: boolean
 }
 
@@ -299,28 +336,59 @@ function CopyField({ label, value }: { label: string; value: string }) {
   )
 }
 
+function GuestSettings({ sessionId }: { sessionId: string }) {
+  const { theme, toggle: toggleTheme } = useTheme()
+  const navigate = useNavigate()
+
+  return (
+    <div className="space-y-6">
+      <SettingsSection title="Appearance">
+        <div className="flex items-center justify-between rounded-lg border px-3 py-2.5">
+          <span className="text-sm">Dark mode</span>
+          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={toggleTheme}>
+            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
+        </div>
+      </SettingsSection>
+      <SettingsSection title="Share">
+        <ShareField sessionId={sessionId} />
+      </SettingsSection>
+      <Button className="w-full" variant="outline" onClick={() => navigate('/')}>
+        <LogOut className="h-4 w-4 mr-2" />
+        Leave Session
+      </Button>
+    </div>
+  )
+}
+
+function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{title}</p>
+      {children}
+    </div>
+  )
+}
+
 function SessionSettings({ sessionId, session, onSave, saving }: SettingsProps) {
   const [name, setName] = useState(session.name)
   const [matchType, setMatchType] = useState<'1v1' | '2v2'>(session.match_type)
   const [numCourts, setNumCourts] = useState(session.num_courts)
+  const [mode, setMode] = useState<'fair' | 'competitive'>(session.generation_mode)
+  const { theme, toggle: toggleTheme } = useTheme()
+  const navigate = useNavigate()
 
   const adminToken = localStorage.getItem(`admin_token:${sessionId}`) ?? ''
 
   return (
-    <div className="space-y-4">
-      <h2 className="font-semibold">Session Settings</h2>
-      <div className="space-y-3">
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Session Name</label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} />
-        </div>
+    <div className="space-y-6">
+
+      <SettingsSection title="Game">
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Match Type</label>
             <Select value={matchType} onValueChange={(v) => setMatchType(v as '1v1' | '2v2')}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="2v2">2v2</SelectItem>
                 <SelectItem value="1v1">1v1</SelectItem>
@@ -329,27 +397,56 @@ function SessionSettings({ sessionId, session, onSave, saving }: SettingsProps) 
           </div>
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Courts</label>
-            <Input
-              type="number"
-              min={1}
-              max={8}
-              value={numCourts}
-              onChange={(e) => setNumCourts(Number(e.target.value))}
-            />
+            <Input type="number" min={1} max={8} value={numCourts} onChange={(e) => setNumCourts(Number(e.target.value))} />
           </div>
         </div>
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Mode</label>
+          <Select value={mode} onValueChange={(v) => setMode(v as 'fair' | 'competitive')}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="fair">Fair Rotation</SelectItem>
+              <SelectItem value="competitive">Competitive</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </SettingsSection>
 
+      <SettingsSection title="Session">
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Name</label>
+          <Input value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+      </SettingsSection>
+
+      <SettingsSection title="Appearance">
+        <div className="flex items-center justify-between rounded-lg border px-3 py-2.5">
+          <span className="text-sm">Dark mode</span>
+          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={toggleTheme}>
+            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection title="Share">
         <ShareField sessionId={session.id} />
         <CopyField label="Admin Code — tap to copy & share with co-hosts" value={adminToken} />
+      </SettingsSection>
 
+      <div className="space-y-2 pt-2">
         <Button
           className="w-full"
-          onClick={() => onSave({ name, match_type: matchType, num_courts: numCourts })}
+          onClick={() => onSave({ name, match_type: matchType, num_courts: numCourts, generation_mode: mode })}
           disabled={saving}
         >
           {saving ? 'Saving…' : 'Save Settings'}
         </Button>
+        <Button className="w-full" variant="outline" onClick={() => navigate('/')}>
+          <LogOut className="h-4 w-4 mr-2" />
+          Leave Session
+        </Button>
       </div>
+
     </div>
   )
 }
