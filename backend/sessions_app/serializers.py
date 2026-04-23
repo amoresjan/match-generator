@@ -40,7 +40,7 @@ class SessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Session
         fields = [
-            'id', 'name', 'match_type', 'num_courts',
+            'id', 'name', 'match_type', 'num_courts', 'generation_mode',
             'is_active', 'created_at', 'players', 'rounds',
         ]
         read_only_fields = ['id', 'created_at']
@@ -49,7 +49,7 @@ class SessionSerializer(serializers.ModelSerializer):
 class SessionCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Session
-        fields = ['name', 'match_type', 'num_courts']
+        fields = ['name', 'match_type', 'num_courts', 'generation_mode']
 
 
 class PlayerCreateSerializer(serializers.ModelSerializer):

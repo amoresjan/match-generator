@@ -81,6 +81,22 @@ def _build_history(session: Session) -> dict:
     }
 
 
+def _build_win_counts(session: Session) -> dict[str, int]:
+    from sessions_app.models import Match
+    wins: dict[str, int] = defaultdict(int)
+    matches = (
+        Match.objects
+        .filter(round__session=session)
+        .exclude(winner__isnull=True)
+        .values('team1_players', 'team2_players', 'winner')
+    )
+    for m in matches:
+        winner_ids = m['team1_players'] if m['winner'] == 'team1' else m['team2_players']
+        for pid in winner_ids:
+            wins[str(pid)] += 1
+    return wins
+
+
 # ---------------------------------------------------------------------------
 # Team cost
 # ---------------------------------------------------------------------------
@@ -150,39 +166,33 @@ def _group_permanent_partners(players: list[Player]) -> tuple[list[list[str]], l
 
 
 # ---------------------------------------------------------------------------
-# 2v2 generator
+# Shared sit-out selection (2v2)
 # ---------------------------------------------------------------------------
 
 def _pair_wait_score(pair: list[str], hist: dict) -> float:
-    """Average wait rounds for a pair — used to decide if the pair should sit out."""
     return sum(hist['wait'][p] for p in pair) / len(pair)
 
 
-def _generate_2v2(
+def _select_byes_2v2(
     players: list[Player],
     num_courts: int,
     hist: dict,
-) -> GeneratedRound:
+) -> tuple[list[list[str]], list[str], list[str]]:
+    """
+    Returns (active_pairs, active_singles, bye_players).
+    Sit-out selection is identical across all generation modes.
+    """
     pairs, singles = _group_permanent_partners(players)
-    all_ids = [str(p.id) for p in players]
-
-    # Determine how many players actually play (multiple of 4)
-    total = len(all_ids)
+    total = len(players)
     players_needed = min(num_courts * 4, total - (total % 4))
     remaining_byes = total - players_needed
 
-    # Build sortable units: pairs cost 2 bye slots, singles cost 1.
-    # Sort ascending by (wait_score, cost) so:
-    #   - least-rested players/pairs sit out first
-    #   - at equal wait, singles are preferred over pairs (ties broken by cost=1 < cost=2),
-    #     meaning an active pair won't be forced out while individual singles are equally fresh
     units: list[dict] = []
     for pair in pairs:
         units.append({
             'ids': pair,
             'cost': 2,
             'wait': _pair_wait_score(pair, hist),
-            # use max so a recently-rested pair member deprioritises the whole pair
             'last_sat_out': max(hist['last_sat_out'][p] for p in pair),
         })
     for s in singles:
@@ -192,9 +202,7 @@ def _generate_2v2(
             'wait': hist['wait'][s],
             'last_sat_out': hist['last_sat_out'][s],
         })
-    # Sort: fewest byes first; ties broken by cost (singles before pairs) then by
-    # recency of last sit-out (sat out recently → larger value → sorted last → plays this round).
-    # Jitter breaks ties within equal-priority groups so the same players aren't always chosen.
+
     for unit in units:
         unit['jitter'] = random.random()
     units.sort(key=lambda u: (u['wait'], u['cost'], u['last_sat_out'], u['jitter']))
@@ -207,7 +215,6 @@ def _generate_2v2(
         if remaining_byes <= 0:
             break
         if unit['cost'] > remaining_byes:
-            # Pair needs 2 slots but only 1 remains — skip, take next single instead
             continue
         bye_players.extend(unit['ids'])
         remaining_byes -= unit['cost']
@@ -216,10 +223,12 @@ def _generate_2v2(
         else:
             active_singles = [s for s in active_singles if s != unit['ids'][0]]
 
-    # Build pool of 2-person groups
-    pool: list[list[str]] = list(active_pairs)
+    return active_pairs, active_singles, bye_players
 
-    # Fill remaining slots pairing singles optimally
+
+def _pair_singles(active_singles: list[str], hist: dict) -> list[list[str]]:
+    """Greedily pair singles by minimum partner-repeat cost."""
+    pool: list[list[str]] = []
     unpaired = list(active_singles)
     while len(unpaired) >= 2:
         best_cost = float('inf')
@@ -232,13 +241,24 @@ def _generate_2v2(
         pool.append(best_pair)
         for x in best_pair:
             unpaired.remove(x)
-
-    # If odd singles remain after bye assignment (shouldn't happen in valid state),
-    # add as a solo team placeholder
     for p in unpaired:
         pool.append([p])
+    return pool
 
-    # Pair pool groups into match teams greedily
+
+# ---------------------------------------------------------------------------
+# 2v2 generators
+# ---------------------------------------------------------------------------
+
+def _generate_2v2(
+    players: list[Player],
+    num_courts: int,
+    hist: dict,
+) -> GeneratedRound:
+    active_pairs, active_singles, bye_players = _select_byes_2v2(players, num_courts, hist)
+
+    pool: list[list[str]] = list(active_pairs) + _pair_singles(active_singles, hist)
+
     courts: list[CourtAssignment] = []
     court_num = 1
     used: set[int] = set()
@@ -255,8 +275,7 @@ def _generate_2v2(
         best_cost = float('inf')
         best_idx = -1
         for idx in available[1:]:
-            team2 = pool[idx]
-            cost = _match_cost(team1, team2, hist)
+            cost = _match_cost(team1, pool[idx], hist)
             if cost < best_cost:
                 best_cost = cost
                 best_idx = idx
@@ -265,11 +284,9 @@ def _generate_2v2(
             break
 
         used.add(best_idx)
-        team2 = pool[best_idx]
-        courts.append({'court': court_num, 'team1': team1, 'team2': team2})
+        courts.append({'court': court_num, 'team1': team1, 'team2': pool[best_idx]})
         court_num += 1
 
-    # Any pool members not assigned become byes
     for i, grp in enumerate(pool):
         if i not in used:
             bye_players.extend(grp)
@@ -278,8 +295,43 @@ def _generate_2v2(
     return {'round_number': next_round, 'courts': courts, 'bye_players': bye_players}
 
 
+def _generate_2v2_competitive(
+    players: list[Player],
+    num_courts: int,
+    hist: dict,
+    wins: dict[str, int],
+) -> GeneratedRound:
+    """
+    Sit-out selection is identical to fair mode.
+    Teams are formed by minimising partner repeats (same as fair).
+    Courts are assigned by win count: top teams face top teams, bottom face bottom.
+    """
+    active_pairs, active_singles, bye_players = _select_byes_2v2(players, num_courts, hist)
+
+    pool: list[list[str]] = list(active_pairs) + _pair_singles(active_singles, hist)
+
+    # Sort teams by average wins descending; jitter breaks ties
+    pool.sort(key=lambda team: (
+        -sum(wins.get(p, 0) for p in team) / max(len(team), 1),
+        random.random(),
+    ))
+
+    # Adjacent teams in sorted order face each other (best vs 2nd-best, etc.)
+    courts: list[CourtAssignment] = []
+    for i in range(0, len(pool) - 1, 2):
+        if len(courts) >= num_courts:
+            break
+        courts.append({'court': len(courts) + 1, 'team1': pool[i], 'team2': pool[i + 1]})
+
+    for team in pool[len(courts) * 2:]:
+        bye_players.extend(team)
+
+    next_round = _next_round_number(players[0].session if players else None)
+    return {'round_number': next_round, 'courts': courts, 'bye_players': bye_players}
+
+
 # ---------------------------------------------------------------------------
-# 1v1 generator
+# 1v1 generators
 # ---------------------------------------------------------------------------
 
 def _generate_1v1(
@@ -329,6 +381,38 @@ def _generate_1v1(
     return {'round_number': next_round, 'courts': courts, 'bye_players': bye_players}
 
 
+def _generate_1v1_competitive(
+    players: list[Player],
+    num_courts: int,
+    hist: dict,
+    wins: dict[str, int],
+) -> GeneratedRound:
+    all_ids = [str(p.id) for p in players]
+    total = len(all_ids)
+    players_needed = min(num_courts * 2, total - (total % 2))
+    bye_count = total - players_needed
+
+    jitter = {pid: random.random() for pid in all_ids}
+    sorted_by_wait = sorted(all_ids, key=lambda pid: (hist['wait'][pid], hist['last_sat_out'][pid], jitter[pid]))
+    bye_players = sorted_by_wait[:bye_count]
+    active = sorted_by_wait[bye_count:]
+
+    # Sort active players by wins descending; jitter breaks ties
+    active.sort(key=lambda pid: (-wins.get(pid, 0), random.random()))
+
+    courts: list[CourtAssignment] = []
+    for i in range(0, len(active) - 1, 2):
+        if len(courts) >= num_courts:
+            break
+        courts.append({'court': len(courts) + 1, 'team1': [active[i]], 'team2': [active[i + 1]]})
+
+    for p in active[len(courts) * 2:]:
+        bye_players.append(p)
+
+    next_round = _next_round_number(players[0].session if players else None)
+    return {'round_number': next_round, 'courts': courts, 'bye_players': bye_players}
+
+
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
@@ -346,9 +430,15 @@ def generate_round(session: Session) -> GeneratedRound:
         raise ValueError('Session has no players.')
 
     hist = _build_history(session)
+    mode = session.generation_mode
 
     if session.match_type == '1v1':
+        if mode == 'competitive':
+            return _generate_1v1_competitive(players, session.num_courts, hist, _build_win_counts(session))
         return _generate_1v1(players, session.num_courts, hist)
+
+    if mode == 'competitive':
+        return _generate_2v2_competitive(players, session.num_courts, hist, _build_win_counts(session))
     return _generate_2v2(players, session.num_courts, hist)
 
 
