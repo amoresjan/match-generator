@@ -10,13 +10,20 @@ interface Props {
   match: Match | null
   players: Player[]
   matchType: '1v1' | '2v2'
+  roundMatches: Match[]
   open: boolean
   onClose: () => void
 }
 
-export function OverrideMatchDialog({ sessionId, match, players, matchType, open, onClose }: Props) {
+export function OverrideMatchDialog({ sessionId, match, players, matchType, roundMatches, open, onClose }: Props) {
   const teamSize = matchType === '2v2' ? 2 : 1
   const override = useOverrideMatch(sessionId)
+
+  const busyPlayerIds = new Set(
+    roundMatches
+      .filter((m) => m.id !== match?.id)
+      .flatMap((m) => [...m.team1_players, ...m.team2_players])
+  )
 
   const [team1, setTeam1] = useState<string[]>(match?.team1_players ?? [])
   const [team2, setTeam2] = useState<string[]>(match?.team2_players ?? [])
@@ -42,7 +49,7 @@ export function OverrideMatchDialog({ sessionId, match, players, matchType, open
   const valid = team1.length === teamSize && team2.length === teamSize
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <Dialog key={match?.id} open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>Edit Court {match?.court_number}</DialogTitle>
@@ -72,16 +79,21 @@ export function OverrideMatchDialog({ sessionId, match, players, matchType, open
           {players.map((p) => {
             const inT1 = team1.includes(p.id)
             const inT2 = team2.includes(p.id)
+            const busy = busyPlayerIds.has(p.id)
             return (
               <button
                 key={p.id}
+                disabled={busy}
                 onClick={() => togglePlayer(p.id)}
+                title={busy ? 'Already on another court' : undefined}
                 className={`px-2 py-1 rounded text-xs border transition-colors ${
-                  inT1
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : inT2
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-background hover:bg-muted border-input'
+                  busy
+                    ? 'opacity-35 cursor-not-allowed bg-muted border-input'
+                    : inT1
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : inT2
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-background hover:bg-muted border-input'
                 }`}
               >
                 {p.name}

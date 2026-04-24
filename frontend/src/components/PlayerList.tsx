@@ -214,6 +214,13 @@ export function PlayerList({ session }: Props) {
       {session.players.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-4">No players yet. Add some above.</p>
       )}
+
+      {session.match_type === '2v2' && session.players.length >= 2 && (
+        <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground space-y-1">
+          <p className="font-medium">💡 Duo tip</p>
+          <p>Use the <span className="font-medium">Duo</span> selector on a player to permanently pair them with a partner. Duos always play together and are never split.</p>
+        </div>
+      )}
     </div>
   )
 }

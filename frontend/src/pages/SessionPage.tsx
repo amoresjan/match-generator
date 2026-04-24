@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { RefreshCw, Settings, Users, ChevronDown, LogOut, Copy, Check, ShieldCheck, Trophy, Moon, Sun } from 'lucide-react'
+import { RefreshCw, Settings, Users, ChevronDown, LogOut, Copy, Check, Trophy, Moon, Sun } from 'lucide-react'
 import { useSession, useGenerateRound, useUpdateSession } from '@/hooks/useSession'
 import { useTheme } from '@/hooks/useTheme'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { CurrentRound } from '@/components/CurrentRound'
 import { PlayerList } from '@/components/PlayerList'
 import { RoundHistory } from '@/components/RoundHistory'
@@ -30,6 +31,22 @@ export function SessionPage() {
   const updateSession = useUpdateSession(sessionId!)
   const [tab, setTab] = useState<Tab>('round')
   const [admin, setAdmin] = useState(() => isAdmin(sessionId!))
+  const [confirmGenerate, setConfirmGenerate] = useState(false)
+
+  function switchTab(t: Tab) {
+    setTab(t)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function handleGenerateRound() {
+    const latest = session?.rounds[session.rounds.length - 1]
+    const hasUnrecorded = latest?.matches.some((m) => m.winner === null)
+    if (hasUnrecorded) {
+      setConfirmGenerate(true)
+    } else {
+      generateRound.mutate()
+    }
+  }
 
   if (isLoading) {
     return (
@@ -85,7 +102,7 @@ export function SessionPage() {
           {tabs.map((t) => (
             <button
               key={t.key}
-              onClick={() => setTab(t.key)}
+              onClick={() => switchTab(t.key)}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors ${
                 tab === t.key
                   ? 'border-b-2 border-primary text-primary'
@@ -124,14 +141,33 @@ export function SessionPage() {
                 onSave={(data) => updateSession.mutate(data)}
                 saving={updateSession.isPending}
               />
-            : <GuestSettings sessionId={sessionId!} />
+            : <GuestSettings sessionId={sessionId!} onUnlocked={handleAdminUnlocked} />
         )}
 
-        {/* Admin code entry — always visible to non-admins */}
-        {!admin && (
-          <AdminCodeEntry sessionId={sessionId!} onUnlocked={handleAdminUnlocked} />
-        )}
       </main>
+
+      {/* Confirm generate dialog */}
+      <Dialog open={confirmGenerate} onOpenChange={setConfirmGenerate}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Unrecorded results</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Some matches in the current round don't have a result. Generate the next round anyway?
+          </p>
+          <div className="flex gap-2 justify-end mt-2">
+            <Button variant="outline" onClick={() => setConfirmGenerate(false)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                setConfirmGenerate(false)
+                generateRound.mutate()
+              }}
+            >
+              Generate anyway
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Sticky generate button — only on Round tab for admins */}
       {admin && tab === 'round' && (
@@ -139,7 +175,7 @@ export function SessionPage() {
           <div className="max-w-2xl mx-auto">
             <Button
               className="w-full"
-              onClick={() => generateRound.mutate()}
+              onClick={handleGenerateRound}
               disabled={generateRound.isPending}
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${generateRound.isPending ? 'animate-spin' : ''}`} />
@@ -191,11 +227,7 @@ function AdminCodeEntry({ sessionId, onUnlocked }: { sessionId: string; onUnlock
   }
 
   return (
-    <div className="rounded-lg border border-dashed p-4 space-y-3">
-      <div className="flex items-center gap-2 text-sm font-medium">
-        <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-        Are you the host?
-      </div>
+    <div className="space-y-3">
       <form onSubmit={handleSubmit} className="flex gap-2">
         <Input
           placeholder="Enter admin code…"
@@ -249,6 +281,11 @@ function PublicPlayerList({ players }: { players: import('@/lib/types').Player[]
   return (
     <div className="space-y-2">
       <h2 className="font-semibold">Players ({players.length})</h2>
+
+      <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground space-y-1">
+        <p className="font-medium">💡 Duo tip</p>
+        <p>Want to permanently team up with someone? Ask the host to set you up as a duo.</p>
+      </div>
 
       {duoPairs.map(([a, b]) => (
         <div key={`${a.id}-${b.id}`} className="rounded-lg border-2 p-3 space-y-2">
@@ -336,7 +373,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
   )
 }
 
-function GuestSettings({ sessionId }: { sessionId: string }) {
+function GuestSettings({ sessionId, onUnlocked }: { sessionId: string; onUnlocked: () => void }) {
   const { theme, toggle: toggleTheme } = useTheme()
   const navigate = useNavigate()
 
@@ -352,6 +389,9 @@ function GuestSettings({ sessionId }: { sessionId: string }) {
       </SettingsSection>
       <SettingsSection title="Share">
         <ShareField sessionId={sessionId} />
+      </SettingsSection>
+      <SettingsSection title="Host Access">
+        <AdminCodeEntry sessionId={sessionId} onUnlocked={onUnlocked} />
       </SettingsSection>
       <Button className="w-full" variant="outline" onClick={() => navigate('/')}>
         <LogOut className="h-4 w-4 mr-2" />

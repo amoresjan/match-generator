@@ -138,12 +138,20 @@ export function CurrentRound({ session, isAdmin, onGenerateRound, isGenerating }
         </div>
       )}
 
+      {!isAdmin && (
+        <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground space-y-1">
+          <p className="font-medium">💡 Co-host tip</p>
+          <p>If you're helping manage this session, ask the host for the admin code and enter it in <span className="font-medium">Settings → Host Access</span>.</p>
+        </div>
+      )}
+
       {isAdmin && (
         <OverrideMatchDialog
           sessionId={session.id}
           match={editingMatch}
           players={session.players}
           matchType={session.match_type}
+          roundMatches={latestRound.matches}
           open={editingMatch !== null}
           onClose={() => setEditingMatch(null)}
         />
