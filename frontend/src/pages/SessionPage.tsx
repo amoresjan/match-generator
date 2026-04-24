@@ -8,6 +8,7 @@ import { CurrentRound } from '@/components/CurrentRound'
 import { PlayerList } from '@/components/PlayerList'
 import { RoundHistory } from '@/components/RoundHistory'
 import { Leaderboard } from '@/components/Leaderboard'
+import { SessionSummaryCard } from '@/components/SessionSummaryCard'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -132,7 +133,14 @@ export function SessionPage() {
             : <PublicPlayerList players={session.players} />
         )}
         {tab === 'history' && <RoundHistory sessionId={session.id} rounds={session.rounds} players={session.players} isAdmin={admin} />}
-        {tab === 'leaderboard' && <Leaderboard players={session.players} rounds={session.rounds} />}
+        {tab === 'leaderboard' && (
+          <div className="space-y-6">
+            <Leaderboard players={session.players} rounds={session.rounds} />
+            {session.rounds.some((r) => r.matches.some((m) => m.winner !== null)) && (
+              <SessionSummaryCard sessionName={session.name} players={session.players} rounds={session.rounds} />
+            )}
+          </div>
+        )}
         {tab === 'settings' && (
           admin
             ? <SessionSettings
