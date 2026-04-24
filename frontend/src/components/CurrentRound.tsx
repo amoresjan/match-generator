@@ -85,22 +85,27 @@ export function CurrentRound({ session, isAdmin, onGenerateRound, isGenerating }
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        {latestRound.matches.map((match) => (
-          <CourtCard
+        {latestRound.matches.map((match, i) => (
+          <div
             key={match.id}
-            match={match}
-            players={session.players}
-            matchType={session.match_type}
-            isAdmin={isAdmin}
-            streakPlayerIds={streakPlayerIds}
-            onEdit={isAdmin ? setEditingMatch : undefined}
-            onSetResult={isAdmin ? (matchId, winner) => setResult.mutate({ matchId, winner }) : undefined}
-          />
+            className="animate-card-enter"
+            style={{ animationDelay: `${i * 80}ms` }}
+          >
+            <CourtCard
+              match={match}
+              players={session.players}
+              matchType={session.match_type}
+              isAdmin={isAdmin}
+              streakPlayerIds={streakPlayerIds}
+              onEdit={isAdmin ? setEditingMatch : undefined}
+              onSetResult={isAdmin ? (matchId, winner) => setResult.mutate({ matchId, winner }) : undefined}
+            />
+          </div>
         ))}
       </div>
 
       {streakPlayers.length > 0 && (
-        <div className="rounded-lg border border-dashed border-orange-300 dark:border-orange-700 p-3">
+        <div className="rounded-lg border border-orange-300 dark:border-orange-700 bg-orange-50/50 dark:bg-orange-900/10 p-3 animate-streak-glow">
           <p className="text-xs text-orange-500 mb-2 font-medium uppercase tracking-wide flex items-center gap-1">
             <Flame className="h-3 w-3" /> Hot Streak
           </p>

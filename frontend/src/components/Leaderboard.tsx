@@ -137,76 +137,86 @@ export function Leaderboard({ players, rounds }: { players: Player[]; rounds: Ro
       <tbody>
         {stats.map((s, i) => {
           const rank = ranks[i]
+          const isFirst = rank === 1
           const style = RANK_STYLES[rank]
           const border = style?.border ?? 'border-border'
           const bg = style?.bg ?? 'bg-card'
           const isExpanded = expandedId === s.player.id
-          const playerMatches = isExpanded ? getPlayerMatches(s.player.id, players, rounds) : []
+          const playerMatches = getPlayerMatches(s.player.id, players, rounds)
+          const py = isFirst ? 'py-3.5' : 'py-2.5'
 
           return (
             <>
               <tr
                 key={s.player.id}
-                className="cursor-pointer"
+                className={`cursor-pointer animate-card-enter ${isFirst ? 'animate-gold-glow' : ''}`}
+                style={{ animationDelay: `${i * 60}ms` }}
                 onClick={() => setExpandedId(isExpanded ? null : s.player.id)}
               >
-                <td className={`text-center font-bold text-muted-foreground py-2.5 pl-3 rounded-l-lg border-y border-l w-8 ${border} ${bg}`}>
+                <td className={`text-center font-bold text-muted-foreground ${py} pl-3 rounded-l-lg border-y border-l w-8 ${border} ${bg}`}>
                   {rank <= 3
-                    ? <Trophy className={`h-4 w-4 mx-auto ${RANK_ICON_CLASS[rank]}`} />
+                    ? <Trophy className={`${isFirst ? 'h-5 w-5' : 'h-4 w-4'} mx-auto ${RANK_ICON_CLASS[rank]}`} />
                     : rank}
                 </td>
-                <td className={`font-medium truncate py-2.5 border-y ${border} ${bg}`}>
+                <td className={`font-medium truncate ${py} ${isFirst ? 'text-base' : ''} border-y ${border} ${bg}`}>
                   {s.player.name}
                 </td>
-                <td className={`text-center text-muted-foreground py-2.5 w-10 border-y ${border} ${bg}`}>
+                <td className={`text-center text-muted-foreground ${py} w-10 border-y ${border} ${bg}`}>
                   {s.played}
                 </td>
-                <td className={`text-center font-semibold text-green-600 py-2.5 w-10 border-y ${border} ${bg}`}>
+                <td className={`text-center font-semibold text-green-600 ${py} ${isFirst ? 'text-base' : ''} w-10 border-y ${border} ${bg}`}>
                   {s.wins}
                 </td>
-                <td className={`text-center text-muted-foreground py-2.5 pr-3 rounded-r-lg border-y border-r w-10 ${border} ${bg}`}>
-                  <span className="flex items-center justify-end gap-1">
-                    {s.losses}
+                <td className={`relative text-center text-muted-foreground ${py} pr-3 rounded-r-lg border-y border-r w-10 ${border} ${bg}`}>
+                  {s.losses}
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2">
                     {isExpanded
-                      ? <ChevronUp className="h-3 w-3 shrink-0 text-muted-foreground/60" />
-                      : <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/60" />}
+                      ? <ChevronUp className="h-3 w-3 text-muted-foreground/60" />
+                      : <ChevronDown className="h-3 w-3 text-muted-foreground/60" />}
                   </span>
                 </td>
               </tr>
-              {isExpanded && (
-                <tr key={`${s.player.id}-matches`}>
-                  <td colSpan={5} className="pb-2 pt-0">
-                    <div className="rounded-md border border-border bg-muted/30 px-3 py-2 space-y-1.5">
-                      {playerMatches.length === 0 ? (
-                        <p className="text-xs text-muted-foreground text-center py-1">No recorded results yet</p>
-                      ) : (
-                        <table className="w-full text-xs border-separate border-spacing-y-0.5">
-                          <colgroup>
-                            <col className="w-5" />
-                            <col className="w-8" />
-                            <col />
-                            <col className="w-6" />
-                            <col />
-                          </colgroup>
-                          <tbody>
-                            {playerMatches.map((pm) => (
-                              <tr key={pm.match.id}>
-                                <td className={`font-bold pr-1 ${pm.result === 'W' ? 'text-green-600' : 'text-muted-foreground'}`}>
-                                  {pm.result}
-                                </td>
-                                <td className="text-muted-foreground pr-2">R{pm.roundNumber}</td>
-                                <td className="font-medium">{pm.myTeam}</td>
-                                <td className="text-muted-foreground text-center px-1">vs</td>
-                                <td className="text-muted-foreground">{pm.theirTeam}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      )}
+              <tr key={`${s.player.id}-matches`}>
+                <td colSpan={5} className="pt-0">
+                  <div
+                    className="grid transition-all duration-300 ease-in-out"
+                    style={{ gridTemplateRows: isExpanded ? '1fr' : '0fr' }}
+                  >
+                    <div className="overflow-hidden">
+                      <div className="pb-2">
+                        <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
+                          {playerMatches.length === 0 ? (
+                            <p className="text-xs text-muted-foreground text-center py-1">No recorded results yet</p>
+                          ) : (
+                            <table className="w-full text-xs border-separate border-spacing-y-0.5">
+                              <colgroup>
+                                <col className="w-5" />
+                                <col className="w-8" />
+                                <col />
+                                <col className="w-6" />
+                                <col />
+                              </colgroup>
+                              <tbody>
+                                {playerMatches.map((pm) => (
+                                  <tr key={pm.match.id}>
+                                    <td className={`font-bold pr-1 ${pm.result === 'W' ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                      {pm.result}
+                                    </td>
+                                    <td className="text-muted-foreground pr-2">R{pm.roundNumber}</td>
+                                    <td className="font-medium">{pm.myTeam}</td>
+                                    <td className="text-muted-foreground text-center px-1">vs</td>
+                                    <td className="text-muted-foreground">{pm.theirTeam}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </td>
-                </tr>
-              )}
+                  </div>
+                </td>
+              </tr>
             </>
           )
         })}

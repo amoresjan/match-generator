@@ -1,4 +1,5 @@
 import { Flame, Pencil, Trophy, Users } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -30,10 +31,17 @@ export function CourtCard({ match, players, matchType, isAdmin, streakPlayerIds,
   const team1IsDuo = isDuo(match.team1_players, players)
   const team2IsDuo = isDuo(match.team2_players, players)
 
+  const [poppedSide, setPoppedSide] = useState<'team1' | 'team2' | null>(null)
+  const popTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   function handleTeamClick(side: 'team1' | 'team2') {
     if (!onSetResult) return
-    // Tap winner to toggle off, tap other side to switch
     const next = match.winner === side ? null : side
+    if (next !== null) {
+      if (popTimer.current) clearTimeout(popTimer.current)
+      setPoppedSide(side)
+      popTimer.current = setTimeout(() => setPoppedSide(null), 300)
+    }
     onSetResult(match.id, next)
   }
 
@@ -63,8 +71,9 @@ export function CourtCard({ match, players, matchType, isAdmin, streakPlayerIds,
             disabled={!isAdmin || !onSetResult}
             onClick={() => handleTeamClick('team1')}
             className={[
-              'relative rounded-md px-3 py-2 text-center font-medium transition-colors w-full',
-              isAdmin && onSetResult ? 'cursor-pointer' : 'cursor-default',
+              'relative rounded-md px-3 py-2 text-center font-medium transition-all w-full',
+              isAdmin && onSetResult ? 'cursor-pointer active:scale-95' : 'cursor-default',
+              poppedSide === 'team1' ? 'animate-winner-pop' : '',
               team1Won
                 ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
                 : hasResult
@@ -94,8 +103,9 @@ export function CourtCard({ match, players, matchType, isAdmin, streakPlayerIds,
             disabled={!isAdmin || !onSetResult}
             onClick={() => handleTeamClick('team2')}
             className={[
-              'relative rounded-md px-3 py-2 text-center font-medium transition-colors w-full',
-              isAdmin && onSetResult ? 'cursor-pointer' : 'cursor-default',
+              'relative rounded-md px-3 py-2 text-center font-medium transition-all w-full',
+              isAdmin && onSetResult ? 'cursor-pointer active:scale-95' : 'cursor-default',
+              poppedSide === 'team2' ? 'animate-winner-pop' : '',
               team2Won
                 ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
                 : hasResult

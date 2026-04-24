@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Pencil, Trash2, UserPlus, Users, Link2Off } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,11 +16,23 @@ export function PlayerList({ session }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [newDuoKey, setNewDuoKey] = useState<string | null>(null)
+  const duoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const addPlayer = useAddPlayer(session.id)
   const removePlayer = useRemovePlayer(session.id)
   const updatePlayer = useUpdatePlayer(session.id)
   const setPartner = useSetPartner(session.id)
+
+  function handleSetPartner(playerId: string, partnerId: string | null) {
+    if (partnerId) {
+      const key = [playerId, partnerId].sort().join('-')
+      if (duoTimer.current) clearTimeout(duoTimer.current)
+      setNewDuoKey(key)
+      duoTimer.current = setTimeout(() => setNewDuoKey(null), 600)
+    }
+    setPartner.mutate({ playerId, partnerId })
+  }
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
@@ -124,7 +136,7 @@ export function PlayerList({ session }: Props) {
             <Select
               value={player.permanent_partner_id ?? 'none'}
               onValueChange={(val) =>
-                setPartner.mutate({ playerId: player.id, partnerId: val === 'none' ? null : val })
+                handleSetPartner(player.id, val === 'none' ? null : val)
               }
             >
               <SelectTrigger className="h-7 text-xs flex-1">
@@ -163,8 +175,10 @@ export function PlayerList({ session }: Props) {
 
       <div className="space-y-2">
         {/* Duo pairs */}
-        {duoPairs.map(([a, b]) => (
-          <div key={`${a.id}-${b.id}`} className="rounded-lg border-2 p-3 space-y-2">
+        {duoPairs.map(([a, b]) => {
+          const pairKey = [a.id, b.id].sort().join('-')
+          return (
+          <div key={pairKey} className={`rounded-lg border-2 p-3 space-y-2 ${newDuoKey === pairKey ? 'animate-duo-form' : ''}`}>
             <div className="flex items-center justify-between">
               <Badge variant="secondary" className="text-xs gap-1">
                 <Users className="h-3 w-3" />
@@ -186,7 +200,8 @@ export function PlayerList({ session }: Props) {
               {renderPlayerRow(b, true)}
             </div>
           </div>
-        ))}
+          )
+        })}
 
         {/* Solo players */}
         {solos.map((player) => (
