@@ -525,6 +525,74 @@ def preview_rounds(session: Session, count: int = 5) -> list[GeneratedRound]:
     return results
 
 
+def reconcile_round_history(rnd: Round) -> None:
+    """Recompute PlayerRoundHistory for a round from its current Match rows.
+
+    Called after override_match so that the cost function always reflects what
+    actually happened rather than the originally-generated assignments.
+    """
+    from django.db import transaction
+
+    session = rnd.session
+    player_map = {str(p.id): p for p in session.players.all()}
+
+    # Determine who is playing and who is sitting out based on current Match rows
+    playing: set[str] = set()
+    for match in rnd.matches.all():
+        playing.update(match.team1_players)
+        playing.update(match.team2_players)
+    bye_pids = set(player_map.keys()) - playing
+
+    with transaction.atomic():
+        # Find whose sat_out status changed so we can fix total_wait_rounds
+        old_history = {str(h.player_id): h.sat_out for h in rnd.history.all()}
+
+        PlayerRoundHistory.objects.filter(round=rnd).delete()
+
+        # Recreate history from current match assignments.
+        # Guard against the same player appearing on multiple courts (admin error):
+        # first assignment wins, duplicates are silently skipped.
+        new_rows = []
+        seen: set[str] = set()
+        for match in rnd.matches.all():
+            t1, t2 = match.team1_players, match.team2_players
+            for pid in t1:
+                if pid in player_map and pid not in seen:
+                    seen.add(pid)
+                    new_rows.append(PlayerRoundHistory(
+                        player=player_map[pid],
+                        round=rnd,
+                        partner_ids=[x for x in t1 if x != pid],
+                        opponent_ids=list(t2),
+                    ))
+            for pid in t2:
+                if pid in player_map and pid not in seen:
+                    seen.add(pid)
+                    new_rows.append(PlayerRoundHistory(
+                        player=player_map[pid],
+                        round=rnd,
+                        partner_ids=[x for x in t2 if x != pid],
+                        opponent_ids=list(t1),
+                    ))
+        for pid in bye_pids:
+            new_rows.append(PlayerRoundHistory(
+                player=player_map[pid],
+                round=rnd,
+                sat_out=True,
+            ))
+        PlayerRoundHistory.objects.bulk_create(new_rows)
+
+        # Patch total_wait_rounds for players whose sit-out status changed.
+        # Clamp to 0 to guard against underflow from unusual override sequences.
+        for pid, player in player_map.items():
+            was_out = old_history.get(pid, False)
+            is_out = pid in bye_pids
+            if was_out == is_out:
+                continue
+            player.total_wait_rounds = max(0, player.total_wait_rounds + (1 if is_out else -1))
+            player.save(update_fields=['total_wait_rounds'])
+
+
 def commit_round(session: Session, generated: GeneratedRound) -> Round:
     """Persist the generated round and update PlayerRoundHistory."""
     from django.db import transaction

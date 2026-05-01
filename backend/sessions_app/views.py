@@ -13,7 +13,7 @@ from .serializers import (
     SessionSerializer,
     SetPartnerSerializer,
 )
-from .services.match_generator import commit_round, generate_round, preview_rounds
+from .services.match_generator import commit_round, generate_round, preview_rounds, reconcile_round_history
 
 
 # ---------------------------------------------------------------------------
@@ -191,7 +191,9 @@ def override_match(request, session_id, match_id):
     ser.is_valid(raise_exception=True)
     match.team1_players = [str(x) for x in ser.validated_data['team1_players']]
     match.team2_players = [str(x) for x in ser.validated_data['team2_players']]
-    match.save(update_fields=['team1_players', 'team2_players'])
+    match.winner = None
+    match.save(update_fields=['team1_players', 'team2_players', 'winner'])
+    reconcile_round_history(match.round)
     return Response(MatchSerializer(match).data)
 
 

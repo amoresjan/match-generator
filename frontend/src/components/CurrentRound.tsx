@@ -154,6 +154,9 @@ export function CurrentRound({ session, isAdmin, onGenerateRound, isGenerating }
                 .sort((a, b) => a.id.localeCompare(b.id))
                 .map((p) => `${p.id}:${p.permanent_partner_id ?? ''}`)
                 .join(','),
+              latestRound.matches
+                .map((m) => `${m.id}:${[...m.team1_players, ...m.team2_players].sort().join(',')}`)
+                .join(';'),
             ].join('|')}
           />
         </>
