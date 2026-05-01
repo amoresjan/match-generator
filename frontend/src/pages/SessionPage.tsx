@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { RefreshCw, Settings, Users, ChevronDown, LogOut, Copy, Check, Trophy, Moon, Sun } from 'lucide-react'
+import { RefreshCw, Settings, Users, Clock, LogOut, Copy, Check, Trophy, Moon, Sun } from 'lucide-react'
 import { useSession, useGenerateRound, useUpdateSession } from '@/hooks/useSession'
 import { useTheme } from '@/hooks/useTheme'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -13,9 +13,19 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { saveAdminToken, BASE } from '@/lib/api'
+import { api, saveAdminToken, getAdminToken } from '@/lib/api'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { partitionPlayers } from '@/lib/utils'
 
 type Tab = 'round' | 'players' | 'history' | 'leaderboard' | 'settings'
+
+const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
+  { key: 'round', label: 'Round', icon: <RefreshCw className="h-4 w-4" /> },
+  { key: 'players', label: 'Players', icon: <Users className="h-4 w-4" /> },
+  { key: 'history', label: 'History', icon: <Clock className="h-4 w-4" /> },
+  { key: 'leaderboard', label: 'Board', icon: <Trophy className="h-4 w-4" /> },
+  { key: 'settings', label: 'Settings', icon: <Settings className="h-4 w-4" /> },
+]
 
 function getStoredToken(sessionId: string): string | null {
   return localStorage.getItem(`admin_token:${sessionId}`)
@@ -70,14 +80,6 @@ export function SessionPage() {
     setTab('round')
   }
 
-  const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: 'round', label: 'Round', icon: <RefreshCw className="h-4 w-4" /> },
-    { key: 'players', label: 'Players', icon: <Users className="h-4 w-4" /> },
-    { key: 'history', label: 'History', icon: <ChevronDown className="h-4 w-4" /> },
-    { key: 'leaderboard', label: 'Board', icon: <Trophy className="h-4 w-4" /> },
-    { key: 'settings', label: 'Settings', icon: <Settings className="h-4 w-4" /> },
-  ]
-
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -100,7 +102,7 @@ export function SessionPage() {
       {/* Tab bar */}
       <nav className="border-b bg-background sticky top-[61px] z-10">
         <div className="flex max-w-2xl mx-auto">
-          {tabs.map((t) => (
+          {TABS.map((t) => (
             <button
               key={t.key}
               onClick={() => switchTab(t.key)}
@@ -119,39 +121,40 @@ export function SessionPage() {
 
       {/* Content */}
       <main className={`max-w-2xl mx-auto p-4 space-y-6 ${admin && tab === 'round' ? 'pb-24' : ''}`}>
-        {tab === 'round' && (
-          <CurrentRound
-            session={session}
-            isAdmin={admin}
-            onGenerateRound={admin ? () => generateRound.mutate() : undefined}
-            isGenerating={generateRound.isPending}
-          />
-        )}
-        {tab === 'players' && (
-          admin
-            ? <PlayerList session={session} />
-            : <PublicPlayerList players={session.players} />
-        )}
-        {tab === 'history' && <RoundHistory sessionId={session.id} rounds={session.rounds} players={session.players} isAdmin={admin} />}
-        {tab === 'leaderboard' && (
-          <div className="space-y-6">
-            <Leaderboard players={session.players} rounds={session.rounds} />
-            {session.rounds.some((r) => r.matches.some((m) => m.winner !== null)) && (
-              <SessionSummaryCard sessionName={session.name} players={session.players} rounds={session.rounds} />
-            )}
-          </div>
-        )}
-        {tab === 'settings' && (
-          admin
-            ? <SessionSettings
-                sessionId={sessionId!}
-                session={session}
-                onSave={(data) => updateSession.mutate(data)}
-                saving={updateSession.isPending}
-              />
-            : <GuestSettings sessionId={sessionId!} onUnlocked={handleAdminUnlocked} />
-        )}
-
+        <ErrorBoundary>
+          {tab === 'round' && (
+            <CurrentRound
+              session={session}
+              isAdmin={admin}
+              onGenerateRound={admin ? () => generateRound.mutate() : undefined}
+              isGenerating={generateRound.isPending}
+            />
+          )}
+          {tab === 'players' && (
+            admin
+              ? <PlayerList session={session} />
+              : <PublicPlayerList players={session.players} />
+          )}
+          {tab === 'history' && <RoundHistory sessionId={session.id} rounds={session.rounds} players={session.players} isAdmin={admin} />}
+          {tab === 'leaderboard' && (
+            <div className="space-y-6">
+              <Leaderboard players={session.players} rounds={session.rounds} />
+              {session.rounds.some((r) => r.matches.some((m) => m.winner !== null)) && (
+                <SessionSummaryCard sessionName={session.name} players={session.players} rounds={session.rounds} />
+              )}
+            </div>
+          )}
+          {tab === 'settings' && (
+            admin
+              ? <SessionSettings
+                  sessionId={sessionId!}
+                  session={session}
+                  onSave={(data) => updateSession.mutate(data)}
+                  saving={updateSession.isPending}
+                />
+              : <GuestSettings sessionId={sessionId!} onUnlocked={handleAdminUnlocked} />
+          )}
+        </ErrorBoundary>
       </main>
 
       {/* Confirm generate dialog */}
@@ -214,21 +217,11 @@ function AdminCodeEntry({ sessionId, onUnlocked }: { sessionId: string; onUnlock
     setError('')
 
     try {
-      // Validate by attempting an authenticated no-op update
-      const res = await fetch(`${BASE}/sessions/${sessionId}/update/`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'X-Admin-Token': trimmed },
-        body: JSON.stringify({}),
-      })
-
-      if (res.ok) {
-        saveAdminToken(sessionId, trimmed)
-        onUnlocked()
-      } else {
-        setError('Invalid admin code. Please try again.')
-      }
+      await api.validateAdminToken(sessionId, trimmed)
+      saveAdminToken(sessionId, trimmed)
+      onUnlocked()
     } catch {
-      setError('Could not reach the server.')
+      setError('Invalid admin code. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -256,35 +249,21 @@ function AdminCodeEntry({ sessionId, onUnlocked }: { sessionId: string; onUnlock
 // Public player list (read-only)
 // ---------------------------------------------------------------------------
 
+function PublicPlayerRow({ player }: { player: import('@/lib/types').Player }) {
+  return (
+    <>
+      <span className={`text-sm font-medium ${player.sit_out ? 'line-through text-muted-foreground' : ''}`}>
+        {player.name}
+      </span>
+      {player.total_wait_rounds > 0 && (
+        <Badge variant="outline" className="text-xs">Wait: {player.total_wait_rounds}</Badge>
+      )}
+    </>
+  )
+}
+
 function PublicPlayerList({ players }: { players: import('@/lib/types').Player[] }) {
-  const seen = new Set<string>()
-  const duoPairs: [import('@/lib/types').Player, import('@/lib/types').Player][] = []
-  const solos: import('@/lib/types').Player[] = []
-
-  for (const player of players) {
-    if (seen.has(player.id)) continue
-    if (player.permanent_partner_id) {
-      const partner = players.find((p) => p.id === player.permanent_partner_id)
-      if (partner) {
-        duoPairs.push([player, partner])
-        seen.add(player.id)
-        seen.add(partner.id)
-        continue
-      }
-    }
-    solos.push(player)
-  }
-
-  function renderRow(p: import('@/lib/types').Player) {
-    return (
-      <>
-        <span className="text-sm font-medium">{p.name}</span>
-        {p.total_wait_rounds > 0 && (
-          <Badge variant="outline" className="text-xs">Wait: {p.total_wait_rounds}</Badge>
-        )}
-      </>
-    )
-  }
+  const { duoPairs, solos } = partitionPlayers(players)
 
   return (
     <div className="space-y-2">
@@ -302,15 +281,15 @@ function PublicPlayerList({ players }: { players: import('@/lib/types').Player[]
             Duo
           </Badge>
           <div className="space-y-1.5 border-t pt-2">
-            <div className="flex items-center justify-between">{renderRow(a)}</div>
-            <div className="flex items-center justify-between">{renderRow(b)}</div>
+            <div className="flex items-center justify-between"><PublicPlayerRow player={a} /></div>
+            <div className="flex items-center justify-between"><PublicPlayerRow player={b} /></div>
           </div>
         </div>
       ))}
 
       {solos.map((p) => (
         <div key={p.id} className="flex items-center justify-between rounded-lg border p-3">
-          {renderRow(p)}
+          <PublicPlayerRow player={p} />
         </div>
       ))}
     </div>
@@ -427,7 +406,14 @@ function SessionSettings({ sessionId, session, onSave, saving }: SettingsProps) 
   const { theme, toggle: toggleTheme } = useTheme()
   const navigate = useNavigate()
 
-  const adminToken = localStorage.getItem(`admin_token:${sessionId}`) ?? ''
+  useEffect(() => {
+    setName(session.name)
+    setMatchType(session.match_type)
+    setNumCourts(session.num_courts)
+    setMode(session.generation_mode)
+  }, [session.name, session.match_type, session.num_courts, session.generation_mode])
+
+  const adminToken = getAdminToken(sessionId) ?? ''
 
   return (
     <div className="space-y-6">

@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronUp, Trophy, Users } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useSetMatchResult } from '@/hooks/useSession'
 import type { Match, Round, Player } from '@/lib/types'
@@ -90,7 +90,7 @@ function MatchRow({ sessionId, match, players, isAdmin }: { sessionId: string; m
 
 export function RoundHistory({ sessionId, rounds, players, isAdmin }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null)
-  const allRounds = [...rounds].reverse()
+  const allRounds = useMemo(() => [...rounds].reverse(), [rounds])
 
   if (allRounds.length === 0) {
     return (

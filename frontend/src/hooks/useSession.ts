@@ -12,6 +12,7 @@ export function useSession(sessionId: string) {
     queryKey: sessionKeys.detail(sessionId),
     queryFn: () => api.getSession(sessionId),
     refetchInterval: 3_000,
+    refetchIntervalInBackground: false,
   })
 }
 

@@ -30,6 +30,12 @@ export function CourtCard({ match, players, isAdmin, streakPlayerIds, onEdit, on
   const team1IsDuo = isDuo(match.team1_players, players)
   const team2IsDuo = isDuo(match.team2_players, players)
 
+  const allMatchPlayerIds = [...match.team1_players, ...match.team2_players]
+  const sittingOutInMatch = players.filter((p) => allMatchPlayerIds.includes(p.id) && p.sit_out)
+  const sitOutWarning = sittingOutInMatch.length > 0
+    ? `${sittingOutInMatch.map((p) => p.name).join(', ')} ${sittingOutInMatch.length === 1 ? 'is' : 'are'} sitting out — consider overriding this match`
+    : null
+
   const [poppedSide, setPoppedSide] = useState<'team1' | 'team2' | null>(null)
   const popTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -132,17 +138,12 @@ export function CourtCard({ match, players, isAdmin, streakPlayerIds, onEdit, on
             Tap the winning team to record result
           </p>
         )}
-        {(() => {
-          const allIds = [...match.team1_players, ...match.team2_players]
-          const sitOut = players.filter((p) => allIds.includes(p.id) && p.sit_out)
-          if (sitOut.length === 0) return null
-          return (
-            <p className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 mt-2">
-              <AlertTriangle className="h-3 w-3 shrink-0" />
-              {sitOut.map((p) => p.name).join(', ')} {sitOut.length === 1 ? 'is' : 'are'} sitting out — consider overriding this match
-            </p>
-          )
-        })()}
+        {sitOutWarning && (
+          <p className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 mt-2">
+            <AlertTriangle className="h-3 w-3 shrink-0" />
+            {sitOutWarning}
+          </p>
+        )}
       </CardContent>
     </Card>
   )

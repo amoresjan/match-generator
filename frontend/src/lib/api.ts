@@ -2,7 +2,7 @@ import type { Match, Player, PreviewRound, Round, Session, SessionWithToken } fr
 
 export const BASE = import.meta.env.VITE_API_URL ?? '/api'
 
-function getAdminToken(sessionId: string): string | null {
+export function getAdminToken(sessionId: string): string | null {
   return localStorage.getItem(`admin_token:${sessionId}`)
 }
 
@@ -39,6 +39,13 @@ export const api = {
     }),
 
   getSession: (id: string) => request<Session>(`/sessions/${id}/`),
+
+  validateAdminToken: (sessionId: string, token: string) =>
+    request<Session>(`/sessions/${sessionId}/update/`, {
+      method: 'PATCH',
+      body: JSON.stringify({}),
+      adminToken: token,
+    }),
 
   updateSession: (id: string, data: Partial<{ name: string; match_type: '1v1' | '2v2'; num_courts: number; generation_mode: 'fair' | 'competitive' }>) =>
     request<Session>(`/sessions/${id}/update/`, {

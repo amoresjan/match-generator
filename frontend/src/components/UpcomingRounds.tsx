@@ -119,7 +119,7 @@ export function UpcomingRounds({ sessionId, players, isAdmin, roundCount, sessio
     mutateRef.current(5).then(applyRounds).catch(() => {})
   }, [sessionKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!isAdmin && !rounds) return null
+  if (!isAdmin) return null
 
   return (
     <div className="space-y-3">

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Flame, PauseCircle, RefreshCw } from 'lucide-react'
 import { CourtCard } from './CourtCard'
 import { OverrideMatchDialog } from './OverrideMatchDialog'
@@ -69,9 +69,10 @@ export function CurrentRound({ session, isAdmin, onGenerateRound, isGenerating }
   }
 
   const latestRound = rounds[rounds.length - 1]
-  const streakMap = computeStreaks(rounds)
-  const streakPlayerIds = new Set(streakMap.keys())
-  const streakPlayers = session.players.filter((p) => streakMap.has(p.id))
+  const streakMap = useMemo(() => computeStreaks(rounds), [rounds])
+  const streakPlayerIds = useMemo(() => new Set(streakMap.keys()), [streakMap])
+  const streakPlayers = useMemo(() => session.players.filter((p) => streakMap.has(p.id)), [session.players, streakMap])
+  const sittingOutPlayers = useMemo(() => session.players.filter((p) => p.sit_out), [session.players])
 
   return (
     <div className="space-y-4">
@@ -119,24 +120,20 @@ export function CurrentRound({ session, isAdmin, onGenerateRound, isGenerating }
       )}
 
 
-      {(() => {
-        const sittingOut = session.players.filter((p) => p.sit_out)
-        if (sittingOut.length === 0) return null
-        return (
-          <div className="rounded-lg border border-dashed p-3">
-            <p className="text-xs text-muted-foreground mb-2 font-medium flex items-center gap-1">
-              <PauseCircle className="h-3 w-3" /> Sitting out
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {sittingOut.map((p) => (
-                <Badge key={p.id} variant="secondary" className="text-xs text-muted-foreground">
-                  {p.name}
-                </Badge>
-              ))}
-            </div>
+      {sittingOutPlayers.length > 0 && (
+        <div className="rounded-lg border border-dashed p-3">
+          <p className="text-xs text-muted-foreground mb-2 font-medium flex items-center gap-1">
+            <PauseCircle className="h-3 w-3" /> Sitting out
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {sittingOutPlayers.map((p) => (
+              <Badge key={p.id} variant="secondary" className="text-xs text-muted-foreground">
+                {p.name}
+              </Badge>
+            ))}
           </div>
-        )
-      })()}
+        </div>
+      )}
 
       {!isAdmin && (
         <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground space-y-1">
