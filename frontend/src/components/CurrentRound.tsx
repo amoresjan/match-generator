@@ -80,7 +80,7 @@ export function CurrentRound({ session, isAdmin, onGenerateRound, isGenerating }
         <Badge variant="outline">{latestRound.matches.length} court{latestRound.matches.length !== 1 ? 's' : ''}</Badge>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-2 sm:grid-cols-2">
         {latestRound.matches.map((match, i) => (
           <div
             key={match.id}
