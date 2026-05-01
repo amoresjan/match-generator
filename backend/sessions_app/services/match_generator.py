@@ -11,6 +11,8 @@ For 1v1 the same weights apply but team sizes are 1.
 """
 from __future__ import annotations
 
+import contextlib
+import hashlib
 import itertools
 import random
 from collections import defaultdict
@@ -417,6 +419,61 @@ def _generate_1v1_competitive(
 # Public entry point
 # ---------------------------------------------------------------------------
 
+@contextlib.contextmanager
+def _seeded(session_id, round_number: int):
+    """
+    Temporarily seed the global RNG with a value derived from session + round number.
+    Same session + same round = same matchups every time, so preview matches reality.
+    Restores the original RNG state on exit.
+    """
+    key = f"{session_id}:{round_number}".encode()
+    seed = int(hashlib.md5(key).hexdigest(), 16) % (2 ** 32)
+    state = random.getstate()
+    random.seed(seed)
+    try:
+        yield
+    finally:
+        random.setstate(state)
+
+
+def _copy_hist(hist: dict) -> dict:
+    """Deep-copy a history dict without relying on lambda pickling."""
+    return {
+        'partner': defaultdict(lambda: defaultdict(int), {
+            k: defaultdict(int, v) for k, v in hist['partner'].items()
+        }),
+        'opponent': defaultdict(lambda: defaultdict(int), {
+            k: defaultdict(int, v) for k, v in hist['opponent'].items()
+        }),
+        'wait': defaultdict(int, hist['wait']),
+        'last_sat_out': defaultdict(int, hist['last_sat_out']),
+    }
+
+
+def _simulate_history_update(hist: dict, generated: GeneratedRound) -> dict:
+    """Return a new hist dict reflecting a generated round as if it were committed."""
+    h = _copy_hist(hist)
+    for court in generated['courts']:
+        t1, t2 = court['team1'], court['team2']
+        for pid in t1:
+            for partner in t1:
+                if partner != pid:
+                    h['partner'][pid][partner] += 1
+            for opp in t2:
+                h['opponent'][pid][opp] += 1
+        for pid in t2:
+            for partner in t2:
+                if partner != pid:
+                    h['partner'][pid][partner] += 1
+            for opp in t1:
+                h['opponent'][pid][opp] += 1
+    rn = generated['round_number']
+    for pid in generated['bye_players']:
+        h['wait'][pid] += 1
+        h['last_sat_out'][pid] = max(h['last_sat_out'].get(pid, 0), rn)
+    return h
+
+
 def _next_round_number(session: Session | None) -> int:
     if session is None:
         return 1
@@ -429,17 +486,43 @@ def generate_round(session: Session) -> GeneratedRound:
     if not players:
         raise ValueError('Session has no players.')
 
+    next_number = _next_round_number(session)
     hist = _build_history(session)
     mode = session.generation_mode
 
-    if session.match_type == '1v1':
-        if mode == 'competitive':
-            return _generate_1v1_competitive(players, session.num_courts, hist, _build_win_counts(session))
-        return _generate_1v1(players, session.num_courts, hist)
+    with _seeded(session.id, next_number):
+        if session.match_type == '1v1':
+            if mode == 'competitive':
+                return _generate_1v1_competitive(players, session.num_courts, hist, _build_win_counts(session))
+            return _generate_1v1(players, session.num_courts, hist)
 
-    if mode == 'competitive':
-        return _generate_2v2_competitive(players, session.num_courts, hist, _build_win_counts(session))
-    return _generate_2v2(players, session.num_courts, hist)
+        if mode == 'competitive':
+            return _generate_2v2_competitive(players, session.num_courts, hist, _build_win_counts(session))
+        return _generate_2v2(players, session.num_courts, hist)
+
+
+def preview_rounds(session: Session, count: int = 5) -> list[GeneratedRound]:
+    """Generate future rounds without committing. Fair rotation only."""
+    players = list(session.players.prefetch_related('permanent_partner').all())
+    if not players:
+        raise ValueError('Session has no players.')
+
+    hist = _build_history(session)
+    next_number = _next_round_number(session)
+    results: list[GeneratedRound] = []
+
+    for i in range(count):
+        round_number = next_number + i
+        with _seeded(session.id, round_number):
+            if session.match_type == '1v1':
+                gen = _generate_1v1(players, session.num_courts, hist)
+            else:
+                gen = _generate_2v2(players, session.num_courts, hist)
+        gen['round_number'] = round_number
+        results.append(gen)
+        hist = _simulate_history_update(hist, gen)
+
+    return results
 
 
 def commit_round(session: Session, generated: GeneratedRound) -> Round:

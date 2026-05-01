@@ -76,11 +76,16 @@ export default {
           '0%, 100%': { filter: 'drop-shadow(0 0 2px rgba(234,179,8,0.25))' },
           '50%':      { filter: 'drop-shadow(0 0 8px rgba(234,179,8,0.6))'  },
         },
+        'card-exit': {
+          '0%':   { transform: 'translateX(0)',     opacity: '1' },
+          '100%': { transform: 'translateX(-24px)', opacity: '0' },
+        },
       },
       animation: {
         'winner-pop':    'winner-pop 0.25s ease-out',
         'streak-pulse':  'streak-pulse 1.5s ease-in-out infinite',
         'card-enter':    'card-enter 0.35s ease-out both',
+        'card-exit':     'card-exit 0.3s ease-in forwards',
         'duo-form':      'duo-form 0.4s ease-out both',
         'streak-glow':   'streak-glow 2s ease-in-out infinite',
         'gold-glow':     'gold-glow 2s ease-in-out infinite',

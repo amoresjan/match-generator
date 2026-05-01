@@ -1,18 +1,17 @@
-import { Flame, Pencil, Trophy, Users } from 'lucide-react'
+import { Flame, Loader2, Pencil, Trophy, Users } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import type { Match, Player } from '@/lib/types'
 
 interface Props {
   match: Match
   players: Player[]
-  matchType: '1v1' | '2v2'
   isAdmin?: boolean
   streakPlayerIds?: Set<string>
   onEdit?: (match: Match) => void
   onSetResult?: (matchId: string, winner: 'team1' | 'team2' | null) => void
+  isPending?: boolean
 }
 
 function resolveMembers(ids: string[], players: Player[]): { id: string; name: string }[] {
@@ -25,7 +24,7 @@ function isDuo(ids: string[], players: Player[]): boolean {
   return a?.permanent_partner_id === ids[1]
 }
 
-export function CourtCard({ match, players, matchType, isAdmin, streakPlayerIds, onEdit, onSetResult }: Props) {
+export function CourtCard({ match, players, isAdmin, streakPlayerIds, onEdit, onSetResult, isPending }: Props) {
   const team1 = resolveMembers(match.team1_players, players)
   const team2 = resolveMembers(match.team2_players, players)
   const team1IsDuo = isDuo(match.team1_players, players)
@@ -55,9 +54,9 @@ export function CourtCard({ match, players, matchType, isAdmin, streakPlayerIds,
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">Court {match.court_number}</CardTitle>
           <div className="flex items-center gap-2">
-            <Badge variant="secondary">{matchType}</Badge>
+            {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
             {isAdmin && onEdit && (
-              <Button size="icon" variant="ghost" onClick={() => onEdit(match)} className="h-7 w-7">
+              <Button size="icon" variant="ghost" onClick={() => onEdit(match)} className="h-7 w-7" disabled={isPending}>
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
             )}
@@ -68,7 +67,7 @@ export function CourtCard({ match, players, matchType, isAdmin, streakPlayerIds,
         <div className="flex flex-col gap-1.5 text-sm">
           {/* Team 1 */}
           <button
-            disabled={!isAdmin || !onSetResult}
+            disabled={!isAdmin || !onSetResult || isPending}
             onClick={() => handleTeamClick('team1')}
             className={[
               'relative rounded-md px-3 py-2 text-center font-medium transition-all w-full',
@@ -100,7 +99,7 @@ export function CourtCard({ match, players, matchType, isAdmin, streakPlayerIds,
 
           {/* Team 2 */}
           <button
-            disabled={!isAdmin || !onSetResult}
+            disabled={!isAdmin || !onSetResult || isPending}
             onClick={() => handleTeamClick('team2')}
             className={[
               'relative rounded-md px-3 py-2 text-center font-medium transition-all w-full',

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Pencil, Trash2, UserPlus, Users, Link2Off } from 'lucide-react'
+import { Loader2, Pencil, Trash2, UserPlus, Users, Link2Off } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -27,11 +27,14 @@ export function PlayerList({ session }: Props) {
   function handleSetPartner(playerId: string, partnerId: string | null) {
     if (partnerId) {
       const key = [playerId, partnerId].sort().join('-')
-      if (duoTimer.current) clearTimeout(duoTimer.current)
-      setNewDuoKey(key)
-      duoTimer.current = setTimeout(() => setNewDuoKey(null), 600)
+      setPartner.mutateAsync({ playerId, partnerId }).then(() => {
+        if (duoTimer.current) clearTimeout(duoTimer.current)
+        setNewDuoKey(key)
+        duoTimer.current = setTimeout(() => setNewDuoKey(null), 600)
+      }).catch(() => {})
+    } else {
+      setPartner.mutate({ playerId, partnerId })
     }
-    setPartner.mutate({ playerId, partnerId })
   }
 
   async function handleAdd(e: React.FormEvent) {
@@ -133,7 +136,11 @@ export function PlayerList({ session }: Props) {
         {session.match_type === '2v2' && !inDuoBox && (
           <div className="flex items-center gap-2 mt-1">
             <span className="text-xs text-muted-foreground w-28 shrink-0">Duo:</span>
+            {setPartner.isPending && setPartner.variables?.playerId === player.id && (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
+            )}
             <Select
+              disabled={setPartner.isPending && setPartner.variables?.playerId === player.id}
               value={player.permanent_partner_id ?? 'none'}
               onValueChange={(val) =>
                 handleSetPartner(player.id, val === 'none' ? null : val)
@@ -173,6 +180,11 @@ export function PlayerList({ session }: Props) {
         </Button>
       </form>
 
+      <div className="flex items-center justify-between text-xs text-muted-foreground px-0.5">
+        <span>Players</span>
+        <span className="font-medium tabular-nums">{session.players.length}</span>
+      </div>
+
       <div className="space-y-2">
         {/* Duo pairs */}
         {duoPairs.map(([a, b]) => {
@@ -184,16 +196,21 @@ export function PlayerList({ session }: Props) {
                 <Users className="h-3 w-3" />
                 Duo
               </Badge>
-              {session.match_type === '2v2' && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 text-xs text-muted-foreground hover:text-destructive px-2"
-                  onClick={() => setPartner.mutate({ playerId: a.id, partnerId: null })}
-                >
-                  Break
-                </Button>
-              )}
+              {session.match_type === '2v2' && (() => {
+                const isBreaking = setPartner.isPending && setPartner.variables?.playerId === a.id && setPartner.variables?.partnerId === null
+                return (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 text-xs text-muted-foreground hover:text-destructive px-2 gap-1"
+                    disabled={isBreaking}
+                    onClick={() => setPartner.mutate({ playerId: a.id, partnerId: null })}
+                  >
+                    {isBreaking && <Loader2 className="h-3 w-3 animate-spin" />}
+                    Break
+                  </Button>
+                )
+              })()}
             </div>
             <div className="space-y-1.5 border-t pt-2">
               {renderPlayerRow(a, true)}

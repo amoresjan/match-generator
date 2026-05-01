@@ -37,3 +37,15 @@ export interface Session {
 export interface SessionWithToken extends Session {
   admin_token: string
 }
+
+export interface PreviewCourt {
+  court: number
+  team1: string[]
+  team2: string[]
+}
+
+export interface PreviewRound {
+  round_number: number
+  courts: PreviewCourt[]
+  bye_players: string[]
+}

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { Session } from '@/lib/types'
+import type { PreviewRound, Session } from '@/lib/types'
 
 export const sessionKeys = {
   all: ['sessions'] as const,
@@ -78,7 +78,33 @@ export function useSetMatchResult(sessionId: string) {
   return useMutation({
     mutationFn: ({ matchId, winner }: { matchId: string; winner: 'team1' | 'team2' | null }) =>
       api.setMatchResult(sessionId, matchId, winner),
-    onSuccess: () => qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) }),
+    onMutate: async ({ matchId, winner }) => {
+      await qc.cancelQueries({ queryKey: sessionKeys.detail(sessionId) })
+      const previous = qc.getQueryData<Session>(sessionKeys.detail(sessionId))
+      qc.setQueryData<Session>(sessionKeys.detail(sessionId), (old) => {
+        if (!old) return old
+        return {
+          ...old,
+          rounds: old.rounds.map((round) => ({
+            ...round,
+            matches: round.matches.map((match) =>
+              match.id === matchId ? { ...match, winner } : match
+            ),
+          })),
+        }
+      })
+      return { previous }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) qc.setQueryData(sessionKeys.detail(sessionId), context.previous)
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) }),
+  })
+}
+
+export function usePreviewRounds(sessionId: string) {
+  return useMutation<PreviewRound[], Error, number>({
+    mutationFn: (count: number) => api.previewRounds(sessionId, count),
   })
 }
 

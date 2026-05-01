@@ -11,4 +11,5 @@ urlpatterns = [
     path('sessions/<uuid:session_id>/generate/', views.generate_next_round),
     path('sessions/<uuid:session_id>/matches/<uuid:match_id>/override/', views.override_match),
     path('sessions/<uuid:session_id>/matches/<uuid:match_id>/result/', views.set_match_result),
+    path('sessions/<uuid:session_id>/preview-rounds/', views.preview_rounds_view),
 ]

@@ -13,7 +13,7 @@ from .serializers import (
     SessionSerializer,
     SetPartnerSerializer,
 )
-from .services.match_generator import commit_round, generate_round
+from .services.match_generator import commit_round, generate_round, preview_rounds
 
 
 # ---------------------------------------------------------------------------
@@ -193,3 +193,27 @@ def override_match(request, session_id, match_id):
     match.team2_players = [str(x) for x in ser.validated_data['team2_players']]
     match.save(update_fields=['team1_players', 'team2_players'])
     return Response(MatchSerializer(match).data)
+
+
+# ---------------------------------------------------------------------------
+# Preview future rounds (fair rotation only, no DB writes)
+# ---------------------------------------------------------------------------
+
+@api_view(['POST'])
+def preview_rounds_view(request, session_id):
+    session = get_object_or_404(Session, id=session_id)
+    err = _require_admin(request, session)
+    if err:
+        return err
+
+    if session.generation_mode != 'fair':
+        return Response({'detail': 'Preview is only available for fair rotation.'}, status=400)
+
+    count = max(1, min(int(request.data.get('count', 5)), 10))
+
+    try:
+        rounds = preview_rounds(session, count)
+    except ValueError as exc:
+        return Response({'detail': str(exc)}, status=400)
+
+    return Response(rounds)

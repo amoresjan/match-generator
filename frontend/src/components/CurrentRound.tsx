@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { Flame, RefreshCw } from 'lucide-react'
 import { CourtCard } from './CourtCard'
 import { OverrideMatchDialog } from './OverrideMatchDialog'
+import { UpcomingRounds } from './UpcomingRounds'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useSetMatchResult } from '@/hooks/useSession'
-import type { Match, Player, Round, Session } from '@/lib/types'
+import type { Match, Round, Session } from '@/lib/types'
 
 const STREAK_THRESHOLD = 3
 
@@ -45,10 +46,6 @@ interface Props {
   isGenerating?: boolean
 }
 
-function getByePlayers(round: Round, players: Player[]): Player[] {
-  const playingIds = new Set(round.matches.flatMap((m) => [...m.team1_players, ...m.team2_players]))
-  return players.filter((p) => !playingIds.has(p.id))
-}
 
 export function CurrentRound({ session, isAdmin, onGenerateRound, isGenerating }: Props) {
   const [editingMatch, setEditingMatch] = useState<Match | null>(null)
@@ -72,7 +69,6 @@ export function CurrentRound({ session, isAdmin, onGenerateRound, isGenerating }
   }
 
   const latestRound = rounds[rounds.length - 1]
-  const byePlayers = getByePlayers(latestRound, session.players)
   const streakMap = computeStreaks(rounds)
   const streakPlayerIds = new Set(streakMap.keys())
   const streakPlayers = session.players.filter((p) => streakMap.has(p.id))
@@ -94,11 +90,11 @@ export function CurrentRound({ session, isAdmin, onGenerateRound, isGenerating }
             <CourtCard
               match={match}
               players={session.players}
-              matchType={session.match_type}
               isAdmin={isAdmin}
               streakPlayerIds={streakPlayerIds}
               onEdit={isAdmin ? setEditingMatch : undefined}
               onSetResult={isAdmin ? (matchId, winner) => setResult.mutate({ matchId, winner }) : undefined}
+              isPending={setResult.isPending && setResult.variables?.matchId === match.id}
             />
           </div>
         ))}
@@ -122,21 +118,6 @@ export function CurrentRound({ session, isAdmin, onGenerateRound, isGenerating }
         </div>
       )}
 
-      {byePlayers.length > 0 && (
-        <div className="rounded-lg border border-dashed p-3">
-          <p className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wide">Sitting out</p>
-          <div className="flex flex-wrap gap-2">
-            {byePlayers.map((p) => (
-              <Badge key={p.id} variant="outline">
-                {p.name}
-                {p.total_wait_rounds > 0 && (
-                  <span className="ml-1 text-muted-foreground">×{p.total_wait_rounds}</span>
-                )}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      )}
 
       {!isAdmin && (
         <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground space-y-1">
@@ -155,6 +136,27 @@ export function CurrentRound({ session, isAdmin, onGenerateRound, isGenerating }
           open={editingMatch !== null}
           onClose={() => setEditingMatch(null)}
         />
+      )}
+
+      {session.generation_mode === 'fair' && (
+        <>
+          <div className="border-t" />
+          <UpcomingRounds
+            sessionId={session.id}
+            players={session.players}
+            isAdmin={isAdmin}
+            roundCount={rounds.length}
+            sessionKey={[
+              session.num_courts,
+              session.match_type,
+              session.players
+                .slice()
+                .sort((a, b) => a.id.localeCompare(b.id))
+                .map((p) => `${p.id}:${p.permanent_partner_id ?? ''}`)
+                .join(','),
+            ].join('|')}
+          />
+        </>
       )}
     </div>
   )

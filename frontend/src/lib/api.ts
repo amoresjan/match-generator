@@ -1,4 +1,4 @@
-import type { Match, Player, Round, Session, SessionWithToken } from './types'
+import type { Match, Player, PreviewRound, Round, Session, SessionWithToken } from './types'
 
 export const BASE = import.meta.env.VITE_API_URL ?? '/api'
 
@@ -93,6 +93,13 @@ export const api = {
     request<Match>(`/sessions/${sessionId}/matches/${matchId}/result/`, {
       method: 'PATCH',
       body: JSON.stringify({ winner }),
+      adminToken: getAdminToken(sessionId) ?? undefined,
+    }),
+
+  previewRounds: (sessionId: string, count = 5) =>
+    request<PreviewRound[]>(`/sessions/${sessionId}/preview-rounds/`, {
+      method: 'POST',
+      body: JSON.stringify({ count }),
       adminToken: getAdminToken(sessionId) ?? undefined,
     }),
 }
