@@ -20,20 +20,19 @@ function resolveTeam(ids: string[], players: Player[]) {
 }
 
 function PreviewRoundRow({
-  round, players, defaultOpen, animClass,
+  round, players, open, onOpenChange, animClass,
 }: {
   round: PreviewRound
   players: Player[]
-  defaultOpen: boolean
+  open: boolean
+  onOpenChange: (open: boolean) => void
   animClass?: string
 }) {
-  const [open, setOpen] = useState(defaultOpen)
-
   return (
     <div className={`rounded-lg border ${animClass ?? ''}`}>
       <button
         className="w-full flex items-center justify-between px-3 py-2.5 text-left"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => onOpenChange(!open)}
       >
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold">Round {round.round_number}</span>
@@ -71,6 +70,7 @@ const EXIT_DURATION = 300  // matches animate-card-exit duration
 export function UpcomingRounds({ sessionId, players, isAdmin, roundCount, sessionKey }: Props) {
   const preview = usePreviewRounds(sessionId)
   const [rounds, setRounds] = useState<PreviewRound[] | null>(null)
+  const [openNum, setOpenNum] = useState<number | null>(null)
   const [exitingNum, setExitingNum] = useState<number | null>(null)
   const [enteringNum, setEnteringNum] = useState<number | null>(null)
 
@@ -78,10 +78,15 @@ export function UpcomingRounds({ sessionId, players, isAdmin, roundCount, sessio
   mutateRef.current = preview.mutateAsync
   const mounted = useRef(false)
 
+  function applyRounds(next: PreviewRound[]) {
+    setRounds(next)
+    if (next.length > 0) setOpenNum(next[0].round_number)
+  }
+
   // Auto-generate on mount for admins
   useEffect(() => {
     if (!isAdmin) return
-    mutateRef.current(5).then(setRounds).catch(() => {})
+    mutateRef.current(5).then(applyRounds).catch(() => {})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // When a new real round is committed: animate first card out, fetch, animate last card in
@@ -95,7 +100,7 @@ export function UpcomingRounds({ sessionId, players, isAdmin, roundCount, sessio
     const t = setTimeout(() => {
       setExitingNum(null)
       mutateRef.current(5).then((next) => {
-        setRounds(next)
+        applyRounds(next)
         if (next.length > 0) {
           const entering = next[next.length - 1].round_number
           setEnteringNum(entering)
@@ -111,7 +116,7 @@ export function UpcomingRounds({ sessionId, players, isAdmin, roundCount, sessio
   useEffect(() => {
     if (!mounted.current) { mounted.current = true; return }
     if (rounds === null) return
-    mutateRef.current(5).then(setRounds).catch(() => {})
+    mutateRef.current(5).then(applyRounds).catch(() => {})
   }, [sessionKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!isAdmin && !rounds) return null
@@ -127,12 +132,13 @@ export function UpcomingRounds({ sessionId, players, isAdmin, roundCount, sessio
 
       {rounds && (
         <div className="space-y-2">
-          {rounds.map((round, i) => (
+          {rounds.map((round) => (
             <PreviewRoundRow
               key={round.round_number}
               round={round}
               players={players}
-              defaultOpen={i === 0}
+              open={openNum === round.round_number}
+              onOpenChange={(o) => setOpenNum(o ? round.round_number : null)}
               animClass={
                 exitingNum === round.round_number
                   ? 'animate-card-exit pointer-events-none'
