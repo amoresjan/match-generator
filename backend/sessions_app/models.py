@@ -31,7 +31,7 @@ class Player(models.Model):
         related_name='partner_of',
     )
     total_wait_rounds = models.PositiveIntegerField(default=0)
-    sit_out = models.BooleanField(default=False)
+    sit_out = models.BooleanField(default=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

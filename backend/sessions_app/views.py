@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view
@@ -42,15 +43,22 @@ def create_session(request):
     )
 
 
+def _session_with_prefetch(session_id):
+    return get_object_or_404(
+        Session.objects.prefetch_related('players__permanent_partner', 'rounds__matches'),
+        id=session_id,
+    )
+
+
 @api_view(['GET'])
 def get_session(request, session_id):
-    session = get_object_or_404(Session, id=session_id)
+    session = _session_with_prefetch(session_id)
     return Response(SessionSerializer(session).data)
 
 
 @api_view(['PATCH'])
 def update_session(request, session_id):
-    session = get_object_or_404(Session, id=session_id)
+    session = _session_with_prefetch(session_id)
     err = _require_admin(request, session)
     if err:
         return err
@@ -114,30 +122,32 @@ def set_partner(request, session_id, player_id):
     ser.is_valid(raise_exception=True)
     partner_id = ser.validated_data['partner_id']
 
-    if partner_id is None:
-        # Remove partnership both ways
-        if player.permanent_partner:
-            old = player.permanent_partner
-            old.permanent_partner = None
-            old.save(update_fields=['permanent_partner'])
-        player.permanent_partner = None
-        player.save(update_fields=['permanent_partner'])
-    else:
+    if partner_id is not None:
         partner = get_object_or_404(Player, id=partner_id, session=session)
         if partner.id == player.id:
             return Response({'detail': 'Cannot partner with self.'}, status=400)
 
-        # Clear any existing partnerships
-        for p in [player, partner]:
-            if p.permanent_partner:
-                old = p.permanent_partner
+    with transaction.atomic():
+        if partner_id is None:
+            # Remove partnership both ways
+            if player.permanent_partner:
+                old = player.permanent_partner
                 old.permanent_partner = None
                 old.save(update_fields=['permanent_partner'])
+            player.permanent_partner = None
+            player.save(update_fields=['permanent_partner'])
+        else:
+            # Clear any existing partnerships before setting new ones
+            for p in [player, partner]:
+                if p.permanent_partner:
+                    old = p.permanent_partner
+                    old.permanent_partner = None
+                    old.save(update_fields=['permanent_partner'])
 
-        player.permanent_partner = partner
-        partner.permanent_partner = player
-        player.save(update_fields=['permanent_partner'])
-        partner.save(update_fields=['permanent_partner'])
+            player.permanent_partner = partner
+            partner.permanent_partner = player
+            player.save(update_fields=['permanent_partner'])
+            partner.save(update_fields=['permanent_partner'])
 
     return Response(PlayerSerializer(player).data)
 
@@ -159,9 +169,8 @@ def generate_next_round(request, session_id):
         return Response({'detail': str(exc)}, status=400)
 
     rnd = commit_round(session, generated)
-    # Refresh from DB to get matches
-    rnd.refresh_from_db()
     from .serializers import RoundSerializer
+    rnd = Round.objects.prefetch_related('matches').get(id=rnd.id)
     return Response(RoundSerializer(rnd).data, status=status.HTTP_201_CREATED)
 
 
@@ -195,11 +204,12 @@ def override_match(request, session_id, match_id):
     match = get_object_or_404(Match, id=match_id, round__session=session)
     ser = ManualMatchOverrideSerializer(data=request.data)
     ser.is_valid(raise_exception=True)
-    match.team1_players = [str(x) for x in ser.validated_data['team1_players']]
-    match.team2_players = [str(x) for x in ser.validated_data['team2_players']]
-    match.winner = None
-    match.save(update_fields=['team1_players', 'team2_players', 'winner'])
-    reconcile_round_history(match.round)
+    with transaction.atomic():
+        match.team1_players = [str(x) for x in ser.validated_data['team1_players']]
+        match.team2_players = [str(x) for x in ser.validated_data['team2_players']]
+        match.winner = None
+        match.save(update_fields=['team1_players', 'team2_players', 'winner'])
+        reconcile_round_history(match.round)
     return Response(MatchSerializer(match).data)
 
 

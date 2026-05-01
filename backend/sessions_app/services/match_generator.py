@@ -536,16 +536,21 @@ def reconcile_round_history(rnd: Round) -> None:
     session = rnd.session
     player_map = {str(p.id): p for p in session.players.filter(sit_out=False)}
 
-    # Determine who is playing and who is sitting out based on current Match rows
+    # Fetch matches once and reuse for both playing-set and row construction
+    matches = list(rnd.matches.all())
+
     playing: set[str] = set()
-    for match in rnd.matches.all():
+    for match in matches:
         playing.update(match.team1_players)
         playing.update(match.team2_players)
     bye_pids = set(player_map.keys()) - playing
 
     with transaction.atomic():
-        # Find whose sat_out status changed so we can fix total_wait_rounds
-        old_history = {str(h.player_id): h.sat_out for h in rnd.history.all()}
+        # Fetch only the columns we need to detect sat_out changes
+        old_history = {
+            str(player_id): sat_out
+            for player_id, sat_out in rnd.history.values_list('player_id', 'sat_out')
+        }
 
         PlayerRoundHistory.objects.filter(round=rnd).delete()
 
@@ -554,7 +559,7 @@ def reconcile_round_history(rnd: Round) -> None:
         # first assignment wins, duplicates are silently skipped.
         new_rows = []
         seen: set[str] = set()
-        for match in rnd.matches.all():
+        for match in matches:
             t1, t2 = match.team1_players, match.team2_players
             for pid in t1:
                 if pid in player_map and pid not in seen:
@@ -584,13 +589,16 @@ def reconcile_round_history(rnd: Round) -> None:
 
         # Patch total_wait_rounds for players whose sit-out status changed.
         # Clamp to 0 to guard against underflow from unusual override sequences.
+        players_to_update = []
         for pid, player in player_map.items():
             was_out = old_history.get(pid, False)
             is_out = pid in bye_pids
             if was_out == is_out:
                 continue
             player.total_wait_rounds = max(0, player.total_wait_rounds + (1 if is_out else -1))
-            player.save(update_fields=['total_wait_rounds'])
+            players_to_update.append(player)
+        if players_to_update:
+            Player.objects.bulk_update(players_to_update, ['total_wait_rounds'])
 
 
 def commit_round(session: Session, generated: GeneratedRound) -> Round:
