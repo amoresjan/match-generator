@@ -53,7 +53,8 @@ const RANK_COLORS: Record<number, { name: string; wins: string; border: string }
   2: { name: '#d97706', wins: '#b45309', border: 'rgba(217,119,6,0.25)' },
 }
 
-// All values are ×3 of the 360×640 design to hit 1080×1920 (IG story resolution)
+// 1080×1920 — Instagram Story resolution
+// Safe zone: 252px top, 420px bottom (avoids IG UI chrome)
 function SummaryCardContent({ sessionName, players, rounds }: SummaryCardProps) {
   const stats = computeStats(players, rounds)
   const totalRounds = rounds.length
@@ -74,10 +75,10 @@ function SummaryCardContent({ sessionName, players, rounds }: SummaryCardProps) 
       height: '1920px',
       position: 'relative',
       color: '#f8fafc',
-      fontFamily: '-apple-system, BlinkMacSystemFont, Arial, sans-serif',
+      fontFamily: 'Arial, Helvetica, sans-serif',
       boxSizing: 'border-box',
     }}>
-      {/* Background + glow — own overflow context so it never clips content */}
+      {/* Background + glow */}
       <div style={{
         position: 'absolute', inset: 0,
         background: 'linear-gradient(170deg, #0f172a 0%, #1e293b 60%, #0f172a 100%)',
@@ -90,27 +91,23 @@ function SummaryCardContent({ sessionName, players, rounds }: SummaryCardProps) 
         }} />
       </div>
 
-      {/* Content */}
-      <div style={{ position: 'relative', padding: '84px 72px 72px' }}>
+      {/* Safe-area content — no flexbox to avoid html2canvas whitespace bugs */}
+      <div style={{ position: 'relative', padding: '150px 72px 0', height: '100%', boxSizing: 'border-box' }}>
 
-        {/* ── Header ── */}
-        <div style={{ marginBottom: '66px' }}>
-          <div style={{ lineHeight: '48px', marginBottom: '24px' }}>
-            <span style={{ fontSize: '39px', fontWeight: 800, color: '#f97316' }}>🔥 Rally</span>
-            <span style={{ fontSize: '36px', color: '#475569', marginLeft: '24px' }}>by @amoresjan</span>
-          </div>
-          <div style={{ fontSize: '72px', fontWeight: 800, color: '#f8fafc', lineHeight: '84px', marginBottom: '12px' }}>
+        {/* ── Session title + stats ── */}
+        <div style={{ marginBottom: '54px' }}>
+          <div style={{ fontSize: '66px', fontWeight: 800, color: '#f8fafc', lineHeight: '78px', marginBottom: '12px' }}>
             {sessionName}
           </div>
-          <div style={{ fontSize: '36px', color: '#64748b', lineHeight: '54px' }}>
-            {totalRounds} round{totalRounds !== 1 ? 's' : ''} · {totalMatches} match{totalMatches !== 1 ? 'es' : ''}
+          <div style={{ fontSize: '33px', color: '#64748b' }}>
+            {`${totalRounds} round${totalRounds !== 1 ? 's' : ''} · ${totalMatches} match${totalMatches !== 1 ? 'es' : ''}`}
           </div>
         </div>
 
         {/* ── Podium ── */}
         {podiumOrder.length > 0 && (
-          <div style={{ marginBottom: '60px' }}>
-            <div style={{ fontSize: '30px', fontWeight: 700, color: '#475569', lineHeight: '42px', marginBottom: '36px' }}>
+          <div style={{ marginBottom: '54px' }}>
+            <div style={{ fontSize: '27px', fontWeight: 700, color: '#475569', letterSpacing: '3px', marginBottom: '36px' }}>
               TOP PLAYERS
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '30px' }}>
@@ -147,10 +144,10 @@ function SummaryCardContent({ sessionName, players, rounds }: SummaryCardProps) 
                       color: colors.wins,
                       lineHeight: '1',
                     }}>
-                      {stat.wins}<span style={{ fontSize: isFirst ? '42px' : '36px' }}>W</span>
+                      {`${stat.wins}`}<span style={{ fontSize: isFirst ? '42px' : '36px' }}>W</span>
                     </div>
                     <div style={{ fontSize: '30px', color: '#64748b', lineHeight: '42px', marginTop: '12px' }}>
-                      {stat.losses}L · {stat.played}GP
+                      {`${stat.losses}L · ${stat.played}GP`}
                     </div>
                   </div>
                 )
@@ -180,15 +177,32 @@ function SummaryCardContent({ sessionName, players, rounds }: SummaryCardProps) 
                   {s.player.name}
                 </span>
                 <span style={{ fontSize: '39px', fontWeight: 700, color: '#4ade80', float: 'right', marginLeft: '24px' }}>
-                  {s.wins}W
+                  {`${s.wins}W`}
                 </span>
                 <span style={{ fontSize: '36px', color: '#475569', float: 'right' }}>
-                  {s.losses}L
+                  {`${s.losses}L`}
                 </span>
               </div>
             ))}
           </div>
         )}
+
+        {/* ── Footer — pinned to bottom of safe area ── */}
+        <div style={{
+          position: 'absolute',
+          bottom: '150px',
+          left: '72px',
+          right: '72px',
+          textAlign: 'center',
+        }}>
+          <div style={{ fontSize: '30px', color: '#475569', marginBottom: '6px' }}>
+            Generate your matches at
+          </div>
+          <div style={{ fontSize: '39px', fontWeight: 700, color: '#f97316' }}>
+            match.amoresjan.dev
+          </div>
+        </div>
+
       </div>
     </div>
   )
