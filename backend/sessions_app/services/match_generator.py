@@ -482,7 +482,7 @@ def _next_round_number(session: Session | None) -> int:
 
 
 def generate_round(session: Session) -> GeneratedRound:
-    players = list(session.players.prefetch_related('permanent_partner').all())
+    players = list(session.players.prefetch_related('permanent_partner').filter(sit_out=False))
     if not players:
         raise ValueError('Session has no players.')
 
@@ -503,7 +503,7 @@ def generate_round(session: Session) -> GeneratedRound:
 
 def preview_rounds(session: Session, count: int = 5) -> list[GeneratedRound]:
     """Generate future rounds without committing. Fair rotation only."""
-    players = list(session.players.prefetch_related('permanent_partner').all())
+    players = list(session.players.prefetch_related('permanent_partner').filter(sit_out=False))
     if not players:
         raise ValueError('Session has no players.')
 
@@ -534,7 +534,7 @@ def reconcile_round_history(rnd: Round) -> None:
     from django.db import transaction
 
     session = rnd.session
-    player_map = {str(p.id): p for p in session.players.all()}
+    player_map = {str(p.id): p for p in session.players.filter(sit_out=False)}
 
     # Determine who is playing and who is sitting out based on current Match rows
     playing: set[str] = set()

@@ -4,6 +4,7 @@ export interface Player {
   permanent_partner_id: string | null
   permanent_partner_name: string | null
   total_wait_rounds: number
+  sit_out: boolean
   created_at: string
 }
 

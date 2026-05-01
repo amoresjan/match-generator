@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { Loader2, Pencil, Trash2, UserPlus, Users, Link2Off } from 'lucide-react'
+import { Loader2, Pencil, Trash2, UserPlus, Users, Link2Off, PauseCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useAddPlayer, useRemovePlayer, useSetPartner, useUpdatePlayer } from '@/hooks/useSession'
+import { useAddPlayer, useRemovePlayer, useSetPartner, useSetSitOut, useUpdatePlayer } from '@/hooks/useSession'
 import type { Player, Session } from '@/lib/types'
 
 interface Props {
@@ -17,6 +17,7 @@ export function PlayerList({ session }: Props) {
   const [editName, setEditName] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [newDuoKey, setNewDuoKey] = useState<string | null>(null)
+  const [sitOutPromptId, setSitOutPromptId] = useState<string | null>(null)
   const [formVisible, setFormVisible] = useState(true)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const duoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -46,6 +47,7 @@ export function PlayerList({ session }: Props) {
   const removePlayer = useRemovePlayer(session.id)
   const updatePlayer = useUpdatePlayer(session.id)
   const setPartner = useSetPartner(session.id)
+  const setSitOut = useSetSitOut(session.id)
 
   function handleSetPartner(playerId: string, partnerId: string | null) {
     if (partnerId) {
@@ -100,6 +102,19 @@ export function PlayerList({ session }: Props) {
     solos.push(player)
   }
 
+  function handleSitOutToggle(player: Player) {
+    const next = !player.sit_out
+    if (next && player.permanent_partner_id) {
+      const partner = session.players.find((p) => p.id === player.permanent_partner_id)
+      if (partner && !partner.sit_out) {
+        // Show prompt first; sit-out fires only after user answers
+        setSitOutPromptId(player.id)
+        return
+      }
+    }
+    setSitOut.mutate({ playerId: player.id, sitOut: next })
+  }
+
   function renderPlayerRow(player: Player, inDuoBox = false) {
     return (
       <div key={player.id} className="flex flex-col gap-1">
@@ -114,8 +129,20 @@ export function PlayerList({ session }: Props) {
               className="h-7 text-sm flex-1"
             />
           ) : (
-            <span className="flex-1 text-sm font-medium">{player.name}</span>
+            <span className={`flex-1 text-sm font-medium ${player.sit_out ? 'line-through text-muted-foreground' : ''}`}>
+              {player.name}
+            </span>
           )}
+          <Button
+            size="icon"
+            variant="ghost"
+            className={`h-7 w-7 shrink-0 ${player.sit_out ? 'text-orange-500 hover:text-orange-600' : 'text-muted-foreground hover:text-foreground'}`}
+            disabled={sitOutPromptId === player.id}
+            onClick={() => handleSitOutToggle(player)}
+            title={player.sit_out ? 'Bring back' : 'Sit out'}
+          >
+            <PauseCircle className="h-3.5 w-3.5" />
+          </Button>
           <Button
             size="icon"
             variant="ghost"
@@ -154,6 +181,32 @@ export function PlayerList({ session }: Props) {
             </Button>
           )}
         </div>
+
+        {/* Duo sit-out prompt — ask if partner should also sit out */}
+        {sitOutPromptId === player.id && (() => {
+          const partner = session.players.find((p) => p.id === player.permanent_partner_id)
+          if (!partner || partner.sit_out) { setSitOutPromptId(null); return null }
+          return (
+            <div className="flex items-center gap-2 mt-1 rounded-md bg-muted/50 px-2 py-1.5">
+              <span className="text-xs text-muted-foreground flex-1">Also sit out {partner.name}?</span>
+              <Button size="sm" variant="secondary" className="h-6 text-xs px-2"
+                onClick={() => {
+                  setSitOut.mutate({ playerId: player.id, sitOut: true })
+                  setSitOut.mutate({ playerId: partner.id, sitOut: true })
+                  setSitOutPromptId(null)
+                }}>
+                Yes
+              </Button>
+              <Button size="sm" variant="ghost" className="h-6 text-xs px-2"
+                onClick={() => {
+                  setSitOut.mutate({ playerId: player.id, sitOut: true })
+                  setSitOutPromptId(null)
+                }}>
+                No
+              </Button>
+            </div>
+          )
+        })()}
 
         {/* Duo selector — only for solo players in 2v2 */}
         {session.match_type === '2v2' && !inDuoBox && (

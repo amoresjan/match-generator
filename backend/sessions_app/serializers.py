@@ -14,7 +14,7 @@ class PlayerSerializer(serializers.ModelSerializer):
         model = Player
         fields = [
             'id', 'name', 'permanent_partner_id', 'permanent_partner_name',
-            'total_wait_rounds', 'created_at',
+            'total_wait_rounds', 'sit_out', 'created_at',
         ]
         read_only_fields = ['id', 'total_wait_rounds', 'created_at']
 

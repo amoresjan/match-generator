@@ -88,11 +88,17 @@ def player_detail(request, session_id, player_id):
         player.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    # PATCH — rename only
+    # PATCH — rename and/or sit_out toggle
+    fields_to_save = []
     name = request.data.get('name')
     if name:
         player.name = name
-        player.save(update_fields=['name'])
+        fields_to_save.append('name')
+    if 'sit_out' in request.data:
+        player.sit_out = bool(request.data['sit_out'])
+        fields_to_save.append('sit_out')
+    if fields_to_save:
+        player.save(update_fields=fields_to_save)
     return Response(PlayerSerializer(player).data)
 
 

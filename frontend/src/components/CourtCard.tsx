@@ -1,4 +1,4 @@
-import { Flame, Loader2, Pencil, Trophy, Users } from 'lucide-react'
+import { AlertTriangle, Flame, Loader2, Pencil, Trophy, Users } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -132,6 +132,17 @@ export function CourtCard({ match, players, isAdmin, streakPlayerIds, onEdit, on
             Tap the winning team to record result
           </p>
         )}
+        {(() => {
+          const allIds = [...match.team1_players, ...match.team2_players]
+          const sitOut = players.filter((p) => allIds.includes(p.id) && p.sit_out)
+          if (sitOut.length === 0) return null
+          return (
+            <p className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 mt-2">
+              <AlertTriangle className="h-3 w-3 shrink-0" />
+              {sitOut.map((p) => p.name).join(', ')} {sitOut.length === 1 ? 'is' : 'are'} sitting out — consider overriding this match
+            </p>
+          )
+        })()}
       </CardContent>
     </Card>
   )

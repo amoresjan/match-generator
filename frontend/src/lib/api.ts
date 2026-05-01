@@ -68,6 +68,13 @@ export const api = {
       adminToken: getAdminToken(sessionId) ?? undefined,
     }),
 
+  setSitOut: (sessionId: string, playerId: string, sitOut: boolean) =>
+    request<Player>(`/sessions/${sessionId}/players/${playerId}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ sit_out: sitOut }),
+      adminToken: getAdminToken(sessionId) ?? undefined,
+    }),
+
   setPartner: (sessionId: string, playerId: string, partnerId: string | null) =>
     request<Player>(`/sessions/${sessionId}/players/${playerId}/partner/`, {
       method: 'POST',

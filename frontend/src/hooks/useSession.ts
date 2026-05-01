@@ -40,6 +40,15 @@ export function useUpdatePlayer(sessionId: string) {
   })
 }
 
+export function useSetSitOut(sessionId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ playerId, sitOut }: { playerId: string; sitOut: boolean }) =>
+      api.setSitOut(sessionId, playerId, sitOut),
+    onSuccess: () => qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) }),
+  })
+}
+
 export function useSetPartner(sessionId: string) {
   const qc = useQueryClient()
   return useMutation({

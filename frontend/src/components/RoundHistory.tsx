@@ -92,7 +92,13 @@ export function RoundHistory({ sessionId, rounds, players, isAdmin }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null)
   const allRounds = [...rounds].reverse()
 
-  if (allRounds.length === 0) return null
+  if (allRounds.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground text-center py-8">
+        No rounds yet. Generate the first round to get started.
+      </p>
+    )
+  }
 
   return (
     <div className="space-y-2">

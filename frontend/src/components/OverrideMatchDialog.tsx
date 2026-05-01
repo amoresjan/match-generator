@@ -24,6 +24,7 @@ export function OverrideMatchDialog({ sessionId, match, players, matchType, roun
       .filter((m) => m.id !== match?.id)
       .flatMap((m) => [...m.team1_players, ...m.team2_players])
   )
+  const sittingOutIds = new Set(players.filter((p) => p.sit_out).map((p) => p.id))
 
   const [team1, setTeam1] = useState<string[]>(match?.team1_players ?? [])
   const [team2, setTeam2] = useState<string[]>(match?.team2_players ?? [])
@@ -80,14 +81,16 @@ export function OverrideMatchDialog({ sessionId, match, players, matchType, roun
             const inT1 = team1.includes(p.id)
             const inT2 = team2.includes(p.id)
             const busy = busyPlayerIds.has(p.id)
+            const sittingOut = sittingOutIds.has(p.id)
+            const unavailable = busy || sittingOut
             return (
               <button
                 key={p.id}
-                disabled={busy}
+                disabled={unavailable}
                 onClick={() => togglePlayer(p.id)}
-                title={busy ? 'Already on another court' : undefined}
+                title={busy ? 'Already on another court' : sittingOut ? 'Sitting out' : undefined}
                 className={`px-2 py-1 rounded text-xs border transition-colors ${
-                  busy
+                  unavailable
                     ? 'opacity-35 cursor-not-allowed bg-muted border-input'
                     : inT1
                       ? 'bg-primary text-primary-foreground border-primary'

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Flame, RefreshCw } from 'lucide-react'
+import { Flame, PauseCircle, RefreshCw } from 'lucide-react'
 import { CourtCard } from './CourtCard'
 import { OverrideMatchDialog } from './OverrideMatchDialog'
 import { UpcomingRounds } from './UpcomingRounds'
@@ -119,6 +119,25 @@ export function CurrentRound({ session, isAdmin, onGenerateRound, isGenerating }
       )}
 
 
+      {(() => {
+        const sittingOut = session.players.filter((p) => p.sit_out)
+        if (sittingOut.length === 0) return null
+        return (
+          <div className="rounded-lg border border-dashed p-3">
+            <p className="text-xs text-muted-foreground mb-2 font-medium flex items-center gap-1">
+              <PauseCircle className="h-3 w-3" /> Sitting out
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {sittingOut.map((p) => (
+                <Badge key={p.id} variant="secondary" className="text-xs text-muted-foreground">
+                  {p.name}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
+
       {!isAdmin && (
         <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground space-y-1">
           <p className="font-medium">💡 Co-host tip</p>
@@ -152,7 +171,7 @@ export function CurrentRound({ session, isAdmin, onGenerateRound, isGenerating }
               session.players
                 .slice()
                 .sort((a, b) => a.id.localeCompare(b.id))
-                .map((p) => `${p.id}:${p.permanent_partner_id ?? ''}`)
+                .map((p) => `${p.id}:${p.permanent_partner_id ?? ''}:${p.sit_out ? '1' : '0'}`)
                 .join(','),
               latestRound.matches
                 .map((m) => `${m.id}:${[...m.team1_players, ...m.team2_players].sort().join(',')}`)
