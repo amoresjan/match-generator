@@ -267,7 +267,10 @@ export function PlayerList({ session }: Props) {
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
           <button
             className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-primary text-primary-foreground shadow-lg px-4 py-2 text-xs font-medium animate-card-enter"
-            onClick={() => inputRef.current?.focus()}
+            onClick={() => {
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+              setTimeout(() => inputRef.current?.focus(), 350)
+            }}
           >
             <UserPlus className="h-3.5 w-3.5" />
             Add player
