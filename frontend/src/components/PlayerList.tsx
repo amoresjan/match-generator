@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Loader2, Pencil, Trash2, UserPlus, Users, Link2Off } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,7 +17,30 @@ export function PlayerList({ session }: Props) {
   const [editName, setEditName] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [newDuoKey, setNewDuoKey] = useState<string | null>(null)
+  const [formVisible, setFormVisible] = useState(true)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
   const duoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const formRef = useRef<HTMLFormElement | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
+
+  useEffect(() => {
+    const el = formRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => setFormVisible(entry.isIntersecting),
+      { threshold: 0 },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const mo = new MutationObserver(() => {
+      setDropdownOpen(!!document.querySelector('[data-radix-popper-content-wrapper]'))
+    })
+    mo.observe(document.body, { childList: true, subtree: true })
+    return () => mo.disconnect()
+  }, [])
 
   const addPlayer = useAddPlayer(session.id)
   const removePlayer = useRemovePlayer(session.id)
@@ -168,8 +191,9 @@ export function PlayerList({ session }: Props) {
 
   return (
     <div className="space-y-4">
-      <form onSubmit={handleAdd} className="flex gap-2">
+      <form ref={formRef} onSubmit={handleAdd} className="flex gap-2">
         <Input
+          ref={inputRef}
           placeholder="Player name…"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
@@ -236,6 +260,18 @@ export function PlayerList({ session }: Props) {
         <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground space-y-1">
           <p className="font-medium">💡 Duo tip</p>
           <p>Use the <span className="font-medium">Duo</span> selector on a player to permanently pair them with a partner. Duos always play together and are never split.</p>
+        </div>
+      )}
+
+      {!formVisible && !dropdownOpen && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+          <button
+            className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-primary text-primary-foreground shadow-lg px-4 py-2 text-xs font-medium animate-card-enter"
+            onClick={() => inputRef.current?.focus()}
+          >
+            <UserPlus className="h-3.5 w-3.5" />
+            Add player
+          </button>
         </div>
       )}
     </div>
