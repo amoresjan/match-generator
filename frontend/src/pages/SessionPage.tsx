@@ -407,7 +407,7 @@ function SettingsSection({ title, children }: { title: string; children: React.R
 function SessionSettings({ sessionId, session, onSave, saving }: SettingsProps) {
   const [name, setName] = useState(session.name)
   const [matchType, setMatchType] = useState<'1v1' | '2v2'>(session.match_type)
-  const [numCourts, setNumCourts] = useState(session.num_courts)
+  const [numCourts, setNumCourts] = useState(String(session.num_courts))
   const [mode, setMode] = useState<'fair' | 'competitive'>(session.generation_mode)
   const { theme, toggle: toggleTheme } = useTheme()
   const navigate = useNavigate()
@@ -415,7 +415,7 @@ function SessionSettings({ sessionId, session, onSave, saving }: SettingsProps) 
   useEffect(() => {
     setName(session.name)
     setMatchType(session.match_type)
-    setNumCourts(session.num_courts)
+    setNumCourts(String(session.num_courts))
     setMode(session.generation_mode)
   }, [session.name, session.match_type, session.num_courts, session.generation_mode])
 
@@ -438,7 +438,7 @@ function SessionSettings({ sessionId, session, onSave, saving }: SettingsProps) 
           </div>
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Courts</label>
-            <Input type="number" min={1} max={8} value={numCourts} onChange={(e) => setNumCourts(Number(e.target.value))} />
+            <Input type="text" inputMode="numeric" value={numCourts} onChange={(e) => setNumCourts(e.target.value.replace(/\D/g, ''))} />
           </div>
         </div>
         <div>
@@ -482,7 +482,7 @@ function SessionSettings({ sessionId, session, onSave, saving }: SettingsProps) 
       <div className="space-y-2 pt-2">
         <Button
           className="w-full"
-          onClick={() => onSave({ name, match_type: matchType, num_courts: numCourts, generation_mode: mode })}
+          onClick={() => onSave({ name, match_type: matchType, num_courts: Math.max(1, Math.min(8, parseInt(numCourts) || 1)), generation_mode: mode })}
           disabled={saving}
         >
           {saving ? 'Saving…' : 'Save Settings'}

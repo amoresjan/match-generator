@@ -12,12 +12,12 @@ export function HomePage() {
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const [matchType, setMatchType] = useState<'1v1' | '2v2'>('2v2')
-  const [numCourts, setNumCourts] = useState(1)
+  const [numCourts, setNumCourts] = useState('1')
   const [mode, setMode] = useState<'fair' | 'competitive'>('fair')
   const [joinId, setJoinId] = useState('')
 
   const create = useMutation({
-    mutationFn: () => api.createSession({ name, match_type: matchType, num_courts: numCourts, generation_mode: mode }),
+    mutationFn: () => api.createSession({ name, match_type: matchType, num_courts: Math.max(1, Math.min(8, parseInt(numCourts) || 1)), generation_mode: mode }),
     onSuccess: (data) => {
       saveAdminToken(data.id, data.admin_token)
       navigate(`/session/${data.id}`)
@@ -66,11 +66,10 @@ export function HomePage() {
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Courts</label>
               <Input
-                type="number"
-                min={1}
-                max={8}
+                type="text"
+                inputMode="numeric"
                 value={numCourts}
-                onChange={(e) => setNumCourts(Number(e.target.value))}
+                onChange={(e) => setNumCourts(e.target.value.replace(/\D/g, ''))}
               />
             </div>
           </div>
