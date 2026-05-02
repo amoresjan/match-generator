@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react'
-import { Flame, PauseCircle, RefreshCw } from 'lucide-react'
+import { Flame, PauseCircle } from 'lucide-react'
 import { CourtCard } from './CourtCard'
 import { OverrideMatchDialog } from './OverrideMatchDialog'
 import { UpcomingRounds } from './UpcomingRounds'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { useSetMatchResult } from '@/hooks/useSession'
 import type { Match, Round, Session } from '@/lib/types'
 
@@ -42,12 +41,10 @@ function computeStreaks(rounds: Round[]): Map<string, number> {
 interface Props {
   session: Session
   isAdmin: boolean
-  onGenerateRound?: () => void
-  isGenerating?: boolean
 }
 
 
-export function CurrentRound({ session, isAdmin, onGenerateRound, isGenerating }: Props) {
+export function CurrentRound({ session, isAdmin }: Props) {
   const [editingMatch, setEditingMatch] = useState<Match | null>(null)
   const setResult = useSetMatchResult(session.id)
 
@@ -60,17 +57,9 @@ export function CurrentRound({ session, isAdmin, onGenerateRound, isGenerating }
 
   if (rounds.length === 0) {
     return (
-      <div className="text-center py-12 space-y-4">
-        <p className="text-muted-foreground text-sm">
-          {isAdmin ? 'Ready to start? Generate the first round.' : 'Waiting for the host to start.'}
-        </p>
-        {onGenerateRound && (
-          <Button onClick={onGenerateRound} disabled={isGenerating}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
-            Start
-          </Button>
-        )}
-      </div>
+      <p className="text-muted-foreground text-sm text-center py-12">
+        {isAdmin ? 'Ready to start? Generate the first round.' : 'Waiting for the host to start.'}
+      </p>
     )
   }
 

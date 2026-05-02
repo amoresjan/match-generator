@@ -126,8 +126,6 @@ export function SessionPage() {
             <CurrentRound
               session={session}
               isAdmin={admin}
-              onGenerateRound={admin ? () => generateRound.mutate() : undefined}
-              isGenerating={generateRound.isPending}
             />
           )}
           {tab === 'players' && (
@@ -181,20 +179,30 @@ export function SessionPage() {
       </Dialog>
 
       {/* Sticky generate button — only on Round tab for admins */}
-      {admin && tab === 'round' && (
-        <div className="fixed bottom-0 left-0 right-0 z-20 p-4 bg-background/80 backdrop-blur border-t">
-          <div className="max-w-2xl mx-auto">
-            <Button
-              className="w-full"
-              onClick={handleGenerateRound}
-              disabled={generateRound.isPending}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${generateRound.isPending ? 'animate-spin' : ''}`} />
-              {session.rounds.length === 0 ? 'Start' : 'Next Round'}
-            </Button>
+      {admin && tab === 'round' && (() => {
+        const activePlayers = session.players.filter((p) => !p.sit_out)
+        const minPlayers = session.match_type === '2v2' ? 4 : 2
+        const hint = activePlayers.length === 0
+          ? 'Add players to get started.'
+          : activePlayers.length < minPlayers
+            ? `Need at least ${minPlayers} active players for ${session.match_type}.`
+            : null
+        return (
+          <div className="fixed bottom-0 left-0 right-0 z-20 p-4 bg-background/80 backdrop-blur border-t">
+            <div className="max-w-2xl mx-auto space-y-1.5">
+              {hint && <p className="text-xs text-muted-foreground text-center">{hint}</p>}
+              <Button
+                className="w-full"
+                onClick={handleGenerateRound}
+                disabled={generateRound.isPending || !!hint}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${generateRound.isPending ? 'animate-spin' : ''}`} />
+                {session.rounds.length === 0 ? 'Start' : 'Next Round'}
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }
