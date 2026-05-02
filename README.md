@@ -1,16 +1,24 @@
-# Pickleball Match Generator
+# Rally — Pickleball Match Generator
 
 A mobile-first web app that generates fair, rotating matches for pickleball sessions. Hosts manage players and partnerships from an admin view; players follow along on a read-only session view.
 
 ## Features
 
 - **1v1 and 2v2** match types
-- **Fair rotation algorithm** — weighted cost system minimises repeat partners and opponents, distributes byes evenly over time
-- **Permanent Partners** — link two players so they always share a team in 2v2; unlink at any time and the next round reflects the change immediately
-- **Bye tracking** — players who sit out are prioritised to play in the next round; consecutive sit-outs are prevented
+- **Fair rotation mode** — weighted cost system minimises repeat partners and opponents, distributes byes evenly over time
+- **Competitive mode** — players are matched by win count; top players face top players, bottom face bottom
+- **Permanent partners** — link two players so they always share a team in 2v2; unlink at any time
+- **Sit-out toggle** — mark any player as sitting out mid-session; duo partners get a prompt to sit out together or separately
+- **Upcoming rounds preview** — see the next 5 projected rounds before committing
+- **Match result tracking** — tap a team to mark them as winner; results feed into the leaderboard
+- **Leaderboard** — win/loss standings with hot streak detection (3+ consecutive wins)
+- **Round history** — collapsible past rounds with result editing
 - **Manual overrides** — host can edit any court assignment after generation
-- **UUID-based host auth** — no accounts needed; admin token is stored in `localStorage`
-- **Public session view** — share the session ID with players for a read-only scoreboard
+- **Retained player names** — removed players still appear by name in past round history
+- **Co-host support** — share the admin code with others to grant host access
+- **Dark mode**
+- **UUID-based host auth** — no accounts needed; admin token stored in `localStorage`
+- **Public session view** — share the session URL with players for a read-only view
 
 ## Tech Stack
 
@@ -93,15 +101,20 @@ All admin endpoints require the `X-Admin-Token: <token>` header. The token is re
 |---|---|---|---|
 | `POST` | `/api/sessions/` | — | Create a session |
 | `GET` | `/api/sessions/:id/` | — | Get session (players, rounds, matches) |
-| `PATCH` | `/api/sessions/:id/update/` | Admin | Update name, match type, courts |
+| `PATCH` | `/api/sessions/:id/update/` | Admin | Update name, match type, courts, mode |
 | `POST` | `/api/sessions/:id/players/` | Admin | Add a player |
 | `PATCH` | `/api/sessions/:id/players/:id/` | Admin | Rename a player |
-| `DELETE` | `/api/sessions/:id/players/:id/` | Admin | Remove a player |
+| `DELETE` | `/api/sessions/:id/players/:id/` | Admin | Remove a player (name retained in history) |
 | `POST` | `/api/sessions/:id/players/:id/partner/` | Admin | Set or clear permanent partner |
+| `POST` | `/api/sessions/:id/players/:id/sit-out/` | Admin | Toggle player sit-out status |
 | `POST` | `/api/sessions/:id/generate/` | Admin | Generate and commit next round |
+| `POST` | `/api/sessions/:id/preview-rounds/` | — | Preview next N rounds without committing |
+| `PATCH` | `/api/sessions/:id/matches/:id/result/` | Admin | Set or clear match winner |
 | `PATCH` | `/api/sessions/:id/matches/:id/override/` | Admin | Manually override a court assignment |
 
 ## How the Algorithm Works
+
+### Fair Rotation (default)
 
 Matches are generated using a **weighted cost** model:
 
@@ -111,9 +124,13 @@ Matches are generated using a **weighted cost** model:
 
 For each round:
 1. Permanent partner pairs are grouped as atomic units.
-2. Byes are assigned to the units (pairs or singles) with the lowest average wait time. A secondary tiebreaker (`last_sat_out` round) prevents consecutive sit-outs for the same player.
+2. Byes are assigned to the units with the lowest average wait time. A `last_sat_out` tiebreaker prevents consecutive sit-outs for the same player.
 3. Remaining players are paired into teams by greedily minimising the cost function.
 4. Teams are matched against opponents by the same greedy cost search.
+
+### Competitive Mode
+
+Bye selection is identical to fair rotation (wait time based). Teams are then sorted by win count descending and paired adjacently — the top two teams face each other, the next two face each other, and so on. This produces skill-matched games that naturally converge toward accurate rankings over time.
 
 ## Project Structure
 
@@ -126,14 +143,15 @@ match-generator/
 │   │   ├── views.py         # API endpoints
 │   │   ├── serializers.py
 │   │   └── services/
-│   │       └── match_generator.py   # Fair rotation algorithm
+│   │       └── match_generator.py   # Fair rotation & competitive algorithms
 │   └── requirements.txt
 └── frontend/
     └── src/
         ├── pages/           # HomePage, SessionPage
-        ├── components/      # CourtCard, CurrentRound, PlayerList, …
+        ├── components/      # CourtCard, CurrentRound, PlayerList, RoundHistory,
+        │                    # UpcomingRounds, Leaderboard, OverrideMatchDialog, …
         ├── hooks/           # useSession (TanStack Query)
-        └── lib/             # api.ts, types.ts
+        └── lib/             # api.ts, types.ts, utils.ts
 ```
 
 ## License
