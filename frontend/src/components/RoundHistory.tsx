@@ -8,11 +8,12 @@ interface Props {
   sessionId: string
   rounds: Round[]
   players: Player[]
+  removedPlayers: Record<string, string>
   isAdmin: boolean
 }
 
-function resolveNames(ids: string[], players: Player[]): string {
-  return ids.map((id) => players.find((p) => p.id === id)?.name ?? '?').join(' & ')
+function resolveNames(ids: string[], players: Player[], removedPlayers: Record<string, string> = {}): string {
+  return ids.map((id) => players.find((p) => p.id === id)?.name ?? removedPlayers[id] ?? '?').join(' & ')
 }
 
 function isDuo(ids: string[], players: Player[]): boolean {
@@ -21,10 +22,10 @@ function isDuo(ids: string[], players: Player[]): boolean {
   return a?.permanent_partner_id === ids[1]
 }
 
-function MatchRow({ sessionId, match, players, isAdmin }: { sessionId: string; match: Match; players: Player[]; isAdmin: boolean }) {
+function MatchRow({ sessionId, match, players, removedPlayers, isAdmin }: { sessionId: string; match: Match; players: Player[]; removedPlayers: Record<string, string>; isAdmin: boolean }) {
   const setResult = useSetMatchResult(sessionId)
-  const team1 = resolveNames(match.team1_players, players)
-  const team2 = resolveNames(match.team2_players, players)
+  const team1 = resolveNames(match.team1_players, players, removedPlayers)
+  const team2 = resolveNames(match.team2_players, players, removedPlayers)
   const team1IsDuo = isDuo(match.team1_players, players)
   const team2IsDuo = isDuo(match.team2_players, players)
   const team1Won = match.winner === 'team1'
@@ -88,7 +89,7 @@ function MatchRow({ sessionId, match, players, isAdmin }: { sessionId: string; m
   )
 }
 
-export function RoundHistory({ sessionId, rounds, players, isAdmin }: Props) {
+export function RoundHistory({ sessionId, rounds, players, removedPlayers, isAdmin }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null)
   const allRounds = useMemo(() => [...rounds].reverse(), [rounds])
 
@@ -115,7 +116,7 @@ export function RoundHistory({ sessionId, rounds, players, isAdmin }: Props) {
           {expanded === round.id && (
             <CardContent className="pt-0 pb-3 space-y-3">
               {round.matches.map((m) => (
-                <MatchRow key={m.id} sessionId={sessionId} match={m} players={players} isAdmin={isAdmin} />
+                <MatchRow key={m.id} sessionId={sessionId} match={m} players={players} removedPlayers={removedPlayers} isAdmin={isAdmin} />
               ))}
               {isAdmin && (
                 <p className="text-[10px] text-muted-foreground text-center pt-1">

@@ -33,6 +33,7 @@ export interface Session {
   created_at: string
   players: Player[]
   rounds: Round[]
+  removed_players: Record<string, string>
 }
 
 export interface SessionWithToken extends Session {

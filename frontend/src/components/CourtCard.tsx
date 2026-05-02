@@ -7,6 +7,7 @@ import type { Match, Player } from '@/lib/types'
 interface Props {
   match: Match
   players: Player[]
+  removedPlayers?: Record<string, string>
   isAdmin?: boolean
   streakPlayerIds?: Set<string>
   onEdit?: (match: Match) => void
@@ -14,8 +15,8 @@ interface Props {
   isPending?: boolean
 }
 
-function resolveMembers(ids: string[], players: Player[]): { id: string; name: string }[] {
-  return ids.map((id) => ({ id, name: players.find((p) => p.id === id)?.name ?? '?' }))
+function resolveMembers(ids: string[], players: Player[], removedPlayers: Record<string, string> = {}): { id: string; name: string }[] {
+  return ids.map((id) => ({ id, name: players.find((p) => p.id === id)?.name ?? removedPlayers[id] ?? '?' }))
 }
 
 function isDuo(ids: string[], players: Player[]): boolean {
@@ -24,9 +25,9 @@ function isDuo(ids: string[], players: Player[]): boolean {
   return a?.permanent_partner_id === ids[1]
 }
 
-export function CourtCard({ match, players, isAdmin, streakPlayerIds, onEdit, onSetResult, isPending }: Props) {
-  const team1 = resolveMembers(match.team1_players, players)
-  const team2 = resolveMembers(match.team2_players, players)
+export function CourtCard({ match, players, removedPlayers = {}, isAdmin, streakPlayerIds, onEdit, onSetResult, isPending }: Props) {
+  const team1 = resolveMembers(match.team1_players, players, removedPlayers)
+  const team2 = resolveMembers(match.team2_players, players, removedPlayers)
   const team1IsDuo = isDuo(match.team1_players, players)
   const team2IsDuo = isDuo(match.team2_players, players)
 

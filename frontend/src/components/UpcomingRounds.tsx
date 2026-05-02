@@ -11,12 +11,12 @@ interface Props {
   sessionKey: string
 }
 
-function resolveName(id: string, players: Player[]) {
-  return players.find((p) => p.id === id)?.name ?? '?'
+function resolveName(id: string, players: Player[], removedPlayers: Record<string, string> = {}): string {
+  return players.find((p) => p.id === id)?.name ?? removedPlayers[id] ?? '?'
 }
 
-function resolveTeam(ids: string[], players: Player[]) {
-  return ids.map((id) => resolveName(id, players)).join(' & ')
+function resolveTeam(ids: string[], players: Player[], removedPlayers: Record<string, string> = {}): string {
+  return ids.map((id) => resolveName(id, players, removedPlayers)).join(' & ')
 }
 
 function PreviewRoundRow({
@@ -83,9 +83,8 @@ export function UpcomingRounds({ sessionId, players, isAdmin, roundCount, sessio
     if (next.length > 0) setOpenNum(next[0].round_number)
   }
 
-  // Auto-generate on mount for admins
+  // Auto-generate on mount
   useEffect(() => {
-    if (!isAdmin) return
     mutateRef.current(5).then(applyRounds).catch(() => {})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -118,8 +117,6 @@ export function UpcomingRounds({ sessionId, players, isAdmin, roundCount, sessio
     if (rounds === null) return
     mutateRef.current(5).then(applyRounds).catch(() => {})
   }, [sessionKey]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (!isAdmin) return null
 
   return (
     <div className="space-y-3">

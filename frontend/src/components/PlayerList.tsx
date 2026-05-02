@@ -213,6 +213,7 @@ export function PlayerList({ session }: Props) {
   const setSitOut = useSetSitOut(session.id)
 
   const { duoPairs, solos } = useMemo(() => partitionPlayers(session.players), [session.players])
+  const sittingOutCount = session.players.filter((p) => p.sit_out).length
 
   function handleSetPartner(playerId: string, partnerId: string | null) {
     if (partnerId) {
@@ -302,6 +303,13 @@ export function PlayerList({ session }: Props) {
         <span>Players</span>
         <span className="font-medium tabular-nums">{session.players.length}</span>
       </div>
+
+      {sittingOutCount > 0 && (
+        <p className="text-xs text-muted-foreground px-0.5 flex items-center gap-1 -mt-2">
+          <PauseCircle className="h-3 w-3" />
+          {sittingOutCount} sitting out
+        </p>
+      )}
 
       <div className="space-y-2">
         {duoPairs.map(([a, b]) => {

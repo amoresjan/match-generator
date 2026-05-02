@@ -135,7 +135,7 @@ export function SessionPage() {
               ? <PlayerList session={session} />
               : <PublicPlayerList players={session.players} />
           )}
-          {tab === 'history' && <RoundHistory sessionId={session.id} rounds={session.rounds} players={session.players} isAdmin={admin} />}
+          {tab === 'history' && <RoundHistory sessionId={session.id} rounds={session.rounds} players={session.players} removedPlayers={session.removed_players} isAdmin={admin} />}
           {tab === 'leaderboard' && (
             <div className="space-y-6">
               <Leaderboard players={session.players} rounds={session.rounds} />
@@ -384,7 +384,13 @@ function GuestSettings({ sessionId, onUnlocked }: { sessionId: string; onUnlocke
         <LogOut className="h-4 w-4 mr-2" />
         Leave Session
       </Button>
-      <p className="text-center text-xs text-muted-foreground/50 pt-4">by @amoresjan</p>
+      <p className="text-center text-xs text-muted-foreground/60 pt-2">
+        Got feedback?{' '}
+        <a href="https://forms.gle/bFa9PwrG3DweFfnZ9" target="_blank" rel="noreferrer" className="underline underline-offset-2">
+          Let us know
+        </a>
+      </p>
+      <p className="text-center text-xs text-muted-foreground/50">by <a href="https://amoresjan.dev" target="_blank" rel="noreferrer" className="underline underline-offset-2">@amoresjan</a></p>
     </div>
   )
 }
@@ -481,7 +487,13 @@ function SessionSettings({ sessionId, session, onSave, saving }: SettingsProps) 
           Leave Session
         </Button>
       </div>
-      <p className="text-center text-xs text-muted-foreground/50 pt-4">by @amoresjan</p>
+      <p className="text-center text-xs text-muted-foreground/60 pt-2">
+        Got feedback?{' '}
+        <a href="https://forms.gle/bFa9PwrG3DweFfnZ9" target="_blank" rel="noreferrer" className="underline underline-offset-2">
+          Let us know
+        </a>
+      </p>
+      <p className="text-center text-xs text-muted-foreground/50">by <a href="https://amoresjan.dev" target="_blank" rel="noreferrer" className="underline underline-offset-2">@amoresjan</a></p>
     </div>
   )
 }

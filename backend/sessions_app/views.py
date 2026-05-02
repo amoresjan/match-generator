@@ -93,6 +93,8 @@ def player_detail(request, session_id, player_id):
     player = get_object_or_404(Player, id=player_id, session=session)
 
     if request.method == 'DELETE':
+        session.removed_players[str(player.id)] = player.name
+        session.save(update_fields=['removed_players'])
         player.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -220,9 +222,6 @@ def override_match(request, session_id, match_id):
 @api_view(['POST'])
 def preview_rounds_view(request, session_id):
     session = get_object_or_404(Session, id=session_id)
-    err = _require_admin(request, session)
-    if err:
-        return err
 
     if session.generation_mode != 'fair':
         return Response({'detail': 'Preview is only available for fair rotation.'}, status=400)

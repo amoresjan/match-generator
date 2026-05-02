@@ -52,6 +52,12 @@ export function CurrentRound({ session, isAdmin, onGenerateRound, isGenerating }
   const setResult = useSetMatchResult(session.id)
 
   const rounds = session.rounds
+  const latestRound = rounds[rounds.length - 1] ?? null
+  const streakMap = useMemo(() => computeStreaks(rounds), [rounds])
+  const streakPlayerIds = useMemo(() => new Set(streakMap.keys()), [streakMap])
+  const streakPlayers = useMemo(() => session.players.filter((p) => streakMap.has(p.id)), [session.players, streakMap])
+  const sittingOutPlayers = useMemo(() => session.players.filter((p) => p.sit_out), [session.players])
+
   if (rounds.length === 0) {
     return (
       <div className="text-center py-12 space-y-4">
@@ -67,12 +73,6 @@ export function CurrentRound({ session, isAdmin, onGenerateRound, isGenerating }
       </div>
     )
   }
-
-  const latestRound = rounds[rounds.length - 1]
-  const streakMap = useMemo(() => computeStreaks(rounds), [rounds])
-  const streakPlayerIds = useMemo(() => new Set(streakMap.keys()), [streakMap])
-  const streakPlayers = useMemo(() => session.players.filter((p) => streakMap.has(p.id)), [session.players, streakMap])
-  const sittingOutPlayers = useMemo(() => session.players.filter((p) => p.sit_out), [session.players])
 
   return (
     <div className="space-y-4">
@@ -91,6 +91,7 @@ export function CurrentRound({ session, isAdmin, onGenerateRound, isGenerating }
             <CourtCard
               match={match}
               players={session.players}
+              removedPlayers={session.removed_players}
               isAdmin={isAdmin}
               streakPlayerIds={streakPlayerIds}
               onEdit={isAdmin ? setEditingMatch : undefined}
@@ -132,6 +133,9 @@ export function CurrentRound({ session, isAdmin, onGenerateRound, isGenerating }
               </Badge>
             ))}
           </div>
+          {!isAdmin && (
+            <p className="text-xs text-muted-foreground mt-2">Ready to play? Let the host know and they'll add you back in.</p>
+          )}
         </div>
       )}
 

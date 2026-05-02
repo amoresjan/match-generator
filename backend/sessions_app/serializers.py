@@ -41,7 +41,7 @@ class SessionSerializer(serializers.ModelSerializer):
         model = Session
         fields = [
             'id', 'name', 'match_type', 'num_courts', 'generation_mode',
-            'is_active', 'created_at', 'players', 'rounds',
+            'is_active', 'created_at', 'players', 'rounds', 'removed_players',
         ]
         read_only_fields = ['id', 'created_at']
 

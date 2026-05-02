@@ -14,6 +14,7 @@ class Session(models.Model):
     generation_mode = models.CharField(max_length=11, choices=GENERATION_MODE_CHOICES, default='fair')
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
+    removed_players = models.JSONField(default=dict)  # {str(uuid): name}
 
     def __str__(self):
         return self.name
