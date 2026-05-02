@@ -67,7 +67,7 @@ function PreviewRoundRow({
 
 const EXIT_DURATION = 300  // matches animate-card-exit duration
 
-export function UpcomingRounds({ sessionId, players, isAdmin, roundCount, sessionKey }: Props) {
+export function UpcomingRounds({ sessionId, players, roundCount, sessionKey }: Props) {
   const preview = usePreviewRounds(sessionId)
   const [rounds, setRounds] = useState<PreviewRound[] | null>(null)
   const [openNum, setOpenNum] = useState<number | null>(null)

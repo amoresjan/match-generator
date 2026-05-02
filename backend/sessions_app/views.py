@@ -223,9 +223,6 @@ def override_match(request, session_id, match_id):
 def preview_rounds_view(request, session_id):
     session = get_object_or_404(Session, id=session_id)
 
-    if session.generation_mode != 'fair':
-        return Response({'detail': 'Preview is only available for fair rotation.'}, status=400)
-
     count = max(1, min(int(request.data.get('count', 5)), 10))
 
     try:

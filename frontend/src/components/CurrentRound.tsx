@@ -158,10 +158,9 @@ export function CurrentRound({ session, isAdmin, onGenerateRound, isGenerating }
         />
       )}
 
-      {session.generation_mode === 'fair' && (
-        <>
-          <div className="border-t" />
-          <UpcomingRounds
+      <>
+        <div className="border-t" />
+        <UpcomingRounds
             sessionId={session.id}
             players={session.players}
             isAdmin={isAdmin}
@@ -179,8 +178,7 @@ export function CurrentRound({ session, isAdmin, onGenerateRound, isGenerating }
                 .join(';'),
             ].join('|')}
           />
-        </>
-      )}
+      </>
     </div>
   )
 }

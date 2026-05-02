@@ -85,6 +85,11 @@ export function HomePage() {
                 <SelectItem value="competitive">Competitive</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              {mode === 'competitive'
+                ? 'Players are matched by win count — top players face each other, bottom players face each other.'
+                : 'Everyone gets equal court time and varied opponents. Best for casual play.'}
+            </p>
           </div>
           <Button
             className="w-full"
