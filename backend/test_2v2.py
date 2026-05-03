@@ -25,6 +25,12 @@ def bye_set(round_data):
     return frozenset(round_data['bye_players'])
 
 
+def teams_match(a, b):
+    def court_key(court):
+        return frozenset([frozenset(court['team1']), frozenset(court['team2'])])
+    return frozenset(court_key(c) for c in a['courts']) == frozenset(court_key(c) for c in b['courts'])
+
+
 def run_scenario(label: str, num_players: int, num_courts: int, num_rounds: int):
     print(f'\n{"="*60}')
     print(f'  {label}')
@@ -61,9 +67,22 @@ def run_scenario(label: str, num_players: int, num_courts: int, num_rounds: int)
         commit_round(session, generated)
 
         match_ok = (active_set(generated) == active_set(expected) and
-                    bye_set(generated) == bye_set(expected))
+                    bye_set(generated) == bye_set(expected) and
+                    teams_match(generated, expected))
         if not match_ok:
             preview_mismatches += 1
+            tag2 = f'slot {slot+1}/{PREVIEW_SIZE}'
+            exp_str = '  '.join(
+                f'[{" & ".join(pid_to_name.get(p, p) for p in c["team1"])}] vs [{" & ".join(pid_to_name.get(p, p) for p in c["team2"])}]'
+                for c in expected['courts']
+            )
+            gen_str = '  '.join(
+                f'[{" & ".join(pid_to_name.get(p, p) for p in c["team1"])}] vs [{" & ".join(pid_to_name.get(p, p) for p in c["team2"])}]'
+                for c in generated['courts']
+            )
+            print(f'    MISMATCH at {tag2}:')
+            print(f'      preview:  {exp_str}')
+            print(f'      actual:   {gen_str}')
 
         active = active_set(generated)
         bye = bye_set(generated)

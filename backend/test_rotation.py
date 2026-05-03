@@ -41,6 +41,15 @@ def active_set(round_data):
 def bye_set(round_data):
     return frozenset(round_data['bye_players'])
 
+def court_key(court):
+    """Canonical representation of a court: team memberships, ignoring team1/team2 label order."""
+    t1 = frozenset(court['team1'])
+    t2 = frozenset(court['team2'])
+    return frozenset([t1, t2])
+
+def teams_match(a, b):
+    return frozenset(court_key(c) for c in a['courts']) == frozenset(court_key(c) for c in b['courts'])
+
 def fmt_court(court):
     t1 = ' & '.join(sorted(pid_to_name[p] for p in court['team1']))
     t2 = ' & '.join(sorted(pid_to_name[p] for p in court['team2']))
@@ -70,7 +79,8 @@ for round_num in range(1, NUM_ROUNDS + 1):
     commit_round(session, generated)
 
     match_ok = (active_set(generated) == active_set(expected) and
-                bye_set(generated)    == bye_set(expected))
+                bye_set(generated)    == bye_set(expected) and
+                teams_match(generated, expected))
     if not match_ok:
         preview_mismatches += 1
 
@@ -96,6 +106,9 @@ for round_num in range(1, NUM_ROUNDS + 1):
 
     tag = f'preview slot {slot+1}/5'
     status = '✓' if match_ok else f'✗ MISMATCH ({tag})'
+    if not match_ok:
+        exp_str = '  '.join(fmt_court(c) for c in expected['courts'])
+        print(f'  expected: {exp_str}')
     courts_str = '  '.join(fmt_court(c) for c in generated['courts'])
     bye_str = ', '.join(sorted(pid_to_name[p] for p in generated['bye_players'])) or '—'
     print(f'Round {round_num:2d} [{tag}]: {courts_str}  |  bye: {bye_str}  |  {status}')

@@ -510,12 +510,14 @@ def generate_round(session: Session) -> GeneratedRound:
 
 
 def preview_rounds(session: Session, count: int = 5) -> list[GeneratedRound]:
-    """Generate future rounds without committing. Fair rotation only."""
+    """Generate future rounds without committing."""
     players = list(session.players.prefetch_related('permanent_partner').filter(sit_out=False).order_by('id'))
     if not players:
         raise ValueError('Session has no players.')
 
     hist = _build_history(session)
+    mode = session.generation_mode
+    wins = _build_win_counts(session) if mode == 'competitive' else {}
     next_number = _next_round_number(session)
     results: list[GeneratedRound] = []
 
@@ -523,9 +525,15 @@ def preview_rounds(session: Session, count: int = 5) -> list[GeneratedRound]:
         round_number = next_number + i
         with _seeded(session.id, round_number):
             if session.match_type == '1v1':
-                gen = _generate_1v1(players, session.num_courts, hist)
+                if mode == 'competitive':
+                    gen = _generate_1v1_competitive(players, session.num_courts, hist, wins)
+                else:
+                    gen = _generate_1v1(players, session.num_courts, hist)
             else:
-                gen = _generate_2v2(players, session.num_courts, hist)
+                if mode == 'competitive':
+                    gen = _generate_2v2_competitive(players, session.num_courts, hist, wins)
+                else:
+                    gen = _generate_2v2(players, session.num_courts, hist)
         gen['round_number'] = round_number
         results.append(gen)
         hist = _simulate_history_update(hist, gen)
