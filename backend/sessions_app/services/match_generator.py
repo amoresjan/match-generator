@@ -52,12 +52,14 @@ def _build_history(session: Session) -> dict:
       partner_counts[a][b]  = number of rounds a and b were on the same team
       opponent_counts[a][b] = number of rounds a and b were opponents
       wait_rounds[a]        = total rounds sat out
+      last_sat_out[a]       = most recent round number sat out
+      last_played[a]        = most recent round number played
     """
     partner_counts: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     opponent_counts: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     wait_rounds: dict[str, int] = defaultdict(int)
-
-    last_sat_out: dict[str, int] = defaultdict(int)  # most recent round number sat out
+    last_sat_out: dict[str, int] = defaultdict(int)
+    last_played: dict[str, int] = defaultdict(int)
 
     histories = (
         PlayerRoundHistory.objects
@@ -70,6 +72,7 @@ def _build_history(session: Session) -> dict:
             wait_rounds[pid] += 1
             last_sat_out[pid] = max(last_sat_out[pid], h['round__number'])
             continue
+        last_played[pid] = max(last_played[pid], h['round__number'])
         for partner in h['partner_ids']:
             partner_counts[pid][str(partner)] += 1
         for opp in h['opponent_ids']:
@@ -80,6 +83,7 @@ def _build_history(session: Session) -> dict:
         'opponent': opponent_counts,
         'wait': wait_rounds,
         'last_sat_out': last_sat_out,
+        'last_played': last_played,
     }
 
 
@@ -195,19 +199,19 @@ def _select_byes_2v2(
             'ids': pair,
             'cost': 2,
             'wait': _pair_wait_score(pair, hist),
-            'last_sat_out': max(hist['last_sat_out'][p] for p in pair),
+            'last_played': max(hist['last_played'][p] for p in pair),
         })
     for s in singles:
         units.append({
             'ids': [s],
             'cost': 1,
             'wait': hist['wait'][s],
-            'last_sat_out': hist['last_sat_out'][s],
+            'last_played': hist['last_played'][s],
         })
 
     for unit in units:
         unit['jitter'] = random.random()
-    units.sort(key=lambda u: (u['wait'], u['last_sat_out'], u['jitter']))
+    units.sort(key=lambda u: (u['wait'], -u['last_played'], u['jitter']))
 
     bye_players: list[str] = []
     active_pairs: list[list[str]] = list(pairs)
@@ -347,7 +351,7 @@ def _generate_1v1(
     bye_count = total - players_needed
 
     jitter = {pid: random.random() for pid in all_ids}
-    sorted_ids = sorted(all_ids, key=lambda pid: (hist['wait'][pid], hist['last_sat_out'][pid], jitter[pid]))
+    sorted_ids = sorted(all_ids, key=lambda pid: (hist['wait'][pid], -hist['last_played'][pid], jitter[pid]))
     bye_players = sorted_ids[:bye_count]
     active = sorted_ids[bye_count:]
 
@@ -447,6 +451,7 @@ def _copy_hist(hist: dict) -> dict:
         }),
         'wait': defaultdict(int, hist['wait']),
         'last_sat_out': defaultdict(int, hist['last_sat_out']),
+        'last_played': defaultdict(int, hist.get('last_played', {})),
     }
 
 
@@ -471,6 +476,9 @@ def _simulate_history_update(hist: dict, generated: GeneratedRound) -> dict:
     for pid in generated['bye_players']:
         h['wait'][pid] += 1
         h['last_sat_out'][pid] = max(h['last_sat_out'].get(pid, 0), rn)
+    for court in generated['courts']:
+        for pid in court['team1'] + court['team2']:
+            h['last_played'][pid] = max(h['last_played'].get(pid, 0), rn)
     return h
 
 
