@@ -482,7 +482,7 @@ def _next_round_number(session: Session | None) -> int:
 
 
 def generate_round(session: Session) -> GeneratedRound:
-    players = list(session.players.prefetch_related('permanent_partner').filter(sit_out=False))
+    players = list(session.players.prefetch_related('permanent_partner').filter(sit_out=False).order_by('id'))
     if not players:
         raise ValueError('Session has no players.')
 
@@ -503,7 +503,7 @@ def generate_round(session: Session) -> GeneratedRound:
 
 def preview_rounds(session: Session, count: int = 5) -> list[GeneratedRound]:
     """Generate future rounds without committing. Fair rotation only."""
-    players = list(session.players.prefetch_related('permanent_partner').filter(sit_out=False))
+    players = list(session.players.prefetch_related('permanent_partner').filter(sit_out=False).order_by('id'))
     if not players:
         raise ValueError('Session has no players.')
 
