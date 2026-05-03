@@ -95,7 +95,7 @@ export function RoundHistory({ sessionId, rounds, players, removedPlayers, isAdm
 
   if (allRounds.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground text-center py-8">
+      <p className="text-sm text-muted-foreground text-center py-12">
         No rounds yet. Generate the first round to get started.
       </p>
     )

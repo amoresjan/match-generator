@@ -5,6 +5,7 @@ Scenarios:
   B) 12 players, 2 courts, 15 rounds (8 play, 4 sit)
   C) 8 players,  2 courts, 15 rounds (8 play, 0 sit — no byes)
   D) 16 players, 2 courts, 15 rounds (8 play, 8 sit)
+Checks all 5-round preview snapshots against committed rounds.
 """
 import os, django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'pickleball.settings')
@@ -12,6 +13,16 @@ django.setup()
 
 from sessions_app.models import Session, Player
 from sessions_app.services.match_generator import generate_round, commit_round, preview_rounds
+
+PREVIEW_SIZE = 5
+
+
+def active_set(round_data):
+    return frozenset(pid for c in round_data['courts'] for pid in c['team1'] + c['team2'])
+
+
+def bye_set(round_data):
+    return frozenset(round_data['bye_players'])
 
 
 def run_scenario(label: str, num_players: int, num_courts: int, num_rounds: int):
@@ -35,24 +46,27 @@ def run_scenario(label: str, num_players: int, num_courts: int, num_rounds: int)
     partner_counts: dict[str, dict[str, int]] = {n: {} for n in names}
     opponent_counts: dict[str, dict[str, int]] = {n: {} for n in names}
     preview_mismatches = 0
+    preview_snapshot: list = []
+    block_start = 1
 
     for rn in range(1, num_rounds + 1):
-        preview = preview_rounds(session, count=1)
-        preview_active = {
-            pid
-            for court in preview[0]['courts']
-            for pid in court['team1'] + court['team2']
-        } if preview else set()
+        if (rn - 1) % PREVIEW_SIZE == 0:
+            preview_snapshot = preview_rounds(session, count=PREVIEW_SIZE)
+            block_start = rn
+
+        slot = rn - block_start
+        expected = preview_snapshot[slot]
 
         generated = generate_round(session)
         commit_round(session, generated)
 
-        active = {pid for court in generated['courts'] for pid in court['team1'] + court['team2']}
-        bye = set(generated['bye_players'])
-
-        match_ok = preview_active == active
+        match_ok = (active_set(generated) == active_set(expected) and
+                    bye_set(generated) == bye_set(expected))
         if not match_ok:
             preview_mismatches += 1
+
+        active = active_set(generated)
+        bye = bye_set(generated)
 
         playing_names = {pid_to_name[pid] for pid in active}
         for name in names:
@@ -77,13 +91,14 @@ def run_scenario(label: str, num_players: int, num_courts: int, num_rounds: int)
                 for b in t1:
                     opponent_counts[a][b] = opponent_counts[a].get(b, 0) + 1
 
-        status = '✓' if match_ok else '✗ MISMATCH'
+        tag = f'slot {slot+1}/{PREVIEW_SIZE}'
+        status = '✓' if match_ok else f'✗ MISMATCH ({tag})'
         courts_str = '  '.join(
             f'[{" & ".join(pid_to_name[p] for p in c["team1"])}] vs [{" & ".join(pid_to_name[p] for p in c["team2"])}]'
             for c in generated['courts']
         )
         bye_str = ', '.join(sorted(pid_to_name[p] for p in bye)) if bye else '—'
-        print(f'  Round {rn:2d}: {courts_str}  |  bye: {bye_str}  |  {status}')
+        print(f'  Round {rn:2d} [{tag}]: {courts_str}  |  bye: {bye_str}  |  {status}')
 
     # ── Stats ─────────────────────────────────────────────────────────────────
     print(f'\n  Preview accuracy: {num_rounds - preview_mismatches}/{num_rounds}')
