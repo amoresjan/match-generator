@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input'
 import { api, saveAdminToken, getAdminToken } from '@/lib/api'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { partitionPlayers } from '@/lib/utils'
+import { toast } from '@/lib/toast'
 
 type Tab = 'round' | 'players' | 'history' | 'leaderboard' | 'settings'
 
@@ -325,6 +326,7 @@ function ShareField({ sessionId }: { sessionId: string }) {
     navigator.clipboard.writeText(link)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+    toast.success('Copied to clipboard')
   }
 
   return (
@@ -351,6 +353,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
     navigator.clipboard.writeText(value)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+    toast.success('Copied to clipboard')
   }
 
   return (

@@ -93,9 +93,10 @@ export function CurrentRound({ session, isAdmin }: Props) {
 
       {streakPlayers.length > 0 && (
         <div className="rounded-lg border border-orange-300 dark:border-orange-700 bg-orange-50/50 dark:bg-orange-900/10 p-3 animate-streak-glow">
-          <p className="text-xs text-orange-500 mb-2 font-medium uppercase tracking-wide flex items-center gap-1">
+          <p className="text-xs text-orange-500 font-medium uppercase tracking-wide flex items-center gap-1">
             <Flame className="h-3 w-3" /> Hot Streak
           </p>
+          <p className="text-[10px] text-orange-400/80 mb-2">Won {STREAK_THRESHOLD}+ games in a row</p>
           <div className="flex flex-wrap gap-2">
             {streakPlayers.map((p) => (
               <Badge key={p.id} variant="outline" className="border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 gap-1">

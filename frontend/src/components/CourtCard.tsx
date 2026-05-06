@@ -95,7 +95,7 @@ export function CourtCard({ match, players, removedPlayers = {}, isAdmin, streak
                   )}
                 </span>
               ))}
-              {team1IsDuo && <Users className="h-3 w-3 shrink-0 opacity-40" />}
+              {team1IsDuo && <Users className="h-3 w-3 shrink-0 opacity-40" title="Permanent duo partnership" />}
             </span>
           </button>
 
@@ -129,7 +129,7 @@ export function CourtCard({ match, players, removedPlayers = {}, isAdmin, streak
                   )}
                 </span>
               ))}
-              {team2IsDuo && <Users className="h-3 w-3 shrink-0 opacity-40" />}
+              {team2IsDuo && <Users className="h-3 w-3 shrink-0 opacity-40" title="Permanent duo partnership" />}
             </span>
           </button>
         </div>
