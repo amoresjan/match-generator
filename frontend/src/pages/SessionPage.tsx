@@ -153,7 +153,7 @@ export function SessionPage() {
                   onSave={(data) => updateSession.mutate(data)}
                   saving={updateSession.isPending}
                 />
-              : <GuestSettings sessionId={sessionId!} onUnlocked={handleAdminUnlocked} />
+              : <GuestSettings sessionId={sessionId!} session={session} onUnlocked={handleAdminUnlocked} />
           )}
         </ErrorBoundary>
       </main>
@@ -318,31 +318,42 @@ interface SettingsProps {
   saving: boolean
 }
 
-function ShareField({ sessionId }: { sessionId: string }) {
+function ShareField({ session }: { session: import('@/lib/types').Session }) {
   const [copied, setCopied] = useState(false)
-  const link = `${window.location.origin}/session/${sessionId}`
+  const link = `${window.location.origin}/session/${session.id}`
+
+  const modeEmoji = session.generation_mode === 'competitive' ? '🏆' : '🔄'
+  const modeLabel = session.generation_mode === 'competitive' ? 'Competitive' : 'Fair Rotation'
+  const typeEmoji = session.match_type === '2v2' ? '👥' : '👤'
+
+  const message = `${session.name}\n${modeEmoji} ${modeLabel}\n${typeEmoji} ${session.match_type}\n\nSee live matches: ${link}`
 
   function copy() {
-    navigator.clipboard.writeText(link)
+    navigator.clipboard.writeText(message)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
     toast.success('Copied to clipboard')
   }
 
   return (
-    <button
-      onClick={copy}
-      className="w-full rounded-md bg-muted p-3 text-left transition-colors hover:bg-muted/70 active:bg-muted/50 group"
-    >
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-xs text-muted-foreground font-medium">Session ID — tap to copy & share with players</p>
-        {copied
-          ? <Check className="h-3.5 w-3.5 text-primary shrink-0" />
-          : <Copy className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-        }
+    <div className="rounded-xl border bg-background overflow-hidden">
+      <div className="px-4 py-4 space-y-1">
+        <p className="font-bold text-sm leading-snug">{session.name}</p>
+        <p className="text-sm">{modeEmoji} {modeLabel}</p>
+        <p className="text-sm">{typeEmoji} {session.match_type}</p>
+        <p className="text-sm pt-2 text-muted-foreground break-all">See live matches: {link}</p>
       </div>
-      <p className="text-xs font-mono break-all">{link}</p>
-    </button>
+      <div className="border-t" />
+      <button
+        onClick={copy}
+        className="w-full flex items-center justify-center gap-2 py-3 text-sm font-semibold text-primary hover:bg-muted/50 active:bg-muted transition-colors"
+      >
+        {copied
+          ? <><Check className="h-4 w-4" /> Copied!</>
+          : <><Copy className="h-4 w-4" /> Copy Message</>
+        }
+      </button>
+    </div>
   )
 }
 
@@ -357,23 +368,26 @@ function CopyField({ label, value }: { label: string; value: string }) {
   }
 
   return (
-    <button
-      onClick={copy}
-      className="w-full rounded-md bg-muted p-3 text-left transition-colors hover:bg-muted/70 active:bg-muted/50 group"
-    >
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-xs text-muted-foreground font-medium">{label}</p>
-        {copied
-          ? <Check className="h-3.5 w-3.5 text-primary shrink-0" />
-          : <Copy className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-        }
+    <div className="rounded-xl border bg-background overflow-hidden">
+      <div className="px-4 py-4">
+        <p className="text-xs text-muted-foreground mb-1">{label}</p>
+        <p className="text-sm font-mono break-all">{value}</p>
       </div>
-      <p className="text-xs font-mono break-all">{value}</p>
-    </button>
+      <div className="border-t" />
+      <button
+        onClick={copy}
+        className="w-full flex items-center justify-center gap-2 py-3 text-sm font-semibold text-primary hover:bg-muted/50 active:bg-muted transition-colors"
+      >
+        {copied
+          ? <><Check className="h-4 w-4" /> Copied!</>
+          : <><Copy className="h-4 w-4" /> Copy Code</>
+        }
+      </button>
+    </div>
   )
 }
 
-function GuestSettings({ sessionId, onUnlocked }: { sessionId: string; onUnlocked: () => void }) {
+function GuestSettings({ sessionId, session, onUnlocked }: { sessionId: string; session: import('@/lib/types').Session; onUnlocked: () => void }) {
   const { theme, toggle: toggleTheme } = useTheme()
   const navigate = useNavigate()
 
@@ -388,7 +402,7 @@ function GuestSettings({ sessionId, onUnlocked }: { sessionId: string; onUnlocke
         </div>
       </SettingsSection>
       <SettingsSection title="Share">
-        <ShareField sessionId={sessionId} />
+        <ShareField session={session} />
       </SettingsSection>
       <SettingsSection title="Host Access">
         <AdminCodeEntry sessionId={sessionId} onUnlocked={onUnlocked} />
@@ -488,7 +502,7 @@ function SessionSettings({ sessionId, session, onSave, saving }: SettingsProps) 
       </SettingsSection>
 
       <SettingsSection title="Share">
-        <ShareField sessionId={session.id} />
+        <ShareField session={session} />
         <CopyField label="Admin Code — tap to copy & share with co-hosts" value={adminToken} />
       </SettingsSection>
 
