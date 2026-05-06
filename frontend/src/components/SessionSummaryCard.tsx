@@ -3,43 +3,9 @@ import { createRoot } from 'react-dom/client'
 import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/lib/toast'
+import { computeStats } from '@/lib/utils'
+import type { PlayerStat } from '@/lib/utils'
 import type { Player, Round } from '@/lib/types'
-
-interface PlayerStat {
-  player: Player
-  played: number
-  wins: number
-  losses: number
-}
-
-function computeStats(players: Player[], rounds: Round[]): PlayerStat[] {
-  const stats = new Map<string, PlayerStat>(
-    players.map((p) => [p.id, { player: p, played: 0, wins: 0, losses: 0 }])
-  )
-  for (const round of rounds) {
-    for (const match of round.matches) {
-      if (match.winner === null) continue
-      const winnerIds = match.winner === 'team1' ? match.team1_players : match.team2_players
-      const loserIds = match.winner === 'team1' ? match.team2_players : match.team1_players
-      for (const id of winnerIds) {
-        const s = stats.get(id)
-        if (s) { s.played++; s.wins++ }
-      }
-      for (const id of loserIds) {
-        const s = stats.get(id)
-        if (s) { s.played++; s.losses++ }
-      }
-    }
-  }
-  return [...stats.values()]
-    .filter((s) => s.played > 0)
-    .sort((a, b) => {
-      if (b.wins !== a.wins) return b.wins - a.wins
-      const aRate = a.played ? a.wins / a.played : 0
-      const bRate = b.played ? b.wins / b.played : 0
-      return bRate - aRate
-    })
-}
 
 interface SummaryCardProps {
   sessionName: string

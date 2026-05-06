@@ -1,46 +1,8 @@
 import { ChevronDown, ChevronUp, Trophy } from 'lucide-react'
 import { useState } from 'react'
+import { computeStats, resolveNames } from '@/lib/utils'
+import type { PlayerStat } from '@/lib/utils'
 import type { Match, Player, Round } from '@/lib/types'
-
-interface PlayerStat {
-  player: Player
-  played: number
-  wins: number
-  losses: number
-}
-
-function computeStats(players: Player[], rounds: Round[]): PlayerStat[] {
-  const stats = new Map<string, PlayerStat>(
-    players.map((p) => [p.id, { player: p, played: 0, wins: 0, losses: 0 }])
-  )
-
-  for (const round of rounds) {
-    for (const match of round.matches) {
-      if (match.winner === null) continue
-      const winnerIds = match.winner === 'team1' ? match.team1_players : match.team2_players
-      const loserIds = match.winner === 'team1' ? match.team2_players : match.team1_players
-
-      for (const id of winnerIds) {
-        const s = stats.get(id)
-        if (s) { s.played++; s.wins++ }
-      }
-      for (const id of loserIds) {
-        const s = stats.get(id)
-        if (s) { s.played++; s.losses++ }
-      }
-    }
-  }
-
-  return [...stats.values()]
-    .filter((s) => s.played > 0)
-    .sort((a, b) => {
-      if (b.wins !== a.wins) return b.wins - a.wins
-      const aRate = a.played ? a.wins / a.played : 0
-      const bRate = b.played ? b.wins / b.played : 0
-      if (bRate !== aRate) return bRate - aRate
-      return b.played - a.played
-    })
-}
 
 function isTied(a: PlayerStat, b: PlayerStat): boolean {
   if (a.wins !== b.wins) return false
@@ -74,10 +36,6 @@ const RANK_ICON_CLASS: Record<number, string> = {
   1: 'text-yellow-500',
   2: 'text-slate-400',
   3: 'text-amber-700',
-}
-
-function resolveNames(ids: string[], players: Player[]): string {
-  return ids.map((id) => players.find((p) => p.id === id)?.name ?? '?').join(' & ')
 }
 
 interface PlayerMatch {

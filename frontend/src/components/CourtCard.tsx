@@ -2,6 +2,7 @@ import { AlertTriangle, Flame, Loader2, Pencil, Trophy, Users } from 'lucide-rea
 import { useRef, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { isDuo } from '@/lib/utils'
 import type { Match, Player } from '@/lib/types'
 
 interface Props {
@@ -17,12 +18,6 @@ interface Props {
 
 function resolveMembers(ids: string[], players: Player[], removedPlayers: Record<string, string> = {}): { id: string; name: string }[] {
   return ids.map((id) => ({ id, name: players.find((p) => p.id === id)?.name ?? removedPlayers[id] ?? '?' }))
-}
-
-function isDuo(ids: string[], players: Player[]): boolean {
-  if (ids.length !== 2) return false
-  const a = players.find((p) => p.id === ids[0])
-  return a?.permanent_partner_id === ids[1]
 }
 
 export function CourtCard({ match, players, removedPlayers = {}, isAdmin, streakPlayerIds, onEdit, onSetResult, isPending }: Props) {

@@ -49,8 +49,11 @@ export function HomePage() {
           <CardTitle className="text-base">Create a Session</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Input placeholder="Session name" value={name} onChange={(e) => setName(e.target.value)} />
-          <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label htmlFor="session-name" className="text-xs text-muted-foreground mb-1 block">Session name</label>
+            <Input id="session-name" placeholder="e.g. Friday Pickles" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Match type</label>
               <Select value={matchType} onValueChange={(v) => setMatchType(v as '1v1' | '2v2')}>
@@ -106,7 +109,9 @@ export function HomePage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleJoin} className="flex gap-2">
+            <label htmlFor="join-id" className="sr-only">Session ID or link</label>
             <Input
+              id="join-id"
               placeholder="Session ID or link…"
               value={joinId}
               onChange={(e) => setJoinId(e.target.value)}

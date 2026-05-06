@@ -433,7 +433,7 @@ function SessionSettings({ sessionId, session, onSave, saving }: SettingsProps) 
     <div className="space-y-6">
 
       <SettingsSection title="Game">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Match Type</label>
             <Select value={matchType} onValueChange={(v) => setMatchType(v as '1v1' | '2v2')}>

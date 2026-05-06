@@ -287,7 +287,9 @@ export function PlayerList({ session }: Props) {
   return (
     <div className="space-y-4">
       <form ref={formRef} onSubmit={handleAdd} className="flex gap-2">
+        <label htmlFor="add-player-name" className="sr-only">Player name</label>
         <Input
+          id="add-player-name"
           ref={inputRef}
           placeholder="Player name…"
           value={newName}

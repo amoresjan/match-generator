@@ -2,6 +2,7 @@ import { ChevronDown, ChevronUp, Trophy, Users } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useSetMatchResult } from '@/hooks/useSession'
+import { resolveNames, isDuo } from '@/lib/utils'
 import type { Match, Round, Player } from '@/lib/types'
 
 interface Props {
@@ -10,16 +11,6 @@ interface Props {
   players: Player[]
   removedPlayers: Record<string, string>
   isAdmin: boolean
-}
-
-function resolveNames(ids: string[], players: Player[], removedPlayers: Record<string, string> = {}): string {
-  return ids.map((id) => players.find((p) => p.id === id)?.name ?? removedPlayers[id] ?? '?').join(' & ')
-}
-
-function isDuo(ids: string[], players: Player[]): boolean {
-  if (ids.length !== 2) return false
-  const a = players.find((p) => p.id === ids[0])
-  return a?.permanent_partner_id === ids[1]
 }
 
 function MatchRow({ sessionId, match, players, removedPlayers, isAdmin }: { sessionId: string; match: Match; players: Player[]; removedPlayers: Record<string, string>; isAdmin: boolean }) {
