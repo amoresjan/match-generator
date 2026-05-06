@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, ChevronUp, RefreshCw } from 'lucide-react'
 import { usePreviewRounds } from '@/hooks/useSession'
+import { toast } from '@/lib/toast'
 import type { Player, PreviewRound } from '@/lib/types'
 
 interface Props {
@@ -85,7 +86,7 @@ export function UpcomingRounds({ sessionId, players, roundCount, sessionKey }: P
 
   // Auto-generate on mount
   useEffect(() => {
-    mutateRef.current(5).then(applyRounds).catch(() => {})
+    mutateRef.current(5).then(applyRounds).catch(() => toast.error('Failed to load upcoming rounds'))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // When a new real round is committed: animate first card out, fetch, animate last card in
@@ -105,7 +106,7 @@ export function UpcomingRounds({ sessionId, players, roundCount, sessionKey }: P
           setEnteringNum(entering)
           setTimeout(() => setEnteringNum(null), 400)
         }
-      }).catch(() => {})
+      }).catch(() => toast.error('Failed to refresh upcoming rounds'))
     }, EXIT_DURATION)
 
     return () => clearTimeout(t)
@@ -115,7 +116,7 @@ export function UpcomingRounds({ sessionId, players, roundCount, sessionKey }: P
   useEffect(() => {
     if (!mounted.current) { mounted.current = true; return }
     if (rounds === null) return
-    mutateRef.current(5).then(applyRounds).catch(() => {})
+    mutateRef.current(5).then(applyRounds).catch(() => toast.error('Failed to refresh upcoming rounds'))
   }, [sessionKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (

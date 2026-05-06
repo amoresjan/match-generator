@@ -80,6 +80,10 @@ export default {
           '0%':   { transform: 'translateX(0)',     opacity: '1' },
           '100%': { transform: 'translateX(-24px)', opacity: '0' },
         },
+        'toast-enter': {
+          '0%':   { transform: 'translateY(-100%)', opacity: '0' },
+          '100%': { transform: 'translateY(0)',      opacity: '1' },
+        },
       },
       animation: {
         'winner-pop':    'winner-pop 0.25s ease-out',
@@ -87,6 +91,7 @@ export default {
         'card-enter':    'card-enter 0.35s ease-out both',
         'card-exit':     'card-exit 0.3s ease-in forwards',
         'duo-form':      'duo-form 0.4s ease-out both',
+        'toast-enter':   'toast-enter 0.3s ease-out both',
         'streak-glow':   'streak-glow 2s ease-in-out infinite',
         'gold-glow':     'gold-glow 2s ease-in-out infinite',
       },

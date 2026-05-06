@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { toast } from '@/lib/toast'
 import type { Player, Round } from '@/lib/types'
 
 interface PlayerStat {
@@ -247,8 +248,10 @@ export function SessionSummaryCard({ sessionName, players, rounds }: SummaryCard
 
       root.unmount()
       document.body.removeChild(wrapper)
+      toast.success('Image saved!')
     } catch (err) {
       console.error('Export failed', err)
+      toast.error('Export failed — please try again')
     } finally {
       setExporting(false)
     }

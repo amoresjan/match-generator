@@ -1,12 +1,16 @@
 import { Routes, Route } from 'react-router-dom'
 import { HomePage } from '@/pages/HomePage'
 import { SessionPage } from '@/pages/SessionPage'
+import { Toaster } from '@/components/Toaster'
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/session/:sessionId" element={<SessionPage />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/session/:sessionId" element={<SessionPage />} />
+      </Routes>
+      <Toaster />
+    </>
   )
 }
