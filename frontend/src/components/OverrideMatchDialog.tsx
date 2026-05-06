@@ -58,7 +58,7 @@ export function OverrideMatchDialog({ sessionId, match, players, matchType, roun
         <p className="text-xs text-muted-foreground">
           Tap players to assign: first {teamSize} go to Team 1, next {teamSize} to Team 2.
         </p>
-        <div className="flex gap-3 text-xs font-semibold">
+        <div className="flex flex-col gap-2 text-xs font-semibold sm:flex-row sm:gap-3">
           <div className="flex-1">
             <p className="mb-1 text-primary">Team 1</p>
             {team1.map((id) => (

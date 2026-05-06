@@ -98,8 +98,13 @@ export function RoundHistory({ sessionId, rounds, players, removedPlayers, isAdm
       {allRounds.map((round) => (
         <Card key={round.id} className="overflow-hidden">
           <CardHeader
+            role="button"
+            tabIndex={0}
+            aria-expanded={expanded === round.id}
+            aria-label={`Round ${round.number} — ${expanded === round.id ? 'collapse' : 'expand'}`}
             className="py-3 px-4 cursor-pointer flex-row items-center justify-between"
             onClick={() => setExpanded(expanded === round.id ? null : round.id)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(expanded === round.id ? null : round.id) } }}
           >
             <CardTitle className="text-sm">Round {round.number}</CardTitle>
             {expanded === round.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}

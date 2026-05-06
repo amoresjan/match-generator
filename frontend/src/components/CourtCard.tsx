@@ -58,7 +58,7 @@ export function CourtCard({ match, players, removedPlayers = {}, isAdmin, streak
           <div className="flex items-center gap-2">
             {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
             {isAdmin && onEdit && (
-              <Button size="icon" variant="ghost" onClick={() => onEdit(match)} className="h-7 w-7" disabled={isPending}>
+              <Button size="icon" variant="ghost" onClick={() => onEdit(match)} className="h-7 w-7" disabled={isPending} aria-label={`Edit Court ${match.court_number}`}>
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
             )}
@@ -69,6 +69,8 @@ export function CourtCard({ match, players, removedPlayers = {}, isAdmin, streak
         <div className="flex flex-col gap-1.5 text-sm">
           {/* Team 1 */}
           <button
+            aria-label={`Team 1: ${team1.map(m => m.name).join(' and ')}${team1Won ? ' — winner' : ''}`}
+            aria-pressed={team1Won}
             disabled={!isAdmin || !onSetResult || isPending}
             onClick={() => handleTeamClick('team1')}
             className={[
@@ -101,6 +103,8 @@ export function CourtCard({ match, players, removedPlayers = {}, isAdmin, streak
 
           {/* Team 2 */}
           <button
+            aria-label={`Team 2: ${team2.map(m => m.name).join(' and ')}${team2Won ? ' — winner' : ''}`}
+            aria-pressed={team2Won}
             disabled={!isAdmin || !onSetResult || isPending}
             onClick={() => handleTeamClick('team2')}
             className={[

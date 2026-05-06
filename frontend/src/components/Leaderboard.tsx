@@ -107,9 +107,12 @@ export function Leaderboard({ players, rounds }: { players: Player[]; rounds: Ro
             <>
               <tr
                 key={s.player.id}
+                tabIndex={0}
+                aria-expanded={isExpanded}
                 className={`cursor-pointer animate-card-enter ${isFirst ? 'animate-gold-glow' : ''}`}
                 style={{ animationDelay: `${i * 60}ms` }}
                 onClick={() => setExpandedId(isExpanded ? null : s.player.id)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedId(isExpanded ? null : s.player.id) } }}
               >
                 <td className={`text-center font-bold text-muted-foreground ${py} pl-3 rounded-l-lg border-y border-l w-8 ${border} ${bg}`}>
                   {rank <= 3

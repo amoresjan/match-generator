@@ -101,10 +101,12 @@ export function SessionPage() {
 
       {/* Tab bar */}
       <nav className="border-b bg-background sticky top-[61px] z-10">
-        <div className="flex max-w-2xl mx-auto">
+        <div role="tablist" className="flex max-w-2xl mx-auto">
           {TABS.map((t) => (
             <button
               key={t.key}
+              role="tab"
+              aria-selected={tab === t.key}
               onClick={() => switchTab(t.key)}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors ${
                 tab === t.key

@@ -74,7 +74,7 @@ function PlayerRow({
           className={`h-7 w-7 shrink-0 ${player.sit_out ? 'text-orange-500 hover:text-orange-600' : 'text-muted-foreground hover:text-foreground'}`}
           disabled={sitOutPromptId === player.id}
           onClick={() => onSitOutToggle(player)}
-          title={player.sit_out ? 'Bring back' : 'Sit out'}
+          aria-label={player.sit_out ? `Bring ${player.name} back` : `Sit out ${player.name}`}
         >
           <PauseCircle className="h-3.5 w-3.5" />
         </Button>
@@ -83,6 +83,7 @@ function PlayerRow({
           variant="ghost"
           className="h-7 w-7 shrink-0"
           onClick={() => onStartEdit(player)}
+          aria-label={`Rename ${player.name}`}
         >
           <Pencil className="h-3.5 w-3.5" />
         </Button>
@@ -111,6 +112,7 @@ function PlayerRow({
             variant="ghost"
             className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
             onClick={() => onConfirmDelete(player.id)}
+            aria-label={`Remove ${player.name}`}
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
@@ -296,8 +298,8 @@ export function PlayerList({ session }: Props) {
           onChange={(e) => setNewName(e.target.value)}
           className="flex-1"
         />
-        <Button type="submit" size="sm" disabled={addPlayer.isPending}>
-          <UserPlus className="h-4 w-4" />
+        <Button type="submit" size="sm" disabled={addPlayer.isPending} aria-label="Add player">
+          {addPlayer.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
         </Button>
       </form>
 
