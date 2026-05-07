@@ -39,9 +39,9 @@ export function HomePage() {
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
-      <div className="text-center">
+      <div className="text-center space-y-1">
         <h1 className="text-3xl font-bold text-green-700 dark:text-green-400">Rally</h1>
-        <p className="text-muted-foreground">Match Generator</p>
+        <p className="text-muted-foreground text-sm">Match generator for groups</p>
       </div>
 
       <Card className="w-full max-w-sm">

@@ -57,9 +57,19 @@ export function CurrentRound({ session, isAdmin }: Props) {
 
   if (rounds.length === 0) {
     return (
-      <p className="text-muted-foreground text-sm text-center py-12">
-        {isAdmin ? 'Ready to start? Generate the first round.' : 'Waiting for the host to start.'}
-      </p>
+      <div className="py-16 text-center space-y-2">
+        {isAdmin ? (
+          <>
+            <p className="font-semibold">No rounds yet</p>
+            <p className="text-sm text-muted-foreground">Add players in the Players tab, then hit Start below.</p>
+          </>
+        ) : (
+          <>
+            <p className="font-semibold">Waiting to start</p>
+            <p className="text-sm text-muted-foreground">The host hasn't generated the first round yet.</p>
+          </>
+        )}
+      </div>
     )
   }
 

@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input'
 import { api, saveAdminToken, getAdminToken } from '@/lib/api'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { OnboardingWizard, hasBeenOnboarded } from '@/components/OnboardingWizard'
 import { partitionPlayers } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 
@@ -44,6 +45,7 @@ export function SessionPage() {
   const [tab, setTab] = useState<Tab>('round')
   const [admin, setAdmin] = useState(() => isAdmin(sessionId!))
   const [confirmGenerate, setConfirmGenerate] = useState(false)
+  const [showWizard, setShowWizard] = useState(() => !hasBeenOnboarded())
 
   function switchTab(t: Tab) {
     setTab(t)
@@ -179,6 +181,18 @@ export function SessionPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* First-session onboarding wizard */}
+      {showWizard && (
+        <OnboardingWizard
+          sessionName={session.name}
+          matchType={session.match_type}
+          isAdmin={admin}
+          onGoToPlayers={() => switchTab('players')}
+          onGoToSettings={() => switchTab('settings')}
+          onDone={() => setShowWizard(false)}
+        />
+      )}
 
       {/* Sticky generate button — only on Round tab for admins */}
       {admin && tab === 'round' && (() => {
