@@ -127,6 +127,9 @@ export function UpcomingRounds({ sessionId, players, roundCount, sessionKey }: P
           <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
         )}
       </div>
+      <p className="text-xs text-muted-foreground/70 -mt-1">
+        Preview only — matchups may change when players are added, removed, or other session changes occur.
+      </p>
 
       {rounds && (
         <div className="space-y-2">

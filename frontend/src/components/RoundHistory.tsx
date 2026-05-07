@@ -109,18 +109,23 @@ export function RoundHistory({ sessionId, rounds, players, removedPlayers, isAdm
             <CardTitle className="text-sm">Round {round.number}</CardTitle>
             {expanded === round.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </CardHeader>
-          {expanded === round.id && (
-            <CardContent className="pt-0 pb-3 space-y-3">
-              {round.matches.map((m) => (
-                <MatchRow key={m.id} sessionId={sessionId} match={m} players={players} removedPlayers={removedPlayers} isAdmin={isAdmin} />
-              ))}
-              {isAdmin && (
-                <p className="text-[10px] text-muted-foreground text-center pt-1">
-                  Tap a team to mark as winner
-                </p>
-              )}
-            </CardContent>
-          )}
+          <div
+            className="grid transition-all duration-300 ease-in-out"
+            style={{ gridTemplateRows: expanded === round.id ? '1fr' : '0fr' }}
+          >
+            <div className="overflow-hidden">
+              <CardContent className="pt-0 pb-3 space-y-3">
+                {round.matches.map((m) => (
+                  <MatchRow key={m.id} sessionId={sessionId} match={m} players={players} removedPlayers={removedPlayers} isAdmin={isAdmin} />
+                ))}
+                {isAdmin && (
+                  <p className="text-[10px] text-muted-foreground text-center pt-1">
+                    Tap a team to mark as winner
+                  </p>
+                )}
+              </CardContent>
+            </div>
+          </div>
         </Card>
       ))}
     </div>

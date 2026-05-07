@@ -91,9 +91,8 @@ export function SessionPage() {
               <h1 className="font-bold text-base leading-tight truncate">{session.name}</h1>
               <div className="flex items-center gap-1.5 mt-0.5">
                 {admin && <Badge className="text-xs shrink-0">Host</Badge>}
-                <Badge variant="secondary" className="text-xs shrink-0">{session.match_type}</Badge>
-                <Badge variant="outline" className="text-xs shrink-0">{session.num_courts} court{session.num_courts !== 1 ? 's' : ''}</Badge>
-                <Badge variant={session.generation_mode === 'competitive' ? 'default' : 'outline'} className="text-xs shrink-0">{session.generation_mode === 'competitive' ? '🏆 Competitive' : 'Fair'}</Badge>
+                <Badge variant="secondary" className="text-xs shrink-0">{session.match_type === '2v2' ? '👥 2v2' : '👤 1v1'}</Badge>
+                <Badge variant={session.generation_mode === 'competitive' ? 'default' : 'outline'} className="text-xs shrink-0">{session.generation_mode === 'competitive' ? '🏆 Competitive' : '🔄 Fair'}</Badge>
               </div>
             </div>
           </div>
