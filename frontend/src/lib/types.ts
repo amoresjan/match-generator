@@ -30,6 +30,7 @@ export interface Session {
   num_courts: number
   generation_mode: 'fair' | 'competitive'
   is_active: boolean
+  auto_deactivated: boolean
   created_at: string
   players: Player[]
   rounds: Round[]

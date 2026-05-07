@@ -117,4 +117,11 @@ export const api = {
       body: JSON.stringify({ count }),
       adminToken: getAdminToken(sessionId) ?? undefined,
     }),
+
+  setSessionActive: (sessionId: string, isActive: boolean) =>
+    request<Session>(`/sessions/${sessionId}/active/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_active: isActive }),
+      adminToken: getAdminToken(sessionId) ?? undefined,
+    }),
 }

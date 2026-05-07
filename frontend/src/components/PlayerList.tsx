@@ -19,6 +19,7 @@ interface PlayerRowProps {
   sitOutPromptId: string | null
   isSetPartnerPending: boolean
   setPartnerVariables: { playerId: string; partnerId: string | null } | undefined
+  disabled: boolean
   onStartEdit: (player: Player) => void
   onEditNameChange: (name: string) => void
   onRename: (player: Player) => void
@@ -35,6 +36,7 @@ function PlayerRow({
   player, inDuoBox, sessionPlayers, matchType,
   editingId, editName, confirmDeleteId, sitOutPromptId,
   isSetPartnerPending, setPartnerVariables,
+  disabled,
   onStartEdit, onEditNameChange, onRename,
   onConfirmDelete, onCancelDelete, onRemove,
   onSitOutToggle, onSitOutBoth, onSitOutSolo,
@@ -72,7 +74,7 @@ function PlayerRow({
           size="icon"
           variant="ghost"
           className={`h-7 w-7 shrink-0 ${player.sit_out ? 'text-orange-500 hover:text-orange-600' : 'text-muted-foreground hover:text-foreground'}`}
-          disabled={sitOutPromptId === player.id}
+          disabled={disabled || sitOutPromptId === player.id}
           onClick={() => onSitOutToggle(player)}
           aria-label={player.sit_out ? `Bring ${player.name} back` : `Sit out ${player.name}`}
         >
@@ -82,6 +84,7 @@ function PlayerRow({
           size="icon"
           variant="ghost"
           className="h-7 w-7 shrink-0"
+          disabled={disabled}
           onClick={() => onStartEdit(player)}
           aria-label={`Rename ${player.name}`}
         >
@@ -93,6 +96,7 @@ function PlayerRow({
               size="sm"
               variant="destructive"
               className="h-7 text-xs px-2"
+              disabled={disabled}
               onClick={() => onRemove(player.id)}
             >
               Remove
@@ -101,6 +105,7 @@ function PlayerRow({
               size="sm"
               variant="ghost"
               className="h-7 text-xs px-2"
+              disabled={disabled}
               onClick={onCancelDelete}
             >
               Cancel
@@ -111,6 +116,7 @@ function PlayerRow({
             size="icon"
             variant="ghost"
             className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
+            disabled={disabled}
             onClick={() => onConfirmDelete(player.id)}
             aria-label={`Remove ${player.name}`}
           >
@@ -126,6 +132,7 @@ function PlayerRow({
             size="sm"
             variant="secondary"
             className="h-6 text-xs px-2"
+            disabled={disabled}
             onClick={() => onSitOutBoth(player.id, sitOutPromptPartner.id)}
           >
             Yes
@@ -134,6 +141,7 @@ function PlayerRow({
             size="sm"
             variant="ghost"
             className="h-6 text-xs px-2"
+            disabled={disabled}
             onClick={() => onSitOutSolo(player.id)}
           >
             No
@@ -148,7 +156,7 @@ function PlayerRow({
             <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
           )}
           <Select
-            disabled={isThisPartnerPending}
+            disabled={disabled || isThisPartnerPending}
             value={player.permanent_partner_id ?? 'none'}
             onValueChange={(val) => onSetPartner(player.id, val === 'none' ? null : val)}
           >
@@ -213,6 +221,7 @@ export function PlayerList({ session }: Props) {
   const updatePlayer = useUpdatePlayer(session.id)
   const setPartner = useSetPartner(session.id)
   const setSitOut = useSetSitOut(session.id)
+  const disabled = !session.is_active
 
   const { duoPairs, solos } = useMemo(() => partitionPlayers(session.players), [session.players])
   const sittingOutCount = session.players.filter((p) => p.sit_out).length
@@ -267,6 +276,7 @@ export function PlayerList({ session }: Props) {
     sitOutPromptId,
     isSetPartnerPending: setPartner.isPending,
     setPartnerVariables: setPartner.variables,
+    disabled,
     onStartEdit: (p: Player) => { setEditingId(p.id); setEditName(p.name) },
     onEditNameChange: setEditName,
     onRename: handleRename,
@@ -297,8 +307,9 @@ export function PlayerList({ session }: Props) {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           className="flex-1"
+          disabled={disabled}
         />
-        <Button type="submit" size="sm" disabled={addPlayer.isPending} aria-label="Add player">
+        <Button type="submit" size="sm" disabled={disabled || addPlayer.isPending} aria-label="Add player">
           {addPlayer.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
         </Button>
       </form>
@@ -331,7 +342,7 @@ export function PlayerList({ session }: Props) {
                     size="sm"
                     variant="ghost"
                     className="h-6 text-xs text-muted-foreground hover:text-destructive px-2 gap-1"
-                    disabled={isBreaking}
+                    disabled={disabled || isBreaking}
                     onClick={() => setPartner.mutate({ playerId: a.id, partnerId: null })}
                   >
                     {isBreaking && <Loader2 className="h-3 w-3 animate-spin" />}
@@ -365,7 +376,7 @@ export function PlayerList({ session }: Props) {
         </div>
       )}
 
-      {!formVisible && !dropdownOpen && (
+      {!disabled && !formVisible && !dropdownOpen && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
           <button
             className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-primary text-primary-foreground shadow-lg px-4 py-2 text-xs font-medium animate-card-enter"

@@ -93,8 +93,8 @@ export function CurrentRound({ session, isAdmin }: Props) {
               removedPlayers={session.removed_players}
               isAdmin={isAdmin}
               streakPlayerIds={streakPlayerIds}
-              onEdit={isAdmin ? setEditingMatch : undefined}
-              onSetResult={isAdmin ? (matchId, winner) => setResult.mutate({ matchId, winner }) : undefined}
+              onEdit={isAdmin && session.is_active ? setEditingMatch : undefined}
+              onSetResult={isAdmin && session.is_active ? (matchId, winner) => setResult.mutate({ matchId, winner }) : undefined}
               isPending={setResult.isPending && setResult.variables?.matchId === match.id}
             />
           </div>

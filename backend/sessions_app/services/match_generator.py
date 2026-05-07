@@ -19,6 +19,7 @@ from collections import defaultdict
 from typing import TypedDict
 
 from django.db import transaction
+from django.utils import timezone
 
 from sessions_app.models import Match, Player, PlayerRoundHistory, Round, Session
 
@@ -663,5 +664,7 @@ def commit_round(session: Session, generated: GeneratedRound) -> Round:
         PlayerRoundHistory.objects.bulk_create(history_rows)
         if bye_to_update:
             Player.objects.bulk_update(bye_to_update, ['total_wait_rounds'])
+
+        Session.objects.filter(pk=session.pk).update(last_round_at=timezone.now())
 
     return rnd

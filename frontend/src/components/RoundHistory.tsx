@@ -11,9 +11,10 @@ interface Props {
   players: Player[]
   removedPlayers: Record<string, string>
   isAdmin: boolean
+  isActive: boolean
 }
 
-function MatchRow({ sessionId, match, players, removedPlayers, isAdmin }: { sessionId: string; match: Match; players: Player[]; removedPlayers: Record<string, string>; isAdmin: boolean }) {
+function MatchRow({ sessionId, match, players, removedPlayers, isAdmin, isActive }: { sessionId: string; match: Match; players: Player[]; removedPlayers: Record<string, string>; isAdmin: boolean; isActive: boolean }) {
   const setResult = useSetMatchResult(sessionId)
   const team1 = resolveNames(match.team1_players, players, removedPlayers)
   const team2 = resolveNames(match.team2_players, players, removedPlayers)
@@ -34,16 +35,16 @@ function MatchRow({ sessionId, match, players, removedPlayers, isAdmin }: { sess
       <div className="flex flex-col gap-1">
         {/* Team 1 */}
         <button
-          disabled={!isAdmin}
-          onClick={() => isAdmin && handleTeamClick('team1')}
+          disabled={!isAdmin || !isActive}
+          onClick={() => isAdmin && isActive && handleTeamClick('team1')}
           className={[
             'relative rounded px-3 py-1.5 text-xs text-center font-medium transition-colors w-full',
-            isAdmin ? 'cursor-pointer' : 'cursor-default',
+            isAdmin && isActive ? 'cursor-pointer' : 'cursor-default',
             team1Won
               ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
               : hasResult
                 ? 'bg-muted/40 text-muted-foreground/50'
-                : isAdmin ? 'bg-muted/40 hover:bg-muted' : 'bg-muted/40',
+                : isAdmin && isActive ? 'bg-muted/40 hover:bg-muted' : 'bg-muted/40',
           ].join(' ')}
         >
           {team1Won && <Trophy className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-yellow-500" />}
@@ -57,16 +58,16 @@ function MatchRow({ sessionId, match, players, removedPlayers, isAdmin }: { sess
 
         {/* Team 2 */}
         <button
-          disabled={!isAdmin}
-          onClick={() => isAdmin && handleTeamClick('team2')}
+          disabled={!isAdmin || !isActive}
+          onClick={() => isAdmin && isActive && handleTeamClick('team2')}
           className={[
             'relative rounded px-3 py-1.5 text-xs text-center font-medium transition-colors w-full',
-            isAdmin ? 'cursor-pointer' : 'cursor-default',
+            isAdmin && isActive ? 'cursor-pointer' : 'cursor-default',
             team2Won
               ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
               : hasResult
                 ? 'bg-muted/40 text-muted-foreground/50'
-                : isAdmin ? 'bg-muted/40 hover:bg-muted' : 'bg-muted/40',
+                : isAdmin && isActive ? 'bg-muted/40 hover:bg-muted' : 'bg-muted/40',
           ].join(' ')}
         >
           {team2Won && <Trophy className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-yellow-500" />}
@@ -80,7 +81,7 @@ function MatchRow({ sessionId, match, players, removedPlayers, isAdmin }: { sess
   )
 }
 
-export function RoundHistory({ sessionId, rounds, players, removedPlayers, isAdmin }: Props) {
+export function RoundHistory({ sessionId, rounds, players, removedPlayers, isAdmin, isActive }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null)
   const allRounds = useMemo(() => [...rounds].reverse(), [rounds])
 
@@ -116,9 +117,9 @@ export function RoundHistory({ sessionId, rounds, players, removedPlayers, isAdm
             <div className="overflow-hidden">
               <CardContent className="pt-0 pb-3 space-y-3">
                 {round.matches.map((m) => (
-                  <MatchRow key={m.id} sessionId={sessionId} match={m} players={players} removedPlayers={removedPlayers} isAdmin={isAdmin} />
+                  <MatchRow key={m.id} sessionId={sessionId} match={m} players={players} removedPlayers={removedPlayers} isAdmin={isAdmin} isActive={isActive} />
                 ))}
-                {isAdmin && (
+                {isAdmin && isActive && (
                   <p className="text-[10px] text-muted-foreground text-center pt-1">
                     Tap a team to mark as winner
                   </p>

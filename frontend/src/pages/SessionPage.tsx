@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { RefreshCw, Settings, Users, Clock, LogOut, Copy, Check, Trophy, Moon, Sun } from 'lucide-react'
-import { useSession, useGenerateRound, useUpdateSession } from '@/hooks/useSession'
+import { useSession, useGenerateRound, useUpdateSession, useSetSessionActive } from '@/hooks/useSession'
 import { useTheme } from '@/hooks/useTheme'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { CurrentRound } from '@/components/CurrentRound'
@@ -42,6 +42,7 @@ export function SessionPage() {
   const { data: session, isLoading, error } = useSession(sessionId!)
   const generateRound = useGenerateRound(sessionId!)
   const updateSession = useUpdateSession(sessionId!)
+  const setSessionActive = useSetSessionActive(sessionId!)
   const [tab, setTab] = useState<Tab>('round')
   const [slideDir, setSlideDir] = useState<'left' | 'right'>('left')
   const prevTabRef = useRef<Tab>('round')
@@ -115,8 +116,8 @@ export function SessionPage() {
       </header>
 
       {/* Tab bar */}
-      <nav className="border-b bg-background sticky top-[61px] z-10">
-        <div role="tablist" className="flex max-w-2xl mx-auto">
+      <nav className="bg-background sticky top-[61px] z-10">
+        <div role="tablist" className="flex max-w-2xl mx-auto border-b">
           {TABS.map((t) => (
             <button
               key={t.key}
@@ -134,10 +135,17 @@ export function SessionPage() {
             </button>
           ))}
         </div>
+        {!session.is_active && (
+          <div className="border-b bg-muted px-4 py-2.5 text-center text-sm text-muted-foreground">
+            {session.auto_deactivated
+              ? 'This session was closed automatically after 24 hours of inactivity.'
+              : 'This session has been closed by the host.'}
+          </div>
+        )}
       </nav>
 
       {/* Content */}
-      <main key={tab} className={`max-w-2xl mx-auto p-4 space-y-6 ${admin && tab === 'round' ? 'pb-24' : ''} ${slideDir === 'left' ? 'animate-tab-slide-left' : 'animate-tab-slide-right'}`}>
+      <main key={tab} className={`max-w-2xl mx-auto p-4 space-y-6 ${admin && tab === 'round' && session.is_active ? 'pb-24' : ''} ${slideDir === 'left' ? 'animate-tab-slide-left' : 'animate-tab-slide-right'}`}>
         <ErrorBoundary>
           {tab === 'round' && (
             <CurrentRound
@@ -150,7 +158,7 @@ export function SessionPage() {
               ? <PlayerList session={session} />
               : <PublicPlayerList players={session.players} />
           )}
-          {tab === 'history' && <RoundHistory sessionId={session.id} rounds={session.rounds} players={session.players} removedPlayers={session.removed_players} isAdmin={admin} />}
+          {tab === 'history' && <RoundHistory sessionId={session.id} rounds={session.rounds} players={session.players} removedPlayers={session.removed_players} isAdmin={admin} isActive={session.is_active} />}
           {tab === 'leaderboard' && (
             <div className="space-y-6">
               <Leaderboard players={session.players} rounds={session.rounds} />
@@ -166,6 +174,8 @@ export function SessionPage() {
                   session={session}
                   onSave={(data) => updateSession.mutate(data)}
                   saving={updateSession.isPending}
+                  onSetActive={(v) => setSessionActive.mutate(v)}
+                  settingActive={setSessionActive.isPending}
                 />
               : <GuestSettings sessionId={sessionId!} session={session} onUnlocked={handleAdminUnlocked} />
           )}
@@ -209,8 +219,8 @@ export function SessionPage() {
         />
       )}
 
-      {/* Sticky generate button — only on Round tab for admins */}
-      {admin && tab === 'round' && (() => {
+      {/* Sticky generate button — only on Round tab for active admins */}
+      {admin && tab === 'round' && session.is_active && (() => {
         const activePlayers = session.players.filter((p) => !p.sit_out)
         const minPlayers = session.match_type === '2v2' ? 4 : 2
         const hint = activePlayers.length === 0
@@ -344,6 +354,8 @@ interface SettingsProps {
   session: import('@/lib/types').Session
   onSave: (data: Partial<{ name: string; match_type: '1v1' | '2v2'; num_courts: number; generation_mode: 'fair' | 'competitive' }>) => void
   saving: boolean
+  onSetActive: (isActive: boolean) => void
+  settingActive: boolean
 }
 
 function ShareField({ session }: { session: import('@/lib/types').Session }) {
@@ -459,11 +471,12 @@ function SettingsSection({ title, children }: { title: string; children: React.R
   )
 }
 
-function SessionSettings({ sessionId, session, onSave, saving }: SettingsProps) {
+function SessionSettings({ sessionId, session, onSave, saving, onSetActive, settingActive }: SettingsProps) {
   const [name, setName] = useState(session.name)
   const [matchType, setMatchType] = useState<'1v1' | '2v2'>(session.match_type)
   const [numCourts, setNumCourts] = useState(String(session.num_courts))
   const [mode, setMode] = useState<'fair' | 'competitive'>(session.generation_mode)
+  const [confirmClose, setConfirmClose] = useState(false)
   const { theme, toggle: toggleTheme } = useTheme()
   const navigate = useNavigate()
 
@@ -475,6 +488,7 @@ function SessionSettings({ sessionId, session, onSave, saving }: SettingsProps) 
   }, [session.name, session.match_type, session.num_courts, session.generation_mode])
 
   const adminToken = getAdminToken(sessionId) ?? ''
+  const fieldDisabled = !session.is_active
 
   return (
     <div className="space-y-6">
@@ -483,7 +497,7 @@ function SessionSettings({ sessionId, session, onSave, saving }: SettingsProps) 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Match Type</label>
-            <Select value={matchType} onValueChange={(v) => setMatchType(v as '1v1' | '2v2')}>
+            <Select value={matchType} onValueChange={(v) => setMatchType(v as '1v1' | '2v2')} disabled={fieldDisabled}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="2v2">2v2</SelectItem>
@@ -493,12 +507,12 @@ function SessionSettings({ sessionId, session, onSave, saving }: SettingsProps) 
           </div>
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Courts</label>
-            <Input type="text" inputMode="numeric" value={numCourts} onChange={(e) => setNumCourts(e.target.value.replace(/\D/g, ''))} />
+            <Input type="text" inputMode="numeric" value={numCourts} onChange={(e) => setNumCourts(e.target.value.replace(/\D/g, ''))} disabled={fieldDisabled} />
           </div>
         </div>
         <div>
           <label className="text-xs text-muted-foreground mb-1 block">Mode</label>
-          <Select value={mode} onValueChange={(v) => setMode(v as 'fair' | 'competitive')}>
+          <Select value={mode} onValueChange={(v) => setMode(v as 'fair' | 'competitive')} disabled={fieldDisabled}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="fair">Fair Rotation</SelectItem>
@@ -516,7 +530,7 @@ function SessionSettings({ sessionId, session, onSave, saving }: SettingsProps) 
       <SettingsSection title="Session">
         <div>
           <label className="text-xs text-muted-foreground mb-1 block">Name</label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} />
+          <Input value={name} onChange={(e) => setName(e.target.value)} disabled={fieldDisabled} />
         </div>
       </SettingsSection>
 
@@ -534,19 +548,81 @@ function SessionSettings({ sessionId, session, onSave, saving }: SettingsProps) 
         <CopyField label="Admin Code — tap to copy & share with co-hosts" value={adminToken} />
       </SettingsSection>
 
+      {session.is_active && (
+        <SettingsSection title="Session Status">
+          <Button
+            className="w-full"
+            variant="destructive"
+            onClick={() => setConfirmClose(true)}
+            disabled={settingActive}
+          >
+            Close Session
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Players will no longer be able to generate new rounds. You can reopen it afterwards.
+          </p>
+        </SettingsSection>
+      )}
+
+      {!session.is_active && (
+        <SettingsSection title="Session Status">
+          <div className="rounded-lg border px-3 py-2.5 text-sm text-muted-foreground">
+            {session.auto_deactivated
+              ? 'This session was closed automatically and cannot be reopened.'
+              : 'This session is closed.'}
+          </div>
+          {!session.auto_deactivated && (
+            <Button
+              className="w-full"
+              variant="outline"
+              onClick={() => onSetActive(true)}
+              disabled={settingActive}
+            >
+              {settingActive ? 'Reopening…' : 'Reopen Session'}
+            </Button>
+          )}
+        </SettingsSection>
+      )}
+
       <div className="space-y-2 pt-2">
-        <Button
-          className="w-full"
-          onClick={() => onSave({ name, match_type: matchType, num_courts: Math.max(1, Math.min(8, parseInt(numCourts) || 1)), generation_mode: mode })}
-          disabled={saving}
-        >
-          {saving ? 'Saving…' : 'Save Settings'}
-        </Button>
+        {session.is_active && (
+          <Button
+            className="w-full"
+            onClick={() => onSave({ name, match_type: matchType, num_courts: Math.max(1, Math.min(8, parseInt(numCourts) || 1)), generation_mode: mode })}
+            disabled={saving}
+          >
+            {saving ? 'Saving…' : 'Save Settings'}
+          </Button>
+        )}
         <Button className="w-full" variant="outline" onClick={() => navigate('/')}>
           <LogOut className="h-4 w-4 mr-2" />
           Leave Session
         </Button>
       </div>
+
+      <Dialog open={confirmClose} onOpenChange={setConfirmClose}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Close this session?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            No new rounds can be generated once closed. You can reopen it from Settings.
+          </p>
+          <div className="flex gap-2 justify-end mt-2">
+            <Button variant="outline" onClick={() => setConfirmClose(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={settingActive}
+              onClick={() => {
+                setConfirmClose(false)
+                onSetActive(false)
+              }}
+            >
+              Close Session
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <p className="text-center text-xs text-muted-foreground/60 pt-2">
         Got feedback?{' '}
         <a href="https://forms.gle/bFa9PwrG3DweFfnZ9" target="_blank" rel="noreferrer" className="underline underline-offset-2">

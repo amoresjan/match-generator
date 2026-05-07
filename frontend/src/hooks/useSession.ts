@@ -28,7 +28,7 @@ export function useSession(sessionId: string) {
         rounds: [...previous.rounds, ...patch.rounds.filter(r => !existingIds.has(r.id))],
       }
     },
-    refetchInterval: 3_000,
+    refetchInterval: (query) => (query.state.data?.is_active === false ? false : 3_000),
     refetchIntervalInBackground: false,
   })
 }
@@ -151,6 +151,15 @@ export function useSetMatchResult(sessionId: string) {
       toast.error('Failed to record result')
     },
     onSettled: () => qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) }),
+  })
+}
+
+export function useSetSessionActive(sessionId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (isActive: boolean) => api.setSessionActive(sessionId, isActive),
+    onSuccess: () => qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) }),
+    onError: (err: Error) => toast.error(err.message || 'Failed to update session status'),
   })
 }
 

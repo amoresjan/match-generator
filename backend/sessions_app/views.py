@@ -30,6 +30,12 @@ def _require_admin(request, session: Session):
     return None
 
 
+def _require_active(session: Session):
+    if not session.is_active:
+        return Response({'detail': 'Session is deactivated.'}, status=status.HTTP_403_FORBIDDEN)
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Session
 # ---------------------------------------------------------------------------
@@ -76,12 +82,28 @@ def get_session(request, session_id):
 @api_view(['PATCH'])
 def update_session(request, session_id):
     session = _session_with_prefetch(session_id)
-    err = _require_admin(request, session)
+    err = _require_admin(request, session) or _require_active(session)
     if err:
         return err
     ser = SessionCreateSerializer(session, data=request.data, partial=True)
     ser.is_valid(raise_exception=True)
     ser.save()
+    return Response(SessionSerializer(session).data)
+
+
+@api_view(['PATCH'])
+def set_session_active(request, session_id):
+    session = get_object_or_404(Session, id=session_id)
+    err = _require_admin(request, session)
+    if err:
+        return err
+    is_active = request.data.get('is_active')
+    if not isinstance(is_active, bool):
+        return Response({'detail': 'is_active must be a boolean.'}, status=400)
+    if is_active and session.auto_deactivated:
+        return Response({'detail': 'Cannot reactivate an auto-deactivated session.'}, status=status.HTTP_403_FORBIDDEN)
+    session.is_active = is_active
+    session.save(update_fields=['is_active'])
     return Response(SessionSerializer(session).data)
 
 
@@ -92,7 +114,7 @@ def update_session(request, session_id):
 @api_view(['POST'])
 def add_player(request, session_id):
     session = get_object_or_404(Session, id=session_id)
-    err = _require_admin(request, session)
+    err = _require_admin(request, session) or _require_active(session)
     if err:
         return err
     ser = PlayerCreateSerializer(data=request.data)
@@ -104,7 +126,7 @@ def add_player(request, session_id):
 @api_view(['PATCH', 'DELETE'])
 def player_detail(request, session_id, player_id):
     session = get_object_or_404(Session, id=session_id)
-    err = _require_admin(request, session)
+    err = _require_admin(request, session) or _require_active(session)
     if err:
         return err
     player = get_object_or_404(Player, id=player_id, session=session)
@@ -132,7 +154,7 @@ def player_detail(request, session_id, player_id):
 @api_view(['POST'])
 def set_partner(request, session_id, player_id):
     session = get_object_or_404(Session, id=session_id)
-    err = _require_admin(request, session)
+    err = _require_admin(request, session) or _require_active(session)
     if err:
         return err
 
@@ -178,7 +200,7 @@ def set_partner(request, session_id, player_id):
 @api_view(['POST'])
 def generate_next_round(request, session_id):
     session = get_object_or_404(Session, id=session_id)
-    err = _require_admin(request, session)
+    err = _require_admin(request, session) or _require_active(session)
     if err:
         return err
 
@@ -199,7 +221,7 @@ def generate_next_round(request, session_id):
 @api_view(['PATCH'])
 def set_match_result(request, session_id, match_id):
     session = get_object_or_404(Session, id=session_id)
-    err = _require_admin(request, session)
+    err = _require_admin(request, session) or _require_active(session)
     if err:
         return err
 
@@ -215,7 +237,7 @@ def set_match_result(request, session_id, match_id):
 @api_view(['PATCH'])
 def override_match(request, session_id, match_id):
     session = get_object_or_404(Session, id=session_id)
-    err = _require_admin(request, session)
+    err = _require_admin(request, session) or _require_active(session)
     if err:
         return err
 
