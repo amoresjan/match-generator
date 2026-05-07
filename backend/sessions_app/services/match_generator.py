@@ -656,6 +656,7 @@ def commit_round(session: Session, generated: GeneratedRound) -> Round:
                     opponent_ids=t1,
                 )
 
+        bye_to_update = []
         for pid in generated['bye_players']:
             if pid in player_map:
                 PlayerRoundHistory.objects.create(
@@ -664,6 +665,8 @@ def commit_round(session: Session, generated: GeneratedRound) -> Round:
                     sat_out=True,
                 )
                 player_map[pid].total_wait_rounds += 1
-                player_map[pid].save(update_fields=['total_wait_rounds'])
+                bye_to_update.append(player_map[pid])
+        if bye_to_update:
+            Player.objects.bulk_update(bye_to_update, ['total_wait_rounds'])
 
     return rnd
