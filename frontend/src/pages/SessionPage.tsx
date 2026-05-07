@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { RefreshCw, Settings, Users, Clock, LogOut, Copy, Check, Trophy, Moon, Sun } from 'lucide-react'
 import { useSession, useGenerateRound, useUpdateSession } from '@/hooks/useSession'
@@ -43,12 +43,20 @@ export function SessionPage() {
   const generateRound = useGenerateRound(sessionId!)
   const updateSession = useUpdateSession(sessionId!)
   const [tab, setTab] = useState<Tab>('round')
+  const [slideDir, setSlideDir] = useState<'left' | 'right'>('left')
+  const prevTabRef = useRef<Tab>('round')
   const [admin, setAdmin] = useState(() => isAdmin(sessionId!))
   const [confirmGenerate, setConfirmGenerate] = useState(false)
   const [showWizard, setShowWizard] = useState(() => !hasBeenOnboarded(sessionId!))
   const [wizardIsCoHost, setWizardIsCoHost] = useState(false)
 
+  const TAB_ORDER = TABS.map((t) => t.key)
+
   function switchTab(t: Tab) {
+    const prevIdx = TAB_ORDER.indexOf(prevTabRef.current)
+    const nextIdx = TAB_ORDER.indexOf(t)
+    setSlideDir(nextIdx > prevIdx ? 'left' : 'right')
+    prevTabRef.current = t
     setTab(t)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -129,7 +137,7 @@ export function SessionPage() {
       </nav>
 
       {/* Content */}
-      <main className={`max-w-2xl mx-auto p-4 space-y-6 ${admin && tab === 'round' ? 'pb-24' : ''}`}>
+      <main key={tab} className={`max-w-2xl mx-auto p-4 space-y-6 ${admin && tab === 'round' ? 'pb-24' : ''} ${slideDir === 'left' ? 'animate-tab-slide-left' : 'animate-tab-slide-right'}`}>
         <ErrorBoundary>
           {tab === 'round' && (
             <CurrentRound
