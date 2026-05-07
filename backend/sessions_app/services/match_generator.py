@@ -260,6 +260,7 @@ def _generate_2v2(
     players: list[Player],
     num_courts: int,
     hist: dict,
+    round_number: int,
 ) -> GeneratedRound:
     active_pairs, active_singles, bye_players = _select_byes_2v2(players, num_courts, hist)
 
@@ -297,8 +298,7 @@ def _generate_2v2(
         if i not in used:
             bye_players.extend(grp)
 
-    next_round = _next_round_number(players[0].session if players else None)
-    return {'round_number': next_round, 'courts': courts, 'bye_players': bye_players}
+    return {'round_number': round_number, 'courts': courts, 'bye_players': bye_players}
 
 
 def _generate_2v2_competitive(
@@ -306,6 +306,7 @@ def _generate_2v2_competitive(
     num_courts: int,
     hist: dict,
     wins: dict[str, int],
+    round_number: int,
 ) -> GeneratedRound:
     """
     Sit-out selection is identical to fair mode.
@@ -332,8 +333,7 @@ def _generate_2v2_competitive(
     for team in pool[len(courts) * 2:]:
         bye_players.extend(team)
 
-    next_round = _next_round_number(players[0].session if players else None)
-    return {'round_number': next_round, 'courts': courts, 'bye_players': bye_players}
+    return {'round_number': round_number, 'courts': courts, 'bye_players': bye_players}
 
 
 # ---------------------------------------------------------------------------
@@ -344,6 +344,7 @@ def _generate_1v1(
     players: list[Player],
     num_courts: int,
     hist: dict,
+    round_number: int,
 ) -> GeneratedRound:
     all_ids = [str(p.id) for p in players]
     total = len(all_ids)
@@ -383,8 +384,7 @@ def _generate_1v1(
         if p not in used:
             bye_players.append(p)
 
-    next_round = _next_round_number(players[0].session if players else None)
-    return {'round_number': next_round, 'courts': courts, 'bye_players': bye_players}
+    return {'round_number': round_number, 'courts': courts, 'bye_players': bye_players}
 
 
 def _generate_1v1_competitive(
@@ -392,6 +392,7 @@ def _generate_1v1_competitive(
     num_courts: int,
     hist: dict,
     wins: dict[str, int],
+    round_number: int,
 ) -> GeneratedRound:
     all_ids = [str(p.id) for p in players]
     total = len(all_ids)
@@ -415,8 +416,7 @@ def _generate_1v1_competitive(
     for p in active[len(courts) * 2:]:
         bye_players.append(p)
 
-    next_round = _next_round_number(players[0].session if players else None)
-    return {'round_number': next_round, 'courts': courts, 'bye_players': bye_players}
+    return {'round_number': round_number, 'courts': courts, 'bye_players': bye_players}
 
 
 # ---------------------------------------------------------------------------
@@ -501,12 +501,12 @@ def generate_round(session: Session) -> GeneratedRound:
     with _seeded(session.id, next_number):
         if session.match_type == '1v1':
             if mode == 'competitive':
-                return _generate_1v1_competitive(players, session.num_courts, hist, _build_win_counts(session))
-            return _generate_1v1(players, session.num_courts, hist)
+                return _generate_1v1_competitive(players, session.num_courts, hist, _build_win_counts(session), next_number)
+            return _generate_1v1(players, session.num_courts, hist, next_number)
 
         if mode == 'competitive':
-            return _generate_2v2_competitive(players, session.num_courts, hist, _build_win_counts(session))
-        return _generate_2v2(players, session.num_courts, hist)
+            return _generate_2v2_competitive(players, session.num_courts, hist, _build_win_counts(session), next_number)
+        return _generate_2v2(players, session.num_courts, hist, next_number)
 
 
 def preview_rounds(session: Session, count: int = 5) -> list[GeneratedRound]:
@@ -526,15 +526,14 @@ def preview_rounds(session: Session, count: int = 5) -> list[GeneratedRound]:
         with _seeded(session.id, round_number):
             if session.match_type == '1v1':
                 if mode == 'competitive':
-                    gen = _generate_1v1_competitive(players, session.num_courts, hist, wins)
+                    gen = _generate_1v1_competitive(players, session.num_courts, hist, wins, round_number)
                 else:
-                    gen = _generate_1v1(players, session.num_courts, hist)
+                    gen = _generate_1v1(players, session.num_courts, hist, round_number)
             else:
                 if mode == 'competitive':
-                    gen = _generate_2v2_competitive(players, session.num_courts, hist, wins)
+                    gen = _generate_2v2_competitive(players, session.num_courts, hist, wins, round_number)
                 else:
-                    gen = _generate_2v2(players, session.num_courts, hist)
-        gen['round_number'] = round_number
+                    gen = _generate_2v2(players, session.num_courts, hist, round_number)
         results.append(gen)
         hist = _simulate_history_update(hist, gen)
 
