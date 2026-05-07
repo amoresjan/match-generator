@@ -9,9 +9,25 @@ export const sessionKeys = {
 }
 
 export function useSession(sessionId: string) {
+  const qc = useQueryClient()
   return useQuery({
     queryKey: sessionKeys.detail(sessionId),
-    queryFn: () => api.getSession(sessionId),
+    queryFn: async () => {
+      const previous = qc.getQueryData<Session>(sessionKeys.detail(sessionId))
+      const sinceRound = previous?.rounds.length
+        ? Math.max(...previous.rounds.map(r => r.number))
+        : undefined
+
+      const patch = await api.getSession(sessionId, sinceRound)
+
+      if (sinceRound === undefined || !previous) return patch
+
+      const existingIds = new Set(previous.rounds.map(r => r.id))
+      return {
+        ...patch,
+        rounds: [...previous.rounds, ...patch.rounds.filter(r => !existingIds.has(r.id))],
+      }
+    },
     refetchInterval: 3_000,
     refetchIntervalInBackground: false,
   })
@@ -89,7 +105,21 @@ export function useOverrideMatch(sessionId: string) {
       team1_players: string[]
       team2_players: string[]
     }) => api.overrideMatch(sessionId, matchId, { team1_players, team2_players }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) }),
+    onSuccess: (updatedMatch) => {
+      qc.setQueryData<Session>(sessionKeys.detail(sessionId), (old) => {
+        if (!old) return old
+        return {
+          ...old,
+          rounds: old.rounds.map(round => ({
+            ...round,
+            matches: round.matches.map(match =>
+              match.id === updatedMatch.id ? updatedMatch : match
+            ),
+          })),
+        }
+      })
+      qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) })
+    },
     onError: () => toast.error('Failed to save match override'),
   })
 }

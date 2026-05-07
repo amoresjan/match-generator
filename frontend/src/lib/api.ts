@@ -38,7 +38,8 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  getSession: (id: string) => request<Session>(`/sessions/${id}/`),
+  getSession: (id: string, sinceRound?: number) =>
+    request<Session>(`/sessions/${id}/${sinceRound !== undefined ? `?since_round=${sinceRound}` : ''}`),
 
   validateAdminToken: (sessionId: string, token: string) =>
     request<Session>(`/sessions/${sessionId}/update/`, {
