@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view
@@ -53,7 +54,22 @@ def _session_with_prefetch(session_id):
 
 @api_view(['GET'])
 def get_session(request, session_id):
-    session = _session_with_prefetch(session_id)
+    since_round = request.query_params.get('since_round')
+
+    rounds_qs = Round.objects.prefetch_related('matches').order_by('number')
+    if since_round is not None:
+        try:
+            rounds_qs = rounds_qs.filter(number__gt=int(since_round))
+        except ValueError:
+            return Response({'detail': 'since_round must be an integer.'}, status=400)
+
+    session = get_object_or_404(
+        Session.objects.prefetch_related(
+            'players__permanent_partner',
+            Prefetch('rounds', queryset=rounds_qs),
+        ),
+        id=session_id,
+    )
     return Response(SessionSerializer(session).data)
 
 
