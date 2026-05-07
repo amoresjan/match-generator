@@ -4,6 +4,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from sessions_app.models import Session
+from sessions_app.services.push_notifications import send_push_to_session
 
 
 class Command(BaseCommand):
@@ -12,20 +13,26 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         cutoff = timezone.now() - timedelta(hours=24)
 
-        # Sessions with at least one round but none in the last 24h
-        stale_with_rounds = Session.objects.filter(
+        stale = Session.objects.filter(
             is_active=True,
+        ).filter(
             last_round_at__lt=cutoff,
-        )
-
-        # Sessions created more than 24h ago with no rounds ever generated
-        stale_no_rounds = Session.objects.filter(
+        ) | Session.objects.filter(
             is_active=True,
             last_round_at__isnull=True,
             created_at__lt=cutoff,
         )
 
-        count = stale_with_rounds.update(is_active=False, auto_deactivated=True)
-        count += stale_no_rounds.update(is_active=False, auto_deactivated=True)
+        stale = list(stale.prefetch_related('push_subscriptions'))
+
+        for session in stale:
+            send_push_to_session(session, {
+                'title': session.name,
+                'body': 'This session was closed automatically after 24h of inactivity.',
+                'url': f'/session/{session.id}',
+            })
+
+        ids = [s.id for s in stale]
+        count = Session.objects.filter(id__in=ids).update(is_active=False, auto_deactivated=True)
 
         self.stdout.write(self.style.SUCCESS(f'Deactivated {count} inactive session(s).'))

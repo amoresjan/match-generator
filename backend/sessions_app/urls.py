@@ -13,4 +13,7 @@ urlpatterns = [
     path('sessions/<uuid:session_id>/matches/<uuid:match_id>/result/', views.set_match_result),
     path('sessions/<uuid:session_id>/preview-rounds/', views.preview_rounds_view),
     path('sessions/<uuid:session_id>/active/', views.set_session_active),
+    path('sessions/<uuid:session_id>/push-subscribe/', views.push_subscribe),
+    path('sessions/<uuid:session_id>/push-unsubscribe/', views.push_unsubscribe),
+    path('vapid-public-key/', views.vapid_public_key),
 ]

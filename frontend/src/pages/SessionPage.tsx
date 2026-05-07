@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input'
 import { api, saveAdminToken, getAdminToken } from '@/lib/api'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { OnboardingWizard, hasBeenOnboarded, hasSeenAdminOnboarding } from '@/components/OnboardingWizard'
+import { PushNotificationSettings } from '@/components/PushNotificationSettings'
 import { partitionPlayers } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 
@@ -441,6 +442,9 @@ function GuestSettings({ sessionId, session, onUnlocked }: { sessionId: string; 
           </Button>
         </div>
       </SettingsSection>
+      <SettingsSection title="Notifications">
+        <PushNotificationSettings sessionId={sessionId} />
+      </SettingsSection>
       <SettingsSection title="Share">
         <ShareField session={session} />
       </SettingsSection>
@@ -541,6 +545,10 @@ function SessionSettings({ sessionId, session, onSave, saving, onSetActive, sett
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
         </div>
+      </SettingsSection>
+
+      <SettingsSection title="Notifications">
+        <PushNotificationSettings sessionId={sessionId} />
       </SettingsSection>
 
       <SettingsSection title="Share">

@@ -82,6 +82,17 @@ class Match(models.Model):
         return f'Court {self.court_number} — Round {self.round.number}'
 
 
+class PushSubscription(models.Model):
+    session = models.ForeignKey(Session, on_delete=models.CASCADE, related_name='push_subscriptions')
+    endpoint = models.TextField(unique=True)
+    p256dh = models.TextField()
+    auth = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'PushSub for {self.session.name} ({self.endpoint[:40]}…)'
+
+
 class PlayerRoundHistory(models.Model):
     """Tracks who played with/against whom per round for cost calculation."""
     player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='history')

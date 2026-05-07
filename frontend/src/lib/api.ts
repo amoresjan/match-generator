@@ -124,4 +124,19 @@ export const api = {
       body: JSON.stringify({ is_active: isActive }),
       adminToken: getAdminToken(sessionId) ?? undefined,
     }),
+
+  getVapidPublicKey: () =>
+    request<{ public_key: string }>('/vapid-public-key/'),
+
+  pushSubscribe: (sessionId: string, sub: { endpoint: string; p256dh: string; auth: string }) =>
+    request<void>(`/sessions/${sessionId}/push-subscribe/`, {
+      method: 'POST',
+      body: JSON.stringify(sub),
+    }),
+
+  pushUnsubscribe: (sessionId: string, endpoint: string) =>
+    request<void>(`/sessions/${sessionId}/push-unsubscribe/`, {
+      method: 'POST',
+      body: JSON.stringify({ endpoint }),
+    }),
 }

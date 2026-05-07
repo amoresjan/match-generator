@@ -5,7 +5,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from .models import Match, Player, Round, Session
+from .models import Match, Player, PushSubscription, Round, Session
 from .serializers import (
     ManualMatchOverrideSerializer,
     MatchSerializer,
@@ -17,6 +17,7 @@ from .serializers import (
     SetPartnerSerializer,
 )
 from .services.match_generator import commit_round, generate_round, preview_rounds, reconcile_round_history
+from .services.push_notifications import send_push_to_session
 
 
 # ---------------------------------------------------------------------------
@@ -104,6 +105,12 @@ def set_session_active(request, session_id):
         return Response({'detail': 'Cannot reactivate an auto-deactivated session.'}, status=status.HTTP_403_FORBIDDEN)
     session.is_active = is_active
     session.save(update_fields=['is_active'])
+    if not is_active:
+        send_push_to_session(session, {
+            'title': session.name,
+            'body': 'This session has been closed.',
+            'url': f'/session/{session.id}',
+        })
     return Response(SessionSerializer(session).data)
 
 
@@ -211,6 +218,11 @@ def generate_next_round(request, session_id):
 
     rnd = commit_round(session, generated)
     rnd = Round.objects.prefetch_related('matches').get(id=rnd.id)
+    send_push_to_session(session, {
+        'title': session.name,
+        'body': f'Round {rnd.number} is ready!',
+        'url': f'/session/{session.id}',
+    })
     return Response(RoundSerializer(rnd).data, status=status.HTTP_201_CREATED)
 
 
@@ -269,3 +281,42 @@ def preview_rounds_view(request, session_id):
         return Response({'detail': str(exc)}, status=400)
 
     return Response(rounds)
+
+
+# ---------------------------------------------------------------------------
+# Push notifications
+# ---------------------------------------------------------------------------
+
+@api_view(['GET'])
+def vapid_public_key(request):
+    from django.conf import settings
+    key = settings.VAPID_PUBLIC_KEY
+    if not key:
+        return Response({'detail': 'Push notifications not configured.'}, status=503)
+    return Response({'public_key': key})
+
+
+@api_view(['POST'])
+def push_subscribe(request, session_id):
+    session = get_object_or_404(Session, id=session_id)
+    endpoint = request.data.get('endpoint', '').strip()
+    p256dh = request.data.get('p256dh', '').strip()
+    auth = request.data.get('auth', '').strip()
+    if not (endpoint and p256dh and auth):
+        return Response({'detail': 'endpoint, p256dh, and auth are required.'}, status=400)
+
+    PushSubscription.objects.update_or_create(
+        endpoint=endpoint,
+        defaults={'session': session, 'p256dh': p256dh, 'auth': auth},
+    )
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['POST'])
+def push_unsubscribe(request, session_id):
+    get_object_or_404(Session, id=session_id)
+    endpoint = request.data.get('endpoint', '').strip()
+    if not endpoint:
+        return Response({'detail': 'endpoint is required.'}, status=400)
+    PushSubscription.objects.filter(endpoint=endpoint).delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
