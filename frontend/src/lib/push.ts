@@ -84,3 +84,15 @@ export async function getExistingSubscription(): Promise<PushSubscription | null
   const reg = await navigator.serviceWorker.ready
   return reg.pushManager.getSubscription()
 }
+
+export async function resubscribeToSession(sessionId: string): Promise<void> {
+  const sub = await getExistingSubscription()
+  if (!sub) return
+  const json = sub.toJSON()
+  const keys = json.keys ?? {}
+  await api.pushSubscribe(sessionId, {
+    endpoint: sub.endpoint,
+    p256dh: keys.p256dh ?? '',
+    auth: keys.auth ?? '',
+  })
+}

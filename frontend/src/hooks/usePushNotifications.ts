@@ -3,6 +3,7 @@ import {
   detectDevice,
   getExistingSubscription,
   getPushSupport,
+  resubscribeToSession,
   subscribeToPush,
   unsubscribeFromPush,
 } from '@/lib/push'
@@ -27,8 +28,13 @@ export function usePushNotifications(sessionId: string) {
     if (Notification.permission === 'denied') { setStatus('permission-denied'); return }
 
     const sub = await getExistingSubscription()
-    setStatus(sub ? 'subscribed' : 'unsubscribed')
-  }, [])
+    if (sub) {
+      await resubscribeToSession(sessionId)
+      setStatus('subscribed')
+    } else {
+      setStatus('unsubscribed')
+    }
+  }, [sessionId])
 
   useEffect(() => { refresh() }, [refresh])
 
