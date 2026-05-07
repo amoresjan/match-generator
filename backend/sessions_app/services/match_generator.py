@@ -630,37 +630,37 @@ def commit_round(session: Session, generated: GeneratedRound) -> Round:
                 team2_players=court['team2'],
             )
 
-        all_playing: set[str] = set()
+        history_rows = []
         for court in generated['courts']:
             t1 = court['team1']
             t2 = court['team2']
-            all_playing.update(t1 + t2)
-
             for pid in t1:
-                PlayerRoundHistory.objects.create(
+                history_rows.append(PlayerRoundHistory(
                     player=player_map[pid],
                     round=rnd,
                     partner_ids=[x for x in t1 if x != pid],
                     opponent_ids=t2,
-                )
+                ))
             for pid in t2:
-                PlayerRoundHistory.objects.create(
+                history_rows.append(PlayerRoundHistory(
                     player=player_map[pid],
                     round=rnd,
                     partner_ids=[x for x in t2 if x != pid],
                     opponent_ids=t1,
-                )
+                ))
 
         bye_to_update = []
         for pid in generated['bye_players']:
             if pid in player_map:
-                PlayerRoundHistory.objects.create(
+                history_rows.append(PlayerRoundHistory(
                     player=player_map[pid],
                     round=rnd,
                     sat_out=True,
-                )
+                ))
                 player_map[pid].total_wait_rounds += 1
                 bye_to_update.append(player_map[pid])
+
+        PlayerRoundHistory.objects.bulk_create(history_rows)
         if bye_to_update:
             Player.objects.bulk_update(bye_to_update, ['total_wait_rounds'])
 
