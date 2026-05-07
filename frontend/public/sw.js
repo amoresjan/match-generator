@@ -8,7 +8,13 @@ self.addEventListener('push', (event) => {
     data: { url: data.url ?? '/' },
     requireInteraction: false,
   }
-  event.waitUntil(self.registration.showNotification(title, options))
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      const appIsOpen = windowClients.some((c) => c.focused)
+      if (appIsOpen) return
+      return self.registration.showNotification(title, options)
+    }),
+  )
 })
 
 self.addEventListener('notificationclick', (event) => {
