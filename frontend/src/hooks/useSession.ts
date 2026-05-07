@@ -28,7 +28,7 @@ export function useSession(sessionId: string) {
         rounds: [...previous.rounds, ...patch.rounds.filter(r => !existingIds.has(r.id))],
       }
     },
-    refetchInterval: (query) => (query.state.data?.is_active === false ? false : 3_000),
+    refetchInterval: (query) => (query.state.data?.is_active === false ? 15_000 : 3_000),
     refetchIntervalInBackground: false,
   })
 }
