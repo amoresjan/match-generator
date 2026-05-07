@@ -10,6 +10,7 @@ from .serializers import (
     MatchSerializer,
     PlayerCreateSerializer,
     PlayerSerializer,
+    RoundSerializer,
     SessionCreateSerializer,
     SessionSerializer,
     SetPartnerSerializer,
@@ -171,7 +172,6 @@ def generate_next_round(request, session_id):
         return Response({'detail': str(exc)}, status=400)
 
     rnd = commit_round(session, generated)
-    from .serializers import RoundSerializer
     rnd = Round.objects.prefetch_related('matches').get(id=rnd.id)
     return Response(RoundSerializer(rnd).data, status=status.HTTP_201_CREATED)
 

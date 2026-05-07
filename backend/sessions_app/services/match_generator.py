@@ -18,7 +18,9 @@ import random
 from collections import defaultdict
 from typing import TypedDict
 
-from sessions_app.models import Player, PlayerRoundHistory, Round, Session
+from django.db import transaction
+
+from sessions_app.models import Match, Player, PlayerRoundHistory, Round, Session
 
 
 # ---------------------------------------------------------------------------
@@ -88,7 +90,6 @@ def _build_history(session: Session) -> dict:
 
 
 def _build_win_counts(session: Session) -> dict[str, int]:
-    from sessions_app.models import Match
     wins: dict[str, int] = defaultdict(int)
     matches = (
         Match.objects
@@ -546,8 +547,6 @@ def reconcile_round_history(rnd: Round) -> None:
     Called after override_match so that the cost function always reflects what
     actually happened rather than the originally-generated assignments.
     """
-    from django.db import transaction
-
     session = rnd.session
     player_map = {str(p.id): p for p in session.players.filter(sit_out=False)}
 
@@ -618,15 +617,12 @@ def reconcile_round_history(rnd: Round) -> None:
 
 def commit_round(session: Session, generated: GeneratedRound) -> Round:
     """Persist the generated round and update PlayerRoundHistory."""
-    from django.db import transaction
-
-    player_map = {str(p.id): p for p in session.players.all()}
+    player_map = {str(p.id): p for p in session.players.filter(sit_out=False)}
 
     with transaction.atomic():
         rnd = Round.objects.create(session=session, number=generated['round_number'])
 
         for court in generated['courts']:
-            from sessions_app.models import Match
             Match.objects.create(
                 round=rnd,
                 court_number=court['court'],
