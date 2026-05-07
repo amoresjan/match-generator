@@ -72,6 +72,9 @@ class Match(models.Model):
     class Meta:
         unique_together = ('round', 'court_number')
         ordering = ['court_number']
+        indexes = [
+            models.Index(fields=['round', 'winner']),
+        ]
 
     def __str__(self):
         return f'Court {self.court_number} — Round {self.round.number}'
