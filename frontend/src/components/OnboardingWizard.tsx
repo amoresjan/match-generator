@@ -3,9 +3,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 
 const onboardingKey = (sessionId: string) => `rally_onboarded:${sessionId}`
+const adminOnboardingKey = (sessionId: string) => `rally_onboarded_admin:${sessionId}`
 
 export function hasBeenOnboarded(sessionId: string): boolean {
   return localStorage.getItem(onboardingKey(sessionId)) !== null
+}
+
+export function hasSeenAdminOnboarding(sessionId: string): boolean {
+  return localStorage.getItem(adminOnboardingKey(sessionId)) !== null
 }
 
 interface Props {
@@ -13,31 +18,46 @@ interface Props {
   sessionName: string
   matchType: '1v1' | '2v2'
   isAdmin: boolean
+  isCoHost?: boolean
   onGoToPlayers: () => void
   onGoToSettings: () => void
   onDone: () => void
 }
 
-export function OnboardingWizard({ sessionId, sessionName, matchType, isAdmin, onGoToPlayers, onGoToSettings, onDone }: Props) {
+export function OnboardingWizard({ sessionId, sessionName, matchType, isAdmin, isCoHost = false, onGoToPlayers, onGoToSettings, onDone }: Props) {
   const [step, setStep] = useState(0)
   const minPlayers = matchType === '2v2' ? 4 : 2
 
   function finish() {
     localStorage.setItem(onboardingKey(sessionId), '1')
+    if (isAdmin) localStorage.setItem(adminOnboardingKey(sessionId), '1')
     onDone()
   }
 
+  const coHostStep1 = {
+    icon: '🔑',
+    title: "You're now a co-host!",
+    body: (
+      <>
+        You've unlocked host access for <strong className="text-foreground">{sessionName}</strong>. You can now manage players, generate rounds, and record results.
+      </>
+    ),
+    action: null,
+  }
+
+  const newHostStep1 = {
+    icon: '🎉',
+    title: 'Session created!',
+    body: (
+      <>
+        You're the host of <strong className="text-foreground">{sessionName}</strong>. Players can join to view live matchups, but only you can manage rounds and generate matches.
+      </>
+    ),
+    action: null,
+  }
+
   const adminSteps = [
-    {
-      icon: '🎉',
-      title: 'Session created!',
-      body: (
-        <>
-          You're the host of <strong className="text-foreground">{sessionName}</strong>. Players can join to view live matchups, but only you can manage rounds and generate matches.
-        </>
-      ),
-      action: null,
-    },
+    isCoHost ? coHostStep1 : newHostStep1,
     {
       icon: '👥',
       title: 'Add your players',

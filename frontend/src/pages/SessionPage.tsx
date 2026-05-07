@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input'
 import { api, saveAdminToken, getAdminToken } from '@/lib/api'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { OnboardingWizard, hasBeenOnboarded } from '@/components/OnboardingWizard'
+import { OnboardingWizard, hasBeenOnboarded, hasSeenAdminOnboarding } from '@/components/OnboardingWizard'
 import { partitionPlayers } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 
@@ -46,6 +46,7 @@ export function SessionPage() {
   const [admin, setAdmin] = useState(() => isAdmin(sessionId!))
   const [confirmGenerate, setConfirmGenerate] = useState(false)
   const [showWizard, setShowWizard] = useState(() => !hasBeenOnboarded(sessionId!))
+  const [wizardIsCoHost, setWizardIsCoHost] = useState(false)
 
   function switchTab(t: Tab) {
     setTab(t)
@@ -81,6 +82,10 @@ export function SessionPage() {
   function handleAdminUnlocked() {
     setAdmin(true)
     setTab('round')
+    if (!hasSeenAdminOnboarding(sessionId!)) {
+      setWizardIsCoHost(true)
+      setShowWizard(true)
+    }
   }
 
   return (
@@ -189,9 +194,10 @@ export function SessionPage() {
           sessionName={session.name}
           matchType={session.match_type}
           isAdmin={admin}
+          isCoHost={wizardIsCoHost}
           onGoToPlayers={() => switchTab('players')}
           onGoToSettings={() => switchTab('settings')}
-          onDone={() => setShowWizard(false)}
+          onDone={() => { setShowWizard(false); setWizardIsCoHost(false) }}
         />
       )}
 
