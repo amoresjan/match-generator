@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 
-const ONBOARDING_KEY = 'rally_onboarded'
+const onboardingKey = (sessionId: string) => `rally_onboarded:${sessionId}`
 
-export function hasBeenOnboarded(): boolean {
-  return localStorage.getItem(ONBOARDING_KEY) !== null
+export function hasBeenOnboarded(sessionId: string): boolean {
+  return localStorage.getItem(onboardingKey(sessionId)) !== null
 }
 
 interface Props {
+  sessionId: string
   sessionName: string
   matchType: '1v1' | '2v2'
   isAdmin: boolean
@@ -17,12 +18,12 @@ interface Props {
   onDone: () => void
 }
 
-export function OnboardingWizard({ sessionName, matchType, isAdmin, onGoToPlayers, onGoToSettings, onDone }: Props) {
+export function OnboardingWizard({ sessionId, sessionName, matchType, isAdmin, onGoToPlayers, onGoToSettings, onDone }: Props) {
   const [step, setStep] = useState(0)
   const minPlayers = matchType === '2v2' ? 4 : 2
 
   function finish() {
-    localStorage.setItem(ONBOARDING_KEY, '1')
+    localStorage.setItem(onboardingKey(sessionId), '1')
     onDone()
   }
 

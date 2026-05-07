@@ -45,7 +45,7 @@ export function SessionPage() {
   const [tab, setTab] = useState<Tab>('round')
   const [admin, setAdmin] = useState(() => isAdmin(sessionId!))
   const [confirmGenerate, setConfirmGenerate] = useState(false)
-  const [showWizard, setShowWizard] = useState(() => !hasBeenOnboarded())
+  const [showWizard, setShowWizard] = useState(() => !hasBeenOnboarded(sessionId!))
 
   function switchTab(t: Tab) {
     setTab(t)
@@ -185,6 +185,7 @@ export function SessionPage() {
       {/* First-session onboarding wizard */}
       {showWizard && (
         <OnboardingWizard
+          sessionId={session.id}
           sessionName={session.name}
           matchType={session.match_type}
           isAdmin={admin}
