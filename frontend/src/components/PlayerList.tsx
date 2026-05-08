@@ -68,8 +68,13 @@ function PlayerRow({
             className="h-7 text-sm flex-1"
           />
         ) : (
-          <span className={`flex-1 text-sm font-medium ${player.sit_out ? 'line-through text-muted-foreground' : ''} ${player.id === currentPlayerId ? 'font-bold underline underline-offset-2' : ''}`}>
-            {player.name}
+          <span className="flex-1 flex items-center gap-1.5 min-w-0">
+            <span className={`text-sm font-medium truncate ${player.sit_out ? 'line-through text-muted-foreground' : ''}`}>
+              {player.name}
+            </span>
+            {player.id === currentPlayerId && (
+              <span className="shrink-0 text-[10px] font-semibold bg-primary/15 text-primary rounded-full px-1.5 py-0.5 leading-none">You</span>
+            )}
           </span>
         )}
         <Button

@@ -344,8 +344,13 @@ function AdminCodeEntry({ sessionId, onUnlocked }: { sessionId: string; onUnlock
 function PublicPlayerRow({ player, isMe }: { player: import('@/lib/types').Player; isMe?: boolean }) {
   return (
     <>
-      <span className={`text-sm font-medium ${player.sit_out ? 'line-through text-muted-foreground' : ''} ${isMe ? 'font-bold underline underline-offset-2' : ''}`}>
-        {player.name}
+      <span className="flex items-center gap-1.5 min-w-0">
+        <span className={`text-sm font-medium truncate ${player.sit_out ? 'line-through text-muted-foreground' : ''}`}>
+          {player.name}
+        </span>
+        {isMe && (
+          <span className="shrink-0 text-[10px] font-semibold bg-primary/15 text-primary rounded-full px-1.5 py-0.5 leading-none">You</span>
+        )}
       </span>
       {player.total_wait_rounds > 0 && (
         <Badge variant="outline" className="text-xs">Wait: {player.total_wait_rounds}</Badge>

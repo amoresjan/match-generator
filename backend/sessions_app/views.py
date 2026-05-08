@@ -17,7 +17,7 @@ from .serializers import (
     SetPartnerSerializer,
 )
 from .services.match_generator import commit_round, generate_round, preview_rounds, reconcile_round_history
-from .services.push_notifications import build_round_payloads, send_push_to_session
+from .services.push_notifications import build_override_payloads, build_round_payloads, send_push_to_session
 
 
 # ---------------------------------------------------------------------------
@@ -150,11 +150,28 @@ def player_detail(request, session_id, player_id):
     if name:
         player.name = name
         fields_to_save.append('name')
+    sitting_out_now = None
     if 'sit_out' in request.data:
-        player.sit_out = bool(request.data['sit_out'])
+        sitting_out_now = bool(request.data['sit_out'])
+        player.sit_out = sitting_out_now
         fields_to_save.append('sit_out')
     if fields_to_save:
         player.save(update_fields=fields_to_save)
+
+    if sitting_out_now:
+        send_push_to_session(
+            session,
+            {},
+            player_payloads={
+                str(player.id): {
+                    'title': session.name,
+                    'body': "You're sitting out. Let the host know when you're ready to re-join!",
+                    'url': f'/session/{session.id}',
+                }
+            },
+            restrict_player_ids={str(player.id)},
+        )
+
     return Response(PlayerSerializer(player).data)
 
 
@@ -262,6 +279,15 @@ def override_match(request, session_id, match_id):
         match.winner = None
         match.save(update_fields=['team1_players', 'team2_players', 'winner'])
         reconcile_round_history(match.round)
+
+    affected = set(match.team1_players) | set(match.team2_players)
+    player_payloads = build_override_payloads(session, match)
+    send_push_to_session(
+        session,
+        {'title': session.name, 'body': 'A match was updated.', 'url': f'/session/{session.id}'},
+        player_payloads=player_payloads,
+        restrict_player_ids=affected,
+    )
     return Response(MatchSerializer(match).data)
 
 

@@ -57,7 +57,41 @@ def build_round_payloads(session, rnd) -> dict:
     return payloads
 
 
-def send_push_to_session(session, payload: dict, player_payloads: Optional[dict] = None):
+def build_override_payloads(session, match) -> dict:
+    """Return a {player_id_str: payload} dict for players in an overridden match."""
+    players = {str(p.id): p.name for p in session.players.all()}
+    url = f'/session/{session.id}'
+    payloads = {}
+
+    for pid in match.team1_players:
+        partners = [players.get(p, '?') for p in match.team1_players if p != pid]
+        opponents = [players.get(p, '?') for p in match.team2_players]
+        body = (
+            f'Court {match.court_number} updated — with {" & ".join(partners)} vs {" & ".join(opponents)}'
+            if partners else
+            f'Court {match.court_number} updated — vs {" & ".join(opponents)}'
+        )
+        payloads[pid] = {'title': session.name, 'body': body, 'url': url}
+
+    for pid in match.team2_players:
+        partners = [players.get(p, '?') for p in match.team2_players if p != pid]
+        opponents = [players.get(p, '?') for p in match.team1_players]
+        body = (
+            f'Court {match.court_number} updated — with {" & ".join(partners)} vs {" & ".join(opponents)}'
+            if partners else
+            f'Court {match.court_number} updated — vs {" & ".join(opponents)}'
+        )
+        payloads[pid] = {'title': session.name, 'body': body, 'url': url}
+
+    return payloads
+
+
+def send_push_to_session(
+    session,
+    payload: dict,
+    player_payloads: Optional[dict] = None,
+    restrict_player_ids: Optional[set] = None,
+):
     if not _is_configured():
         return
 
@@ -69,6 +103,10 @@ def send_push_to_session(session, payload: dict, player_payloads: Optional[dict]
 
     stale = []
     for sub in session.push_subscriptions.all():
+        if restrict_player_ids is not None:
+            if not sub.player_id or str(sub.player_id) not in restrict_player_ids:
+                continue
+
         sub_payload = payload
         if player_payloads and sub.player_id:
             sub_payload = player_payloads.get(str(sub.player_id), payload)
