@@ -2,8 +2,8 @@ import { Bell, BellOff, BellRing } from 'lucide-react'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { Button } from '@/components/ui/button'
 
-export function PushNotificationSettings({ sessionId }: { sessionId: string }) {
-  const { status, loading, subscribe, unsubscribe, device } = usePushNotifications(sessionId)
+export function PushNotificationSettings({ sessionId, claimedPlayerId }: { sessionId: string; claimedPlayerId?: string | null }) {
+  const { status, loading, subscribe, unsubscribe, device } = usePushNotifications(sessionId, claimedPlayerId)
 
   if (status === 'checking') return null
 

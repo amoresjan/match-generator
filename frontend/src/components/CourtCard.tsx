@@ -11,6 +11,7 @@ interface Props {
   removedPlayers?: Record<string, string>
   isAdmin?: boolean
   streakPlayerIds?: Set<string>
+  currentPlayerId?: string
   onEdit?: (match: Match) => void
   onSetResult?: (matchId: string, winner: 'team1' | 'team2' | null) => void
   isPending?: boolean
@@ -20,7 +21,7 @@ function resolveMembers(ids: string[], players: Player[], removedPlayers: Record
   return ids.map((id) => ({ id, name: players.find((p) => p.id === id)?.name ?? removedPlayers[id] ?? '?' }))
 }
 
-export function CourtCard({ match, players, removedPlayers = {}, isAdmin, streakPlayerIds, onEdit, onSetResult, isPending }: Props) {
+export function CourtCard({ match, players, removedPlayers = {}, isAdmin, streakPlayerIds, currentPlayerId, onEdit, onSetResult, isPending }: Props) {
   const team1 = resolveMembers(match.team1_players, players, removedPlayers)
   const team2 = resolveMembers(match.team2_players, players, removedPlayers)
   const team1IsDuo = isDuo(match.team1_players, players)
@@ -50,8 +51,11 @@ export function CourtCard({ match, players, removedPlayers = {}, isAdmin, streak
   const team2Won = match.winner === 'team2'
   const hasResult = match.winner !== null
 
+  const isMyCard = currentPlayerId !== undefined &&
+    (match.team1_players.includes(currentPlayerId) || match.team2_players.includes(currentPlayerId))
+
   return (
-    <Card className="w-full">
+    <Card className={`w-full ${isMyCard ? 'ring-2 ring-primary border-primary' : ''}`}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">Court {match.court_number}</CardTitle>
@@ -89,7 +93,7 @@ export function CourtCard({ match, players, removedPlayers = {}, isAdmin, streak
               {team1.map((m, i) => (
                 <span key={m.id} className="flex items-center gap-0.5">
                   {i > 0 && <span className="text-muted-foreground/60">&amp;</span>}
-                  <span>{m.name}</span>
+                  <span className={m.id === currentPlayerId ? 'font-bold underline underline-offset-2' : ''}>{m.name}</span>
                   {streakPlayerIds?.has(m.id) && (
                     <Flame className="h-3 w-3 text-orange-500 shrink-0" />
                   )}
@@ -123,7 +127,7 @@ export function CourtCard({ match, players, removedPlayers = {}, isAdmin, streak
               {team2.map((m, i) => (
                 <span key={m.id} className="flex items-center gap-0.5">
                   {i > 0 && <span className="text-muted-foreground/60">&amp;</span>}
-                  <span>{m.name}</span>
+                  <span className={m.id === currentPlayerId ? 'font-bold underline underline-offset-2' : ''}>{m.name}</span>
                   {streakPlayerIds?.has(m.id) && (
                     <Flame className="h-3 w-3 text-orange-500 shrink-0" />
                   )}

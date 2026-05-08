@@ -50,7 +50,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return new Uint8Array([...raw].map((c) => c.charCodeAt(0)))
 }
 
-export async function subscribeToPush(sessionId: string): Promise<boolean> {
+export async function subscribeToPush(sessionId: string, playerId?: string): Promise<boolean> {
   const support = getPushSupport()
   if (support !== 'supported') return false
 
@@ -66,6 +66,7 @@ export async function subscribeToPush(sessionId: string): Promise<boolean> {
     endpoint: sub.endpoint,
     p256dh: keys.p256dh ?? '',
     auth: keys.auth ?? '',
+    ...(playerId ? { player_id: playerId } : {}),
   })
   return true
 }
@@ -85,7 +86,7 @@ export async function getExistingSubscription(): Promise<PushSubscription | null
   return reg.pushManager.getSubscription()
 }
 
-export async function resubscribeToSession(sessionId: string): Promise<void> {
+export async function resubscribeToSession(sessionId: string, playerId?: string): Promise<void> {
   const sub = await getExistingSubscription()
   if (!sub) return
   const json = sub.toJSON()
@@ -94,5 +95,6 @@ export async function resubscribeToSession(sessionId: string): Promise<void> {
     endpoint: sub.endpoint,
     p256dh: keys.p256dh ?? '',
     auth: keys.auth ?? '',
+    ...(playerId ? { player_id: playerId } : {}),
   })
 }

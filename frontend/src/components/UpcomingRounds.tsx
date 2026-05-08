@@ -10,24 +10,32 @@ interface Props {
   isAdmin: boolean
   roundCount: number
   sessionKey: string
+  currentPlayerId?: string
 }
 
-function resolveName(id: string, players: Player[], removedPlayers: Record<string, string> = {}): string {
-  return players.find((p) => p.id === id)?.name ?? removedPlayers[id] ?? '?'
-}
-
-function resolveTeam(ids: string[], players: Player[], removedPlayers: Record<string, string> = {}): string {
-  return ids.map((id) => resolveName(id, players, removedPlayers)).join(' & ')
+function resolveTeamJSX(ids: string[], players: Player[], currentPlayerId?: string) {
+  const members = ids.map((id) => ({ id, name: players.find((p) => p.id === id)?.name ?? '?' }))
+  return (
+    <>
+      {members.map((m, i) => (
+        <span key={m.id}>
+          {i > 0 && ' & '}
+          <span className={m.id === currentPlayerId ? 'font-bold underline underline-offset-2' : ''}>{m.name}</span>
+        </span>
+      ))}
+    </>
+  )
 }
 
 function PreviewRoundRow({
-  round, players, open, onOpenChange, animClass,
+  round, players, open, onOpenChange, animClass, currentPlayerId,
 }: {
   round: PreviewRound
   players: Player[]
   open: boolean
   onOpenChange: (open: boolean) => void
   animClass?: string
+  currentPlayerId?: string
 }) {
   return (
     <div className={`rounded-lg border ${animClass ?? ''}`}>
@@ -53,9 +61,9 @@ function PreviewRoundRow({
               <div key={court.court} className="rounded-md border bg-muted/30 p-2.5 text-sm">
                 <p className="text-xs text-muted-foreground mb-1.5 font-medium">Court {court.court}</p>
                 <div className="flex flex-col gap-1">
-                  <span className="font-medium">{resolveTeam(court.team1, players)}</span>
+                  <span className="font-medium">{resolveTeamJSX(court.team1, players, currentPlayerId)}</span>
                   <span className="text-xs text-muted-foreground">vs</span>
-                  <span className="font-medium">{resolveTeam(court.team2, players)}</span>
+                  <span className="font-medium">{resolveTeamJSX(court.team2, players, currentPlayerId)}</span>
                 </div>
               </div>
             ))}
@@ -68,7 +76,7 @@ function PreviewRoundRow({
 
 const EXIT_DURATION = 300  // matches animate-card-exit duration
 
-export function UpcomingRounds({ sessionId, players, roundCount, sessionKey }: Props) {
+export function UpcomingRounds({ sessionId, players, roundCount, sessionKey, currentPlayerId }: Props) {
   const preview = usePreviewRounds(sessionId)
   const [rounds, setRounds] = useState<PreviewRound[] | null>(null)
   const [openNum, setOpenNum] = useState<number | null>(null)
@@ -140,6 +148,7 @@ export function UpcomingRounds({ sessionId, players, roundCount, sessionKey }: P
               players={players}
               open={openNum === round.round_number}
               onOpenChange={(o) => setOpenNum(o ? round.round_number : null)}
+              currentPlayerId={currentPlayerId}
               animClass={
                 exitingNum === round.round_number
                   ? 'animate-card-exit pointer-events-none'

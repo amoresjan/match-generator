@@ -2,7 +2,7 @@ import { ChevronDown, ChevronUp, Trophy, Users } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useSetMatchResult } from '@/hooks/useSession'
-import { resolveNames, isDuo } from '@/lib/utils'
+import { isDuo } from '@/lib/utils'
 import type { Match, Round, Player } from '@/lib/types'
 
 interface Props {
@@ -12,15 +12,34 @@ interface Props {
   removedPlayers: Record<string, string>
   isAdmin: boolean
   isActive: boolean
+  currentPlayerId?: string
 }
 
-function MatchRow({ sessionId, match, players, removedPlayers, isAdmin, isActive }: { sessionId: string; match: Match; players: Player[]; removedPlayers: Record<string, string>; isAdmin: boolean; isActive: boolean }) {
+function resolveMembers(ids: string[], players: Player[], removedPlayers: Record<string, string> = {}): { id: string; name: string }[] {
+  return ids.map((id) => ({ id, name: players.find((p) => p.id === id)?.name ?? removedPlayers[id] ?? '?' }))
+}
+
+function TeamNames({ members, currentPlayerId }: { members: { id: string; name: string }[]; currentPlayerId?: string }) {
+  return (
+    <>
+      {members.map((m, i) => (
+        <span key={m.id}>
+          {i > 0 && ' & '}
+          <span className={m.id === currentPlayerId ? 'font-bold underline underline-offset-2' : ''}>{m.name}</span>
+        </span>
+      ))}
+    </>
+  )
+}
+
+function MatchRow({ sessionId, match, players, removedPlayers, isAdmin, isActive, currentPlayerId }: { sessionId: string; match: Match; players: Player[]; removedPlayers: Record<string, string>; isAdmin: boolean; isActive: boolean; currentPlayerId?: string }) {
   const setResult = useSetMatchResult(sessionId)
-  const team1 = resolveNames(match.team1_players, players, removedPlayers)
-  const team2 = resolveNames(match.team2_players, players, removedPlayers)
+  const team1Members = resolveMembers(match.team1_players, players, removedPlayers)
+  const team2Members = resolveMembers(match.team2_players, players, removedPlayers)
   const team1IsDuo = isDuo(match.team1_players, players)
   const team2IsDuo = isDuo(match.team2_players, players)
   const team1Won = match.winner === 'team1'
+
   const team2Won = match.winner === 'team2'
   const hasResult = match.winner !== null
 
@@ -49,7 +68,7 @@ function MatchRow({ sessionId, match, players, removedPlayers, isAdmin, isActive
         >
           {team1Won && <Trophy className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-yellow-500" />}
           <span className="flex items-center justify-center gap-1">
-            {team1}
+            <TeamNames members={team1Members} currentPlayerId={currentPlayerId} />
             {team1IsDuo && <Users className="h-3 w-3 opacity-40 shrink-0" />}
           </span>
         </button>
@@ -72,7 +91,7 @@ function MatchRow({ sessionId, match, players, removedPlayers, isAdmin, isActive
         >
           {team2Won && <Trophy className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-yellow-500" />}
           <span className="flex items-center justify-center gap-1">
-            {team2}
+            <TeamNames members={team2Members} currentPlayerId={currentPlayerId} />
             {team2IsDuo && <Users className="h-3 w-3 opacity-40 shrink-0" />}
           </span>
         </button>
@@ -81,7 +100,7 @@ function MatchRow({ sessionId, match, players, removedPlayers, isAdmin, isActive
   )
 }
 
-export function RoundHistory({ sessionId, rounds, players, removedPlayers, isAdmin, isActive }: Props) {
+export function RoundHistory({ sessionId, rounds, players, removedPlayers, isAdmin, isActive, currentPlayerId }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null)
   const allRounds = useMemo(() => [...rounds].reverse(), [rounds])
 
@@ -117,7 +136,7 @@ export function RoundHistory({ sessionId, rounds, players, removedPlayers, isAdm
             <div className="overflow-hidden">
               <CardContent className="pt-0 pb-3 space-y-3">
                 {round.matches.map((m) => (
-                  <MatchRow key={m.id} sessionId={sessionId} match={m} players={players} removedPlayers={removedPlayers} isAdmin={isAdmin} isActive={isActive} />
+                  <MatchRow key={m.id} sessionId={sessionId} match={m} players={players} removedPlayers={removedPlayers} isAdmin={isAdmin} isActive={isActive} currentPlayerId={currentPlayerId} />
                 ))}
                 {isAdmin && isActive && (
                   <p className="text-[10px] text-muted-foreground text-center pt-1">

@@ -128,7 +128,7 @@ export const api = {
   getVapidPublicKey: () =>
     request<{ public_key: string }>('/vapid-public-key/'),
 
-  pushSubscribe: (sessionId: string, sub: { endpoint: string; p256dh: string; auth: string }) =>
+  pushSubscribe: (sessionId: string, sub: { endpoint: string; p256dh: string; auth: string; player_id?: string }) =>
     request<void>(`/sessions/${sessionId}/push-subscribe/`, {
       method: 'POST',
       body: JSON.stringify(sub),

@@ -96,6 +96,7 @@ class PushSubscription(models.Model):
     endpoint = models.TextField(unique=True)
     p256dh = models.TextField()
     auth = models.TextField()
+    player_id = models.UUIDField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

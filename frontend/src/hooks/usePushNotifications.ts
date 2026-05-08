@@ -16,7 +16,7 @@ export type PushStatus =
   | 'subscribed'
   | 'unsubscribed'
 
-export function usePushNotifications(sessionId: string) {
+export function usePushNotifications(sessionId: string, claimedPlayerId?: string | null) {
   const [status, setStatus] = useState<PushStatus>('checking')
   const [loading, setLoading] = useState(false)
 
@@ -30,7 +30,7 @@ export function usePushNotifications(sessionId: string) {
     const sub = await getExistingSubscription()
     if (sub) {
       try {
-        await resubscribeToSession(sessionId)
+        await resubscribeToSession(sessionId, claimedPlayerId ?? undefined)
       } catch {
         // Server error during re-subscribe; subscription already exists locally,
         // so treat as still subscribed rather than surfacing an uncaught rejection.
@@ -39,14 +39,14 @@ export function usePushNotifications(sessionId: string) {
     } else {
       setStatus('unsubscribed')
     }
-  }, [sessionId])
+  }, [sessionId, claimedPlayerId])
 
   useEffect(() => { refresh() }, [refresh])
 
   const subscribe = useCallback(async () => {
     setLoading(true)
     try {
-      const ok = await subscribeToPush(sessionId)
+      const ok = await subscribeToPush(sessionId, claimedPlayerId ?? undefined)
       if (ok) setStatus('subscribed')
       else await refresh()
     } catch {
@@ -55,7 +55,7 @@ export function usePushNotifications(sessionId: string) {
     } finally {
       setLoading(false)
     }
-  }, [sessionId, refresh])
+  }, [sessionId, claimedPlayerId, refresh])
 
   const unsubscribe = useCallback(async () => {
     setLoading(true)

@@ -41,10 +41,11 @@ function computeStreaks(rounds: Round[]): Map<string, number> {
 interface Props {
   session: Session
   isAdmin: boolean
+  currentPlayerId?: string
 }
 
 
-export function CurrentRound({ session, isAdmin }: Props) {
+export function CurrentRound({ session, isAdmin, currentPlayerId }: Props) {
   const [editingMatch, setEditingMatch] = useState<Match | null>(null)
   const setResult = useSetMatchResult(session.id)
 
@@ -93,6 +94,7 @@ export function CurrentRound({ session, isAdmin }: Props) {
               removedPlayers={session.removed_players}
               isAdmin={isAdmin}
               streakPlayerIds={streakPlayerIds}
+              currentPlayerId={currentPlayerId}
               onEdit={isAdmin && session.is_active ? setEditingMatch : undefined}
               onSetResult={isAdmin && session.is_active ? (matchId, winner) => setResult.mutate({ matchId, winner }) : undefined}
               isPending={setResult.isPending && setResult.variables?.matchId === match.id}
@@ -165,6 +167,7 @@ export function CurrentRound({ session, isAdmin }: Props) {
             players={session.players}
             isAdmin={isAdmin}
             roundCount={rounds.length}
+            currentPlayerId={currentPlayerId}
             sessionKey={[
               session.num_courts,
               session.match_type,

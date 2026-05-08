@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { RefreshCw, Settings, Users, Clock, LogOut, Copy, Check, Trophy, Moon, Sun } from 'lucide-react'
 import { useSession, useGenerateRound, useUpdateSession, useSetSessionActive } from '@/hooks/useSession'
+import { useClaimedPlayer } from '@/hooks/useClaimedPlayer'
 import { useTheme } from '@/hooks/useTheme'
 import { SPORTS, getSport, type SportType } from '@/lib/sports'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -52,6 +53,16 @@ export function SessionPage() {
   const [confirmGenerate, setConfirmGenerate] = useState(false)
   const [showWizard, setShowWizard] = useState(() => !hasBeenOnboarded(sessionId!))
   const [wizardIsCoHost, setWizardIsCoHost] = useState(false)
+  const { claimedPlayerId, claimPlayer } = useClaimedPlayer(sessionId!)
+  const claimPromptTriggered = useRef(false)
+  const [showClaimPrompt, setShowClaimPrompt] = useState(false)
+
+  useEffect(() => {
+    if (showWizard || claimedPlayerId || claimPromptTriggered.current) return
+    if (!session?.players.length) return
+    claimPromptTriggered.current = true
+    setShowClaimPrompt(true)
+  }, [showWizard, claimedPlayerId, session?.players.length])
 
   const TAB_ORDER = TABS.map((t) => t.key)
 
@@ -156,17 +167,18 @@ export function SessionPage() {
             <CurrentRound
               session={session}
               isAdmin={admin}
+              currentPlayerId={claimedPlayerId ?? undefined}
             />
           )}
           {tab === 'players' && (
             admin
-              ? <PlayerList session={session} />
-              : <PublicPlayerList players={session.players} />
+              ? <PlayerList session={session} currentPlayerId={claimedPlayerId ?? undefined} />
+              : <PublicPlayerList players={session.players} currentPlayerId={claimedPlayerId ?? undefined} />
           )}
-          {tab === 'history' && <RoundHistory sessionId={session.id} rounds={session.rounds} players={session.players} removedPlayers={session.removed_players} isAdmin={admin} isActive={session.is_active} />}
+          {tab === 'history' && <RoundHistory sessionId={session.id} rounds={session.rounds} players={session.players} removedPlayers={session.removed_players} isAdmin={admin} isActive={session.is_active} currentPlayerId={claimedPlayerId ?? undefined} />}
           {tab === 'leaderboard' && (
             <div className="space-y-6">
-              <Leaderboard players={session.players} rounds={session.rounds} />
+              <Leaderboard players={session.players} rounds={session.rounds} currentPlayerId={claimedPlayerId ?? undefined} />
               {session.rounds.some((r) => r.matches.some((m) => m.winner !== null)) && (
                 <SessionSummaryCard sessionName={session.name} players={session.players} rounds={session.rounds} />
               )}
@@ -181,8 +193,10 @@ export function SessionPage() {
                   saving={updateSession.isPending}
                   onSetActive={(v) => setSessionActive.mutate(v)}
                   settingActive={setSessionActive.isPending}
+                  claimedPlayerId={claimedPlayerId}
+                  onChangeClaim={() => setShowClaimPrompt(true)}
                 />
-              : <GuestSettings sessionId={sessionId!} session={session} onUnlocked={handleAdminUnlocked} />
+              : <GuestSettings sessionId={sessionId!} session={session} onUnlocked={handleAdminUnlocked} claimedPlayerId={claimedPlayerId} onChangeClaim={() => setShowClaimPrompt(true)} />
           )}
         </ErrorBoundary>
       </main>
@@ -207,6 +221,30 @@ export function SessionPage() {
               Generate anyway
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Claim player prompt */}
+      <Dialog open={showClaimPrompt} onOpenChange={setShowClaimPrompt}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Who are you?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Tap your name to highlight your courts and rounds.</p>
+          <div className="space-y-1.5 mt-2 max-h-64 overflow-y-auto">
+            {session.players.map((player) => (
+              <button
+                key={player.id}
+                onClick={() => { claimPlayer(player.id); setShowClaimPrompt(false) }}
+                className={`w-full text-left rounded-lg border px-3 py-2.5 text-sm font-medium hover:bg-muted transition-colors ${player.id === claimedPlayerId ? 'border-primary bg-primary/10' : ''}`}
+              >
+                {player.name}
+              </button>
+            ))}
+          </div>
+          <Button variant="ghost" className="w-full text-muted-foreground text-sm" onClick={() => setShowClaimPrompt(false)}>
+            Skip
+          </Button>
         </DialogContent>
       </Dialog>
 
@@ -303,10 +341,10 @@ function AdminCodeEntry({ sessionId, onUnlocked }: { sessionId: string; onUnlock
 // Public player list (read-only)
 // ---------------------------------------------------------------------------
 
-function PublicPlayerRow({ player }: { player: import('@/lib/types').Player }) {
+function PublicPlayerRow({ player, isMe }: { player: import('@/lib/types').Player; isMe?: boolean }) {
   return (
     <>
-      <span className={`text-sm font-medium ${player.sit_out ? 'line-through text-muted-foreground' : ''}`}>
+      <span className={`text-sm font-medium ${player.sit_out ? 'line-through text-muted-foreground' : ''} ${isMe ? 'font-bold underline underline-offset-2' : ''}`}>
         {player.name}
       </span>
       {player.total_wait_rounds > 0 && (
@@ -316,8 +354,18 @@ function PublicPlayerRow({ player }: { player: import('@/lib/types').Player }) {
   )
 }
 
-function PublicPlayerList({ players }: { players: import('@/lib/types').Player[] }) {
+function PublicPlayerList({ players, currentPlayerId }: { players: import('@/lib/types').Player[]; currentPlayerId?: string }) {
   const { duoPairs, solos } = partitionPlayers(players)
+  const sortedDuoPairs = [...duoPairs].sort(([a, b], [c, d]) => {
+    const meInA = currentPlayerId && (a.id === currentPlayerId || b.id === currentPlayerId)
+    const meInB = currentPlayerId && (c.id === currentPlayerId || d.id === currentPlayerId)
+    return meInA ? -1 : meInB ? 1 : 0
+  })
+  const sortedSolos = [...solos].sort((a, b) => {
+    if (currentPlayerId && a.id === currentPlayerId) return -1
+    if (currentPlayerId && b.id === currentPlayerId) return 1
+    return 0
+  })
 
   return (
     <div className="space-y-2">
@@ -328,22 +376,22 @@ function PublicPlayerList({ players }: { players: import('@/lib/types').Player[]
         <p>Want to permanently team up with someone? Ask the host to set you up as a duo.</p>
       </div>
 
-      {duoPairs.map(([a, b]) => (
+      {sortedDuoPairs.map(([a, b]) => (
         <div key={`${a.id}-${b.id}`} className="rounded-lg border-2 p-3 space-y-2">
           <Badge variant="secondary" className="text-xs gap-1">
             <Users className="h-3 w-3" />
             Duo
           </Badge>
           <div className="space-y-1.5 border-t pt-2">
-            <div className="flex items-center justify-between"><PublicPlayerRow player={a} /></div>
-            <div className="flex items-center justify-between"><PublicPlayerRow player={b} /></div>
+            <div className="flex items-center justify-between"><PublicPlayerRow player={a} isMe={a.id === currentPlayerId} /></div>
+            <div className="flex items-center justify-between"><PublicPlayerRow player={b} isMe={b.id === currentPlayerId} /></div>
           </div>
         </div>
       ))}
 
-      {solos.map((p) => (
+      {sortedSolos.map((p) => (
         <div key={p.id} className="flex items-center justify-between rounded-lg border p-3">
-          <PublicPlayerRow player={p} />
+          <PublicPlayerRow player={p} isMe={p.id === currentPlayerId} />
         </div>
       ))}
     </div>
@@ -361,6 +409,8 @@ interface SettingsProps {
   saving: boolean
   onSetActive: (isActive: boolean) => void
   settingActive: boolean
+  claimedPlayerId: string | null
+  onChangeClaim: () => void
 }
 
 function ShareField({ session }: { session: import('@/lib/types').Session }) {
@@ -432,12 +482,28 @@ function CopyField({ label, value }: { label: string; value: string }) {
   )
 }
 
-function GuestSettings({ sessionId, session, onUnlocked }: { sessionId: string; session: import('@/lib/types').Session; onUnlocked: () => void }) {
+function GuestSettings({ sessionId, session, onUnlocked, claimedPlayerId, onChangeClaim }: { sessionId: string; session: import('@/lib/types').Session; onUnlocked: () => void; claimedPlayerId: string | null; onChangeClaim: () => void }) {
   const { theme, toggle: toggleTheme } = useTheme()
   const navigate = useNavigate()
+  const claimedName = session.players.find((p) => p.id === claimedPlayerId)?.name ?? null
 
   return (
     <div className="space-y-6">
+      <SettingsSection title="You">
+        {claimedName ? (
+          <div className="flex items-center justify-between rounded-lg border px-3 py-2.5">
+            <div>
+              <p className="text-xs text-muted-foreground">Playing as</p>
+              <p className="text-sm font-medium">{claimedName}</p>
+            </div>
+            <Button size="sm" variant="ghost" onClick={onChangeClaim}>Change</Button>
+          </div>
+        ) : (
+          <Button variant="outline" className="w-full" onClick={onChangeClaim}>
+            Select your name
+          </Button>
+        )}
+      </SettingsSection>
       <SettingsSection title="Appearance">
         <div className="flex items-center justify-between rounded-lg border px-3 py-2.5">
           <span className="text-sm">Dark mode</span>
@@ -447,7 +513,7 @@ function GuestSettings({ sessionId, session, onUnlocked }: { sessionId: string; 
         </div>
       </SettingsSection>
       <SettingsSection title="Notifications">
-        <PushNotificationSettings sessionId={sessionId} />
+        <PushNotificationSettings sessionId={sessionId} claimedPlayerId={claimedPlayerId} />
       </SettingsSection>
       <SettingsSection title="Share">
         <ShareField session={session} />
@@ -479,7 +545,7 @@ function SettingsSection({ title, children }: { title: string; children: React.R
   )
 }
 
-function SessionSettings({ sessionId, session, onSave, saving, onSetActive, settingActive }: SettingsProps) {
+function SessionSettings({ sessionId, session, onSave, saving, onSetActive, settingActive, claimedPlayerId, onChangeClaim }: SettingsProps) {
   const [name, setName] = useState(session.name)
   const [sport, setSport] = useState<SportType>(session.sport_type)
   const [matchType, setMatchType] = useState<'1v1' | '2v2'>(session.match_type)
@@ -597,8 +663,24 @@ function SessionSettings({ sessionId, session, onSave, saving, onSetActive, sett
         </div>
       </SettingsSection>
 
+      <SettingsSection title="You">
+        {claimedPlayerId && session.players.find((p) => p.id === claimedPlayerId) ? (
+          <div className="flex items-center justify-between rounded-lg border px-3 py-2.5">
+            <div>
+              <p className="text-xs text-muted-foreground">Playing as</p>
+              <p className="text-sm font-medium">{session.players.find((p) => p.id === claimedPlayerId)!.name}</p>
+            </div>
+            <Button size="sm" variant="ghost" onClick={onChangeClaim}>Change</Button>
+          </div>
+        ) : (
+          <Button variant="outline" className="w-full" onClick={onChangeClaim}>
+            Select your name
+          </Button>
+        )}
+      </SettingsSection>
+
       <SettingsSection title="Notifications">
-        <PushNotificationSettings sessionId={sessionId} />
+        <PushNotificationSettings sessionId={sessionId} claimedPlayerId={claimedPlayerId} />
       </SettingsSection>
 
       <SettingsSection title="Share">

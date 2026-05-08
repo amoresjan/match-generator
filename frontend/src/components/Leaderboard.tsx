@@ -67,8 +67,8 @@ function getPlayerMatches(playerId: string, players: Player[], rounds: Round[]):
   return result
 }
 
-export function Leaderboard({ players, rounds }: { players: Player[]; rounds: Round[] }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+export function Leaderboard({ players, rounds, currentPlayerId }: { players: Player[]; rounds: Round[]; currentPlayerId?: string }) {
+  const [expandedId, setExpandedId] = useState<string | null>(currentPlayerId ?? null)
   const stats = computeStats(players, rounds)
 
   if (stats.length === 0) {
@@ -96,9 +96,10 @@ export function Leaderboard({ players, rounds }: { players: Player[]; rounds: Ro
         {stats.map((s, i) => {
           const rank = ranks[i]
           const isFirst = rank === 1
+          const isMe = s.player.id === currentPlayerId
           const style = RANK_STYLES[rank]
-          const border = style?.border ?? 'border-border'
-          const bg = style?.bg ?? 'bg-card'
+          const border = isMe ? 'border-primary' : (style?.border ?? 'border-border')
+          const bg = isMe ? 'bg-primary/5 dark:bg-primary/10' : (style?.bg ?? 'bg-card')
           const isExpanded = expandedId === s.player.id
           const playerMatches = getPlayerMatches(s.player.id, players, rounds)
           const py = isFirst ? 'py-3.5' : 'py-2.5'
@@ -120,7 +121,8 @@ export function Leaderboard({ players, rounds }: { players: Player[]; rounds: Ro
                     : rank}
                 </td>
                 <td className={`font-medium truncate ${py} ${isFirst ? 'text-base' : ''} border-y ${border} ${bg}`}>
-                  {s.player.name}
+                  <span className={isMe ? 'font-bold' : ''}>{s.player.name}</span>
+                  {isMe && <span className="ml-1.5 text-[10px] font-semibold text-primary bg-primary/10 rounded px-1 py-0.5">You</span>}
                 </td>
                 <td className={`text-center text-muted-foreground ${py} w-10 border-y ${border} ${bg}`}>
                   {s.played}

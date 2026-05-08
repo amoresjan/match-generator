@@ -17,7 +17,7 @@ from .serializers import (
     SetPartnerSerializer,
 )
 from .services.match_generator import commit_round, generate_round, preview_rounds, reconcile_round_history
-from .services.push_notifications import send_push_to_session
+from .services.push_notifications import build_round_payloads, send_push_to_session
 
 
 # ---------------------------------------------------------------------------
@@ -218,11 +218,11 @@ def generate_next_round(request, session_id):
 
     rnd = commit_round(session, generated)
     rnd = Round.objects.prefetch_related('matches').get(id=rnd.id)
-    send_push_to_session(session, {
-        'title': session.name,
-        'body': f'Round {rnd.number} is ready!',
-        'url': f'/session/{session.id}',
-    })
+    send_push_to_session(
+        session,
+        {'title': session.name, 'body': f'Round {rnd.number} is ready!', 'url': f'/session/{session.id}'},
+        player_payloads=build_round_payloads(session, rnd),
+    )
     return Response(RoundSerializer(rnd).data, status=status.HTTP_201_CREATED)
 
 
@@ -305,9 +305,10 @@ def push_subscribe(request, session_id):
     if not (endpoint and p256dh and auth):
         return Response({'detail': 'endpoint, p256dh, and auth are required.'}, status=400)
 
+    player_id = request.data.get('player_id') or None
     PushSubscription.objects.update_or_create(
         endpoint=endpoint,
-        defaults={'session': session, 'p256dh': p256dh, 'auth': auth},
+        defaults={'session': session, 'p256dh': p256dh, 'auth': auth, 'player_id': player_id},
     )
     return Response(status=status.HTTP_204_NO_CONTENT)
 

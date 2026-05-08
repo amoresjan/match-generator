@@ -13,6 +13,7 @@ interface PlayerRowProps {
   inDuoBox: boolean
   sessionPlayers: Player[]
   matchType: '1v1' | '2v2'
+  currentPlayerId?: string
   editingId: string | null
   editName: string
   confirmDeleteId: string | null
@@ -34,6 +35,7 @@ interface PlayerRowProps {
 
 function PlayerRow({
   player, inDuoBox, sessionPlayers, matchType,
+  currentPlayerId,
   editingId, editName, confirmDeleteId, sitOutPromptId,
   isSetPartnerPending, setPartnerVariables,
   disabled,
@@ -66,7 +68,7 @@ function PlayerRow({
             className="h-7 text-sm flex-1"
           />
         ) : (
-          <span className={`flex-1 text-sm font-medium ${player.sit_out ? 'line-through text-muted-foreground' : ''}`}>
+          <span className={`flex-1 text-sm font-medium ${player.sit_out ? 'line-through text-muted-foreground' : ''} ${player.id === currentPlayerId ? 'font-bold underline underline-offset-2' : ''}`}>
             {player.name}
           </span>
         )}
@@ -182,9 +184,10 @@ function PlayerRow({
 
 interface Props {
   session: Session
+  currentPlayerId?: string
 }
 
-export function PlayerList({ session }: Props) {
+export function PlayerList({ session, currentPlayerId }: Props) {
   const [newName, setNewName] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
@@ -223,7 +226,20 @@ export function PlayerList({ session }: Props) {
   const setSitOut = useSetSitOut(session.id)
   const disabled = !session.is_active
 
-  const { duoPairs, solos } = useMemo(() => partitionPlayers(session.players), [session.players])
+  const { duoPairs, solos } = useMemo(() => {
+    const partitioned = partitionPlayers(session.players)
+    const sortedDuoPairs = [...partitioned.duoPairs].sort(([a, b], [c, d]) => {
+      const meInA = currentPlayerId && (a.id === currentPlayerId || b.id === currentPlayerId)
+      const meInB = currentPlayerId && (c.id === currentPlayerId || d.id === currentPlayerId)
+      return meInA ? -1 : meInB ? 1 : 0
+    })
+    const sortedSolos = [...partitioned.solos].sort((a, b) => {
+      if (currentPlayerId && a.id === currentPlayerId) return -1
+      if (currentPlayerId && b.id === currentPlayerId) return 1
+      return 0
+    })
+    return { duoPairs: sortedDuoPairs, solos: sortedSolos }
+  }, [session.players, currentPlayerId])
   const sittingOutCount = session.players.filter((p) => p.sit_out).length
 
   function handleSetPartner(playerId: string, partnerId: string | null) {
@@ -270,6 +286,7 @@ export function PlayerList({ session }: Props) {
   const sharedRowProps = {
     sessionPlayers: session.players,
     matchType: session.match_type,
+    currentPlayerId,
     editingId,
     editName,
     confirmDeleteId,
