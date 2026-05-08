@@ -9,18 +9,20 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { SPORTS, type SportType } from '@/lib/sports'
 
 export function HomePage() {
   const navigate = useNavigate()
   const [tab, setTab] = useState<'create' | 'join'>('create')
   const [name, setName] = useState('')
+  const [sport, setSport] = useState<SportType>('pickleball')
   const [matchType, setMatchType] = useState<'1v1' | '2v2'>('2v2')
   const [numCourts, setNumCourts] = useState('1')
   const [mode, setMode] = useState<'fair' | 'competitive'>('fair')
   const [joinId, setJoinId] = useState('')
 
   const create = useMutation({
-    mutationFn: () => api.createSession({ name, match_type: matchType, num_courts: Math.max(1, Math.min(8, parseInt(numCourts) || 1)), generation_mode: mode }),
+    mutationFn: () => api.createSession({ name, sport_type: sport, match_type: matchType, num_courts: Math.max(1, Math.min(8, parseInt(numCourts) || 1)), generation_mode: mode }),
     onSuccess: (data) => {
       saveAdminToken(data.id, data.admin_token)
       navigate(`/session/${data.id}`)
@@ -62,6 +64,26 @@ export function HomePage() {
               >
                 {/* Create panel */}
                 <div className="w-1/2 min-w-0 space-y-3 py-3 px-1">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Sport</label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {SPORTS.map((s) => (
+                        <button
+                          key={s.value}
+                          type="button"
+                          onClick={() => setSport(s.value)}
+                          className={`flex flex-col items-center gap-0.5 rounded-lg border p-2 text-xs transition-colors ${
+                            sport === s.value
+                              ? 'border-primary bg-primary/10 text-primary font-medium'
+                              : 'border-border hover:border-muted-foreground/40'
+                          }`}
+                        >
+                          <span className="text-base leading-none">{s.emoji}</span>
+                          <span>{s.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <div>
                     <label htmlFor="session-name" className="text-xs text-muted-foreground mb-1 block">Session name</label>
                     <Input id="session-name" placeholder="e.g. Friday Pickles" value={name} onChange={(e) => setName(e.target.value)} />

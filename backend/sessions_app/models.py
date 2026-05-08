@@ -5,6 +5,14 @@ from django.db import models
 class Session(models.Model):
     MATCH_TYPE_CHOICES = [('1v1', '1v1'), ('2v2', '2v2')]
     GENERATION_MODE_CHOICES = [('fair', 'fair'), ('competitive', 'competitive')]
+    SPORT_TYPE_CHOICES = [
+        ('pickleball', 'Pickleball'),
+        ('tennis', 'Tennis'),
+        ('badminton', 'Badminton'),
+        ('ping_pong', 'Ping Pong'),
+        ('padel', 'Padel'),
+        ('others', 'Others'),
+    ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     admin_token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -12,6 +20,7 @@ class Session(models.Model):
     match_type = models.CharField(max_length=3, choices=MATCH_TYPE_CHOICES, default='2v2')
     num_courts = models.PositiveSmallIntegerField(default=1)
     generation_mode = models.CharField(max_length=11, choices=GENERATION_MODE_CHOICES, default='fair')
+    sport_type = models.CharField(max_length=10, choices=SPORT_TYPE_CHOICES, default='pickleball')
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
     auto_deactivated = models.BooleanField(default=False)

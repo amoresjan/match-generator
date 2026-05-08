@@ -18,7 +18,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
-    'sessions_app',
+    'sessions_app.apps.SessionsAppConfig',
 ]
 
 MIDDLEWARE = [
@@ -49,6 +49,9 @@ else:
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
+            'OPTIONS': {
+                'timeout': 20,  # seconds to wait on a locked db before raising OperationalError
+            },
         }
     }
 

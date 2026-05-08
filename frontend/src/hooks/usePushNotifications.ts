@@ -29,7 +29,12 @@ export function usePushNotifications(sessionId: string) {
 
     const sub = await getExistingSubscription()
     if (sub) {
-      await resubscribeToSession(sessionId)
+      try {
+        await resubscribeToSession(sessionId)
+      } catch {
+        // Server error during re-subscribe; subscription already exists locally,
+        // so treat as still subscribed rather than surfacing an uncaught rejection.
+      }
       setStatus('subscribed')
     } else {
       setStatus('unsubscribed')

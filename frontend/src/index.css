@@ -53,3 +53,27 @@
   * { @apply border-border; }
   body { @apply bg-background text-foreground; }
 }
+
+/* ── Sport themes ─────────────────────────────────────────────────── */
+.sport-pickleball { --primary: 142.1 76.2% 36.3%; --ring: 142.1 76.2% 36.3%; }
+.dark .sport-pickleball { --primary: 142.1 70.6% 45.3%; --ring: 142.4 71.8% 29.2%; }
+
+/* Tennis — yellow-green */
+.sport-tennis { --primary: 73 85% 38%; --ring: 73 85% 38%; }
+.dark .sport-tennis { --primary: 73 85% 52%; --ring: 73 70% 28%; }
+
+/* Badminton — blue */
+.sport-badminton { --primary: 217 91% 45%; --ring: 217 91% 45%; }
+.dark .sport-badminton { --primary: 217 91% 62%; --ring: 217 75% 32%; }
+
+/* Ping Pong — red */
+.sport-ping-pong { --primary: 4 80% 45%; --ring: 4 80% 45%; }
+.dark .sport-ping-pong { --primary: 4 80% 62%; --ring: 4 65% 30%; }
+
+/* Padel — teal */
+.sport-padel { --primary: 174 65% 32%; --ring: 174 65% 32%; }
+.dark .sport-padel { --primary: 174 65% 46%; --ring: 174 55% 25%; }
+
+/* Others — purple */
+.sport-others { --primary: 260 55% 50%; --ring: 260 55% 50%; }
+.dark .sport-others { --primary: 260 55% 65%; --ring: 260 50% 32%; }

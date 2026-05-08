@@ -32,7 +32,7 @@ async function request<T>(
 
 // Sessions
 export const api = {
-  createSession: (data: { name: string; match_type: '1v1' | '2v2'; num_courts: number; generation_mode: 'fair' | 'competitive' }) =>
+  createSession: (data: { name: string; match_type: '1v1' | '2v2'; num_courts: number; generation_mode: 'fair' | 'competitive'; sport_type: string }) =>
     request<SessionWithToken>('/sessions/', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -48,7 +48,7 @@ export const api = {
       adminToken: token,
     }),
 
-  updateSession: (id: string, data: Partial<{ name: string; match_type: '1v1' | '2v2'; num_courts: number; generation_mode: 'fair' | 'competitive' }>) =>
+  updateSession: (id: string, data: Partial<{ name: string; match_type: '1v1' | '2v2'; num_courts: number; generation_mode: 'fair' | 'competitive'; sport_type: string }>) =>
     request<Session>(`/sessions/${id}/update/`, {
       method: 'PATCH',
       body: JSON.stringify(data),

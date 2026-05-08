@@ -29,6 +29,7 @@ export interface Session {
   match_type: '1v1' | '2v2'
   num_courts: number
   generation_mode: 'fair' | 'competitive'
+  sport_type: 'pickleball' | 'tennis' | 'badminton' | 'ping_pong' | 'padel' | 'others'
   is_active: boolean
   auto_deactivated: boolean
   created_at: string

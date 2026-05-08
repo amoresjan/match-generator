@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { RefreshCw, Settings, Users, Clock, LogOut, Copy, Check, Trophy, Moon, Sun } from 'lucide-react'
 import { useSession, useGenerateRound, useUpdateSession, useSetSessionActive } from '@/hooks/useSession'
 import { useTheme } from '@/hooks/useTheme'
+import { SPORTS, getSport, type SportType } from '@/lib/sports'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { CurrentRound } from '@/components/CurrentRound'
 import { PlayerList } from '@/components/PlayerList'
@@ -98,8 +99,10 @@ export function SessionPage() {
     }
   }
 
+  const sport = getSport(session.sport_type)
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className={`min-h-screen bg-background ${sport.themeClass}`}>
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background border-b px-4 py-3">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
@@ -108,6 +111,7 @@ export function SessionPage() {
               <h1 className="font-bold text-base leading-tight truncate">{session.name}</h1>
               <div className="flex items-center gap-1.5 mt-0.5">
                 {admin && <Badge className="text-xs shrink-0">Host</Badge>}
+                <Badge variant="secondary" className="text-xs shrink-0">{sport.emoji} {sport.label}</Badge>
                 <Badge variant="secondary" className="text-xs shrink-0">{session.match_type === '2v2' ? '👥 2v2' : '👤 1v1'}</Badge>
                 <Badge variant={session.generation_mode === 'competitive' ? 'default' : 'outline'} className="text-xs shrink-0">{session.generation_mode === 'competitive' ? '🏆 Competitive' : '🔄 Fair'}</Badge>
               </div>
@@ -353,7 +357,7 @@ function PublicPlayerList({ players }: { players: import('@/lib/types').Player[]
 interface SettingsProps {
   sessionId: string
   session: import('@/lib/types').Session
-  onSave: (data: Partial<{ name: string; match_type: '1v1' | '2v2'; num_courts: number; generation_mode: 'fair' | 'competitive' }>) => void
+  onSave: (data: Partial<{ name: string; match_type: '1v1' | '2v2'; num_courts: number; generation_mode: 'fair' | 'competitive'; sport_type: string }>) => void
   saving: boolean
   onSetActive: (isActive: boolean) => void
   settingActive: boolean
@@ -477,6 +481,7 @@ function SettingsSection({ title, children }: { title: string; children: React.R
 
 function SessionSettings({ sessionId, session, onSave, saving, onSetActive, settingActive }: SettingsProps) {
   const [name, setName] = useState(session.name)
+  const [sport, setSport] = useState<SportType>(session.sport_type)
   const [matchType, setMatchType] = useState<'1v1' | '2v2'>(session.match_type)
   const [numCourts, setNumCourts] = useState(String(session.num_courts))
   const [mode, setMode] = useState<'fair' | 'competitive'>(session.generation_mode)
@@ -486,18 +491,53 @@ function SessionSettings({ sessionId, session, onSave, saving, onSetActive, sett
 
   useEffect(() => {
     setName(session.name)
+    setSport(session.sport_type)
     setMatchType(session.match_type)
     setNumCourts(String(session.num_courts))
     setMode(session.generation_mode)
-  }, [session.name, session.match_type, session.num_courts, session.generation_mode])
+  }, [session.name, session.sport_type, session.match_type, session.num_courts, session.generation_mode])
 
   const adminToken = getAdminToken(sessionId) ?? ''
   const fieldDisabled = !session.is_active
+
+  const parsedCourts = Math.max(1, Math.min(8, parseInt(numCourts) || 1))
+  const hasChanges = session.is_active && (
+    name !== session.name ||
+    sport !== session.sport_type ||
+    matchType !== session.match_type ||
+    parsedCourts !== session.num_courts ||
+    mode !== session.generation_mode
+  )
+
+  function handleSave() {
+    onSave({ name, sport_type: sport, match_type: matchType, num_courts: parsedCourts, generation_mode: mode })
+  }
 
   return (
     <div className="space-y-6">
 
       <SettingsSection title="Game">
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Sport</label>
+          <div className="grid grid-cols-3 gap-1.5">
+            {SPORTS.map((s) => (
+              <button
+                key={s.value}
+                type="button"
+                onClick={() => !fieldDisabled && setSport(s.value)}
+                disabled={fieldDisabled}
+                className={`flex flex-col items-center gap-0.5 rounded-lg border p-2 text-xs transition-colors disabled:opacity-50 ${
+                  sport === s.value
+                    ? 'border-primary bg-primary/10 text-primary font-medium'
+                    : 'border-border hover:border-muted-foreground/40'
+                }`}
+              >
+                <span className="text-base leading-none">{s.emoji}</span>
+                <span>{s.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Match Type</label>
@@ -536,6 +576,16 @@ function SessionSettings({ sessionId, session, onSave, saving, onSetActive, sett
           <label className="text-xs text-muted-foreground mb-1 block">Name</label>
           <Input value={name} onChange={(e) => setName(e.target.value)} disabled={fieldDisabled} />
         </div>
+        {session.is_active && (
+          <div className="pt-1 space-y-1.5">
+            <p className={`text-xs text-amber-600 dark:text-amber-400 transition-opacity ${hasChanges ? 'opacity-100' : 'opacity-0'}`}>
+              ● Unsaved changes
+            </p>
+            <Button className="w-full" onClick={handleSave} disabled={saving || !hasChanges}>
+              {saving ? 'Saving…' : 'Save Settings'}
+            </Button>
+          </div>
+        )}
       </SettingsSection>
 
       <SettingsSection title="Appearance">
@@ -592,16 +642,7 @@ function SessionSettings({ sessionId, session, onSave, saving, onSetActive, sett
         </SettingsSection>
       )}
 
-      <div className="space-y-2 pt-2">
-        {session.is_active && (
-          <Button
-            className="w-full"
-            onClick={() => onSave({ name, match_type: matchType, num_courts: Math.max(1, Math.min(8, parseInt(numCourts) || 1)), generation_mode: mode })}
-            disabled={saving}
-          >
-            {saving ? 'Saving…' : 'Save Settings'}
-          </Button>
-        )}
+      <div className="pt-2">
         <Button className="w-full" variant="outline" onClick={() => navigate('/')}>
           <LogOut className="h-4 w-4 mr-2" />
           Leave Session
