@@ -15,5 +15,7 @@ urlpatterns = [
     path('sessions/<uuid:session_id>/active/', views.set_session_active),
     path('sessions/<uuid:session_id>/push-subscribe/', views.push_subscribe),
     path('sessions/<uuid:session_id>/push-unsubscribe/', views.push_unsubscribe),
+    path('sessions/<uuid:session_id>/tournament/setup/', views.tournament_setup),
+    path('sessions/<uuid:session_id>/tournament/advance/', views.tournament_advance),
     path('vapid-public-key/', views.vapid_public_key),
 ]

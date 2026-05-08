@@ -18,11 +18,21 @@ export function HomePage() {
   const [sport, setSport] = useState<SportType>('pickleball')
   const [matchType, setMatchType] = useState<'1v1' | '2v2'>('2v2')
   const [numCourts, setNumCourts] = useState('1')
-  const [mode, setMode] = useState<'fair' | 'competitive'>('fair')
+  const [mode, setMode] = useState<'fair' | 'competitive' | 'tournament'>('fair')
   const [joinId, setJoinId] = useState('')
 
   const create = useMutation({
-    mutationFn: () => api.createSession({ name, sport_type: sport, match_type: matchType, num_courts: Math.max(1, Math.min(8, parseInt(numCourts) || 1)), generation_mode: mode }),
+    mutationFn: () => {
+      const isTournament = mode === 'tournament'
+      return api.createSession({
+        name,
+        sport_type: sport,
+        match_type: matchType,
+        num_courts: Math.max(1, Math.min(8, parseInt(numCourts) || 1)),
+        generation_mode: isTournament ? 'fair' : mode,
+        session_mode: isTournament ? 'tournament' : 'rotation',
+      })
+    },
     onSuccess: (data) => {
       saveAdminToken(data.id, data.admin_token)
       navigate(`/session/${data.id}`)
@@ -113,18 +123,21 @@ export function HomePage() {
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Mode</label>
-                    <Select value={mode} onValueChange={(v) => setMode(v as 'fair' | 'competitive')}>
+                    <Select value={mode} onValueChange={(v) => setMode(v as 'fair' | 'competitive' | 'tournament')}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="fair">Fair Rotation</SelectItem>
                         <SelectItem value="competitive">Competitive</SelectItem>
+                        <SelectItem value="tournament">Tournament</SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground mt-1.5">
                       {mode === 'competitive'
                         ? 'Players are matched by win count — top players face each other, bottom players face each other.'
+                        : mode === 'tournament'
+                        ? 'Single-elimination bracket. Set up teams, then play match by match until a champion is crowned.'
                         : 'Everyone gets equal court time and varied opponents. Best for casual play.'}
                     </p>
                   </div>

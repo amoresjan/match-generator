@@ -17,7 +17,8 @@ from .serializers import (
     SetPartnerSerializer,
 )
 from .services.match_generator import commit_round, generate_round, preview_rounds, reconcile_round_history
-from .services.push_notifications import build_override_payloads, build_round_payloads, send_push_to_session
+from .services.push_notifications import build_override_payloads, build_round_payloads, build_tournament_match_payloads, send_push_to_session
+from .services.tournament_generator import advance_bracket, build_bracket, randomize_teams
 
 
 # ---------------------------------------------------------------------------
@@ -337,6 +338,126 @@ def push_subscribe(request, session_id):
         defaults={'session': session, 'p256dh': p256dh, 'auth': auth, 'player_id': player_id},
     )
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ---------------------------------------------------------------------------
+# Tournament
+# ---------------------------------------------------------------------------
+
+@api_view(['POST'])
+def tournament_setup(request, session_id):
+    """Initialise or re-randomise the tournament bracket."""
+    session = _session_with_prefetch(session_id)
+    err = _require_admin(request, session)
+    if err:
+        return err
+
+    all_players = list(session.players.all())
+    player_map = {str(p.id): p.name for p in all_players}
+    randomize = bool(request.data.get('randomize', False))
+    team_size = 2 if session.match_type == '2v2' else 1
+
+    if randomize:
+        active_ids = [str(p.id) for p in all_players if not p.sit_out]
+        raw_teams = randomize_teams(active_ids, team_size=team_size)
+    else:
+        raw_teams = request.data.get('teams')
+        if not raw_teams or not isinstance(raw_teams, list):
+            return Response({'detail': 'Provide teams list or set randomize=true.'}, status=400)
+
+    teams_input = []
+    for i, td in enumerate(raw_teams):
+        pids = [str(p) for p in td.get('player_ids', [])]
+        name = ' & '.join(player_map.get(pid, '?') for pid in pids)
+        teams_input.append({'player_ids': pids, 'name': name, 'seed': i + 1})
+
+    try:
+        bracket = build_bracket(teams_input, num_courts=session.num_courts)
+    except ValueError as exc:
+        return Response({'detail': str(exc)}, status=400)
+
+    session.tournament_data = bracket
+    session.save(update_fields=['tournament_data'])
+    return Response(SessionSerializer(session).data)
+
+
+@api_view(['POST'])
+def tournament_advance(request, session_id):
+    """Record result for the active match and advance the bracket."""
+    session = get_object_or_404(Session, id=session_id)
+    err = _require_admin(request, session) or _require_active(session)
+    if err:
+        return err
+
+    if not session.tournament_data:
+        return Response({'detail': 'Tournament not initialised.'}, status=400)
+
+    match_slot_id = request.data.get('match_slot_id')
+    winner_team_id = request.data.get('winner_team_id')
+    if not match_slot_id or not winner_team_id:
+        return Response({'detail': 'match_slot_id and winner_team_id required.'}, status=400)
+
+    bracket = session.tournament_data
+    slot_map = {s['id']: s for s in bracket['match_slots']}
+    slot = slot_map.get(match_slot_id)
+    if not slot:
+        return Response({'detail': 'Match slot not found.'}, status=404)
+    if slot['status'] not in ('active', 'ready'):
+        return Response({'detail': 'This match is not active.'}, status=400)
+
+    teams_by_id = {t['id']: t for t in bracket['teams']}
+    top_team = teams_by_id.get(slot['top_team_id'] or '')
+    bottom_team = teams_by_id.get(slot['bottom_team_id'] or '')
+
+    winner_side = None
+    if winner_team_id == slot.get('top_team_id'):
+        winner_side = 'team1'
+    elif winner_team_id == slot.get('bottom_team_id'):
+        winner_side = 'team2'
+    else:
+        return Response({'detail': 'winner_team_id must be one of the two teams.'}, status=400)
+
+    prev_active = set(bracket.get('active_match_ids', []))
+
+    with transaction.atomic():
+        rnd = Round.objects.create(session=session, number=session.rounds.count() + 1)
+        match = Match.objects.create(
+            round=rnd,
+            court_number=1,
+            team1_players=top_team['player_ids'] if top_team else [],
+            team2_players=bottom_team['player_ids'] if bottom_team else [],
+            winner=winner_side,
+        )
+        updated = advance_bracket(bracket, match_slot_id, winner_team_id,
+                                   num_courts=session.num_courts, db_match_id=str(match.id))
+        session.tournament_data = updated
+        session.save(update_fields=['tournament_data'])
+
+    # Notify players in newly activated matches
+    newly_active = set(updated.get('active_match_ids', [])) - prev_active
+    if newly_active:
+        player_payloads = build_tournament_match_payloads(session, updated, newly_active)
+        if player_payloads:
+            send_push_to_session(
+                session,
+                {'title': session.name, 'body': 'Your match is up!', 'url': f'/session/{session.id}'},
+                player_payloads=player_payloads,
+                restrict_player_ids=set(player_payloads.keys()),
+            )
+
+    # Notify everyone when tournament is complete
+    if updated.get('status') == 'complete' and updated.get('champion_team_id'):
+        champion = next(
+            (t for t in updated['teams'] if t['id'] == updated['champion_team_id']), None
+        )
+        champ_name = champion['name'] if champion else 'A team'
+        send_push_to_session(session, {
+            'title': session.name,
+            'body': f'🏆 {champ_name} wins the tournament!',
+            'url': f'/session/{session.id}',
+        })
+
+    return Response({'tournament_data': updated})
 
 
 @api_view(['POST'])

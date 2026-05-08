@@ -181,3 +181,32 @@ export function useUpdateSession(sessionId: string) {
     onError: () => toast.error('Failed to save settings'),
   })
 }
+
+export function useTournamentSetup(sessionId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: { randomize: true } | { teams: { player_ids: string[] }[] }) =>
+      api.tournamentSetup(sessionId, payload),
+    onSuccess: (data) => {
+      qc.setQueryData<Session>(sessionKeys.detail(sessionId), (old) =>
+        old ? { ...old, tournament_data: data.tournament_data } : old
+      )
+      qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) })
+    },
+    onError: () => toast.error('Failed to set up tournament'),
+  })
+}
+
+export function useTournamentAdvance(sessionId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ matchSlotId, winnerTeamId }: { matchSlotId: string; winnerTeamId: string }) =>
+      api.tournamentAdvance(sessionId, matchSlotId, winnerTeamId),
+    onSuccess: (data) => {
+      qc.setQueryData<Session>(sessionKeys.detail(sessionId), (old) =>
+        old ? { ...old, tournament_data: data.tournament_data } : old
+      )
+    },
+    onError: () => toast.error('Failed to record result'),
+  })
+}

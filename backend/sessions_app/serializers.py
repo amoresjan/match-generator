@@ -41,6 +41,7 @@ class SessionSerializer(serializers.ModelSerializer):
         model = Session
         fields = [
             'id', 'name', 'match_type', 'num_courts', 'generation_mode', 'sport_type',
+            'session_mode', 'tournament_data',
             'is_active', 'auto_deactivated', 'created_at', 'players', 'rounds', 'removed_players',
         ]
         read_only_fields = ['id', 'created_at', 'auto_deactivated']
@@ -49,7 +50,7 @@ class SessionSerializer(serializers.ModelSerializer):
 class SessionCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Session
-        fields = ['name', 'match_type', 'num_courts', 'generation_mode', 'sport_type']
+        fields = ['name', 'match_type', 'num_courts', 'generation_mode', 'sport_type', 'session_mode']
 
 
 class PlayerCreateSerializer(serializers.ModelSerializer):

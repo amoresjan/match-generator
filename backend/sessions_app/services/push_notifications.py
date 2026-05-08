@@ -86,6 +86,44 @@ def build_override_payloads(session, match) -> dict:
     return payloads
 
 
+def build_tournament_match_payloads(session, bracket: dict, newly_active_slot_ids: set) -> dict:
+    """Return {player_id_str: payload} for players whose match just became active."""
+    url = f'/session/{session.id}'
+    player_names = {str(p.id): p.name for p in session.players.all()}
+    teams_by_id = {t['id']: t for t in bracket['teams']}
+    slots_by_id = {s['id']: s for s in bracket['match_slots']}
+    num_rounds = bracket['num_rounds']
+
+    def _round_name(r):
+        return {num_rounds: 'Final', num_rounds - 1: 'Semifinals', num_rounds - 2: 'Quarterfinals'}.get(r, f'Round {r}')
+
+    payloads = {}
+    for slot_id in newly_active_slot_ids:
+        slot = slots_by_id.get(slot_id)
+        if not slot:
+            continue
+        top = teams_by_id.get(slot.get('top_team_id') or '')
+        bot = teams_by_id.get(slot.get('bottom_team_id') or '')
+        if not top or not bot:
+            continue
+
+        round_name = _round_name(slot['round'])
+
+        for my_team, opp_team in [(top, bot), (bot, top)]:
+            opp_names = [player_names.get(pid, '?') for pid in opp_team['player_ids']]
+            opp_str = ' & '.join(opp_names)
+            for pid in my_team['player_ids']:
+                partners = [player_names.get(p, '?') for p in my_team['player_ids'] if p != pid]
+                body = (
+                    f'{round_name} — with {" & ".join(partners)} vs {opp_str}'
+                    if partners else
+                    f'{round_name} — vs {opp_str}'
+                )
+                payloads[pid] = {'title': session.name, 'body': body, 'url': url}
+
+    return payloads
+
+
 def send_push_to_session(
     session,
     payload: dict,

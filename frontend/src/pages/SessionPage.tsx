@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { RefreshCw, Settings, Users, Clock, LogOut, Copy, Check, Trophy, Moon, Sun } from 'lucide-react'
-import { useSession, useGenerateRound, useUpdateSession, useSetSessionActive } from '@/hooks/useSession'
+import { RefreshCw, Settings, Users, Clock, LogOut, Copy, Check, Trophy, Moon, Sun, Swords } from 'lucide-react'
+import { useSession, useGenerateRound, useUpdateSession, useSetSessionActive, useTournamentSetup, useTournamentAdvance } from '@/hooks/useSession'
 import { useClaimedPlayer } from '@/hooks/useClaimedPlayer'
 import { useTheme } from '@/hooks/useTheme'
 import { SPORTS, getSport, type SportType } from '@/lib/sports'
@@ -19,16 +19,25 @@ import { api, saveAdminToken, getAdminToken } from '@/lib/api'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { OnboardingWizard, hasBeenOnboarded, hasSeenAdminOnboarding } from '@/components/OnboardingWizard'
 import { PushNotificationSettings } from '@/components/PushNotificationSettings'
+import { TournamentSetup } from '@/components/tournament/TournamentSetup'
+import { TournamentBracket, TournamentCourts, TournamentLeaderboard } from '@/components/tournament/TournamentBracket'
 import { partitionPlayers } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 
-type Tab = 'round' | 'players' | 'history' | 'leaderboard' | 'settings'
+type Tab = 'round' | 'players' | 'history' | 'leaderboard' | 'settings' | 'bracket' | 'courts'
 
-const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
+const ROTATION_TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
   { key: 'round', label: 'Round', icon: <RefreshCw className="h-4 w-4" /> },
   { key: 'players', label: 'Players', icon: <Users className="h-4 w-4" /> },
   { key: 'history', label: 'History', icon: <Clock className="h-4 w-4" /> },
   { key: 'leaderboard', label: 'Board', icon: <Trophy className="h-4 w-4" /> },
+  { key: 'settings', label: 'Settings', icon: <Settings className="h-4 w-4" /> },
+]
+
+const TOURNAMENT_TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
+  { key: 'courts', label: 'Courts', icon: <Swords className="h-4 w-4" /> },
+  { key: 'bracket', label: 'Bracket', icon: <Trophy className="h-4 w-4" /> },
+  { key: 'players', label: 'Players', icon: <Users className="h-4 w-4" /> },
   { key: 'settings', label: 'Settings', icon: <Settings className="h-4 w-4" /> },
 ]
 
@@ -46,7 +55,18 @@ export function SessionPage() {
   const generateRound = useGenerateRound(sessionId!)
   const updateSession = useUpdateSession(sessionId!)
   const setSessionActive = useSetSessionActive(sessionId!)
+  const tournamentSetup = useTournamentSetup(sessionId!)
+  const tournamentAdvance = useTournamentAdvance(sessionId!)
+  const isTournament = session?.session_mode === 'tournament'
   const [tab, setTab] = useState<Tab>('round')
+
+  // Switch to courts tab when a tournament session first loads
+  useEffect(() => {
+    if (session?.session_mode === 'tournament' && tab === 'round') {
+      setTab('courts')
+      prevTabRef.current = 'courts'
+    }
+  }, [session?.session_mode])
   const [slideDir, setSlideDir] = useState<'left' | 'right'>('left')
   const prevTabRef = useRef<Tab>('round')
   const [admin, setAdmin] = useState(() => isAdmin(sessionId!))
@@ -64,6 +84,7 @@ export function SessionPage() {
     setShowClaimPrompt(true)
   }, [showWizard, claimedPlayerId, session?.players.length])
 
+  const TABS = isTournament ? TOURNAMENT_TABS : ROTATION_TABS
   const TAB_ORDER = TABS.map((t) => t.key)
 
   function switchTab(t: Tab) {
@@ -124,7 +145,10 @@ export function SessionPage() {
                 {admin && <Badge className="text-xs shrink-0">Host</Badge>}
                 <Badge variant="secondary" className="text-xs shrink-0">{sport.emoji} {sport.label}</Badge>
                 <Badge variant="secondary" className="text-xs shrink-0">{session.match_type === '2v2' ? '👥 2v2' : '👤 1v1'}</Badge>
-                <Badge variant={session.generation_mode === 'competitive' ? 'default' : 'outline'} className="text-xs shrink-0">{session.generation_mode === 'competitive' ? '🏆 Competitive' : '🔄 Fair'}</Badge>
+                {isTournament
+                  ? <Badge className="text-xs shrink-0">🏆 Tournament</Badge>
+                  : <Badge variant={session.generation_mode === 'competitive' ? 'default' : 'outline'} className="text-xs shrink-0">{session.generation_mode === 'competitive' ? '🏆 Competitive' : '🔄 Fair'}</Badge>
+                }
               </div>
             </div>
           </div>
@@ -163,6 +187,41 @@ export function SessionPage() {
       {/* Content */}
       <main key={tab} className={`max-w-2xl mx-auto p-4 space-y-6 ${admin && tab === 'round' && session.is_active ? 'pb-24' : ''} ${slideDir === 'left' ? 'animate-tab-slide-left' : 'animate-tab-slide-right'}`}>
         <ErrorBoundary>
+          {/* Tournament — Courts tab */}
+          {tab === 'courts' && (
+            session.tournament_data
+              ? <>
+                  <TournamentCourts
+                    bracket={session.tournament_data}
+                    isAdmin={admin}
+                    onAdvance={(slotId, winnerId) => tournamentAdvance.mutate({ matchSlotId: slotId, winnerTeamId: winnerId })}
+                    isPending={tournamentAdvance.isPending}
+                  />
+                  {session.tournament_data.status === 'complete' && (
+                    <TournamentLeaderboard
+                      bracket={session.tournament_data}
+                      rounds={session.rounds}
+                      currentPlayerId={claimedPlayerId ?? undefined}
+                    />
+                  )}
+                </>
+              : admin
+                ? <TournamentSetup
+                    session={session}
+                    onSetup={(payload) => tournamentSetup.mutate(payload)}
+                    isPending={tournamentSetup.isPending}
+                  />
+                : <div className="text-center text-muted-foreground py-12 text-sm">Waiting for the host to set up the bracket.</div>
+          )}
+
+          {/* Tournament — Bracket tab */}
+          {tab === 'bracket' && (
+            session.tournament_data
+              ? <TournamentBracket bracket={session.tournament_data} />
+              : <div className="text-center text-muted-foreground py-12 text-sm">No bracket yet.</div>
+          )}
+
+          {/* Rotation mode */}
           {tab === 'round' && (
             <CurrentRound
               session={session}
@@ -171,9 +230,13 @@ export function SessionPage() {
             />
           )}
           {tab === 'players' && (
-            admin
+            admin && !(isTournament && session.tournament_data)
               ? <PlayerList session={session} currentPlayerId={claimedPlayerId ?? undefined} />
-              : <PublicPlayerList players={session.players} currentPlayerId={claimedPlayerId ?? undefined} />
+              : <PublicPlayerList
+                  players={session.players}
+                  currentPlayerId={claimedPlayerId ?? undefined}
+                  bracketLocked={isTournament && !!session.tournament_data}
+                />
           )}
           {tab === 'history' && <RoundHistory sessionId={session.id} rounds={session.rounds} players={session.players} removedPlayers={session.removed_players} isAdmin={admin} isActive={session.is_active} currentPlayerId={claimedPlayerId ?? undefined} />}
           {tab === 'leaderboard' && (
@@ -262,8 +325,8 @@ export function SessionPage() {
         />
       )}
 
-      {/* Sticky generate button — only on Round tab for active admins */}
-      {admin && tab === 'round' && session.is_active && (() => {
+      {/* Sticky generate button — only on Round tab for active rotation admins */}
+      {admin && tab === 'round' && session.is_active && !isTournament && (() => {
         const activePlayers = session.players.filter((p) => !p.sit_out)
         const minPlayers = session.match_type === '2v2' ? 4 : 2
         const hint = activePlayers.length === 0
@@ -359,7 +422,7 @@ function PublicPlayerRow({ player, isMe }: { player: import('@/lib/types').Playe
   )
 }
 
-function PublicPlayerList({ players, currentPlayerId }: { players: import('@/lib/types').Player[]; currentPlayerId?: string }) {
+function PublicPlayerList({ players, currentPlayerId, bracketLocked }: { players: import('@/lib/types').Player[]; currentPlayerId?: string; bracketLocked?: boolean }) {
   const { duoPairs, solos } = partitionPlayers(players)
   const sortedDuoPairs = [...duoPairs].sort(([a, b], [c, d]) => {
     const meInA = currentPlayerId && (a.id === currentPlayerId || b.id === currentPlayerId)
@@ -376,10 +439,16 @@ function PublicPlayerList({ players, currentPlayerId }: { players: import('@/lib
     <div className="space-y-2">
       <h2 className="font-semibold">Players ({players.length})</h2>
 
-      <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground space-y-1">
-        <p className="font-medium">💡 Duo tip</p>
-        <p>Want to permanently team up with someone? Ask the host to set you up as a duo.</p>
-      </div>
+      {bracketLocked ? (
+        <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
+          Player list is locked once the bracket is generated.
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground space-y-1">
+          <p className="font-medium">💡 Duo tip</p>
+          <p>Want to permanently team up with someone? Ask the host to set you up as a duo.</p>
+        </div>
+      )}
 
       {sortedDuoPairs.map(([a, b]) => (
         <div key={`${a.id}-${b.id}`} className="rounded-lg border-2 p-3 space-y-2">
@@ -560,6 +629,9 @@ function SessionSettings({ sessionId, session, onSave, saving, onSetActive, sett
   const { theme, toggle: toggleTheme } = useTheme()
   const navigate = useNavigate()
 
+  const isTournament = session.session_mode === 'tournament'
+  const bracketLocked = isTournament && !!session.tournament_data
+
   useEffect(() => {
     setName(session.name)
     setSport(session.sport_type)
@@ -569,10 +641,10 @@ function SessionSettings({ sessionId, session, onSave, saving, onSetActive, sett
   }, [session.name, session.sport_type, session.match_type, session.num_courts, session.generation_mode])
 
   const adminToken = getAdminToken(sessionId) ?? ''
-  const fieldDisabled = !session.is_active
+  const fieldDisabled = !session.is_active || bracketLocked
 
   const parsedCourts = Math.max(1, Math.min(8, parseInt(numCourts) || 1))
-  const hasChanges = session.is_active && (
+  const hasChanges = session.is_active && !bracketLocked && (
     name !== session.name ||
     sport !== session.sport_type ||
     matchType !== session.match_type ||
@@ -625,29 +697,36 @@ function SessionSettings({ sessionId, session, onSave, saving, onSetActive, sett
             <Input type="text" inputMode="numeric" value={numCourts} onChange={(e) => setNumCourts(e.target.value.replace(/\D/g, ''))} disabled={fieldDisabled} />
           </div>
         </div>
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Mode</label>
-          <Select value={mode} onValueChange={(v) => setMode(v as 'fair' | 'competitive')} disabled={fieldDisabled}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="fair">Fair Rotation</SelectItem>
-              <SelectItem value="competitive">Competitive</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground mt-1.5">
-            {mode === 'competitive'
-              ? 'Players are matched by win count — top players face each other, bottom players face each other.'
-              : 'Everyone gets equal court time and varied opponents. Best for casual play.'}
-          </p>
-        </div>
+        {!isTournament && (
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Mode</label>
+            <Select value={mode} onValueChange={(v) => setMode(v as 'fair' | 'competitive')} disabled={fieldDisabled}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="fair">Fair Rotation</SelectItem>
+                <SelectItem value="competitive">Competitive</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              {mode === 'competitive'
+                ? 'Players are matched by win count — top players face each other, bottom players face each other.'
+                : 'Everyone gets equal court time and varied opponents. Best for casual play.'}
+            </p>
+          </div>
+        )}
       </SettingsSection>
 
       <SettingsSection title="Session">
+        {bracketLocked && (
+          <div className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
+            Settings are locked while a tournament bracket is active.
+          </div>
+        )}
         <div>
           <label className="text-xs text-muted-foreground mb-1 block">Name</label>
           <Input value={name} onChange={(e) => setName(e.target.value)} disabled={fieldDisabled} />
         </div>
-        {session.is_active && (
+        {session.is_active && !bracketLocked && (
           <div className="pt-1 space-y-1.5">
             <p className={`text-xs text-amber-600 dark:text-amber-400 transition-opacity ${hasChanges ? 'opacity-100' : 'opacity-0'}`}>
               ● Unsaved changes

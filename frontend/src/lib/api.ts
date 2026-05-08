@@ -1,4 +1,4 @@
-import type { Match, Player, PreviewRound, Round, Session, SessionWithToken } from './types'
+import type { Match, Player, PreviewRound, Round, Session, SessionWithToken, TournamentBracket } from './types'
 
 export const BASE = import.meta.env.VITE_API_URL ?? '/api'
 
@@ -32,7 +32,7 @@ async function request<T>(
 
 // Sessions
 export const api = {
-  createSession: (data: { name: string; match_type: '1v1' | '2v2'; num_courts: number; generation_mode: 'fair' | 'competitive'; sport_type: string }) =>
+  createSession: (data: { name: string; match_type: '1v1' | '2v2'; num_courts: number; generation_mode: 'fair' | 'competitive'; sport_type: string; session_mode?: 'rotation' | 'tournament' }) =>
     request<SessionWithToken>('/sessions/', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -138,5 +138,19 @@ export const api = {
     request<void>(`/sessions/${sessionId}/push-unsubscribe/`, {
       method: 'POST',
       body: JSON.stringify({ endpoint }),
+    }),
+
+  tournamentSetup: (sessionId: string, payload: { randomize: true } | { teams: { player_ids: string[] }[] }) =>
+    request<Session>(`/sessions/${sessionId}/tournament/setup/`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      adminToken: getAdminToken(sessionId) ?? undefined,
+    }),
+
+  tournamentAdvance: (sessionId: string, matchSlotId: string, winnerTeamId: string) =>
+    request<{ tournament_data: TournamentBracket }>(`/sessions/${sessionId}/tournament/advance/`, {
+      method: 'POST',
+      body: JSON.stringify({ match_slot_id: matchSlotId, winner_team_id: winnerTeamId }),
+      adminToken: getAdminToken(sessionId) ?? undefined,
     }),
 }

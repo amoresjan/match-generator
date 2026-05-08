@@ -14,6 +14,8 @@ class Session(models.Model):
         ('others', 'Others'),
     ]
 
+    SESSION_MODE_CHOICES = [('rotation', 'Rotation'), ('tournament', 'Tournament')]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     admin_token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     name = models.CharField(max_length=120)
@@ -21,6 +23,8 @@ class Session(models.Model):
     num_courts = models.PositiveSmallIntegerField(default=1)
     generation_mode = models.CharField(max_length=11, choices=GENERATION_MODE_CHOICES, default='fair')
     sport_type = models.CharField(max_length=10, choices=SPORT_TYPE_CHOICES, default='pickleball')
+    session_mode = models.CharField(max_length=10, choices=SESSION_MODE_CHOICES, default='rotation')
+    tournament_data = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
     auto_deactivated = models.BooleanField(default=False)
