@@ -31,6 +31,7 @@ PARTNER_REPEAT_W = 5.0
 OPPONENT_REPEAT_W = 2.0
 WAIT_ADVANTAGE_W = 3.0   # reward for giving a long-waiting player a game
 BYE_PENALTY_W = 1.0      # per bye player — prefer fewer byes
+RECENCY_W = 3.0          # 1/rounds_ago penalty — breaks cost ties toward least-recently-used matchups
 
 
 class CourtAssignment(TypedDict):
@@ -60,6 +61,7 @@ def _build_history(session: Session) -> dict:
     """
     partner_counts: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     opponent_counts: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    last_opp_round: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     wait_rounds: dict[str, int] = defaultdict(int)
     last_sat_out: dict[str, int] = defaultdict(int)
     last_played: dict[str, int] = defaultdict(int)
@@ -79,11 +81,14 @@ def _build_history(session: Session) -> dict:
         for partner in h['partner_ids']:
             partner_counts[pid][str(partner)] += 1
         for opp in h['opponent_ids']:
-            opponent_counts[pid][str(opp)] += 1
+            opp_str = str(opp)
+            opponent_counts[pid][opp_str] += 1
+            last_opp_round[pid][opp_str] = max(last_opp_round[pid][opp_str], h['round__number'])
 
     return {
         'partner': partner_counts,
         'opponent': opponent_counts,
+        'last_opp_round': last_opp_round,
         'wait': wait_rounds,
         'last_sat_out': last_sat_out,
         'last_played': last_played,
@@ -117,12 +122,15 @@ def _team_pair_cost(team: list[str], hist: dict) -> float:
     return cost
 
 
-def _matchup_cost(team1: list[str], team2: list[str], hist: dict) -> float:
-    """Penalty for two teams facing each other again."""
+def _matchup_cost(team1: list[str], team2: list[str], hist: dict, round_number: int = 0) -> float:
+    """Penalty for two teams facing each other again, with a recency boost."""
     cost = 0.0
     for a in team1:
         for b in team2:
             cost += OPPONENT_REPEAT_W * hist['opponent'][a][b]
+            last_rnd = hist['last_opp_round'][a][b]
+            if last_rnd > 0 and round_number > last_rnd:
+                cost += RECENCY_W / (round_number - last_rnd)
     return cost
 
 
@@ -134,11 +142,11 @@ def _wait_bonus(players: list[str], hist: dict) -> float:
     return bonus
 
 
-def _match_cost(team1: list[str], team2: list[str], hist: dict) -> float:
+def _match_cost(team1: list[str], team2: list[str], hist: dict, round_number: int = 0) -> float:
     return (
         _team_pair_cost(team1, hist)
         + _team_pair_cost(team2, hist)
-        + _matchup_cost(team1, team2, hist)
+        + _matchup_cost(team1, team2, hist, round_number)
         + _wait_bonus(team1 + team2, hist)
     )
 
@@ -213,7 +221,7 @@ def _select_byes_2v2(
 
     for unit in units:
         unit['jitter'] = random.random()
-    units.sort(key=lambda u: (u['wait'], -u['last_played'], u['jitter']))
+    units.sort(key=lambda u: (u['wait'], u['jitter']))
 
     bye_players: list[str] = []
     active_pairs: list[list[str]] = list(pairs)
@@ -234,24 +242,38 @@ def _select_byes_2v2(
     return active_pairs, active_singles, bye_players
 
 
+def _enumerate_pairings(items: list) -> list[list[tuple]]:
+    """All perfect pairings of an even-length list as [(a, b), ...] tuples."""
+    if not items:
+        return [[]]
+    first = items[0]
+    rest = items[1:]
+    result = []
+    for i, partner in enumerate(rest):
+        remaining = rest[:i] + rest[i + 1:]
+        for sub in _enumerate_pairings(remaining):
+            result.append([(first, partner)] + sub)
+    return result
+
+
 def _pair_singles(active_singles: list[str], hist: dict) -> list[list[str]]:
-    """Greedily pair singles by minimum partner-repeat cost."""
-    pool: list[list[str]] = []
-    unpaired = list(active_singles)
-    while len(unpaired) >= 2:
-        best_cost = float('inf')
-        best_pair: list[str] = []
-        for a, b in itertools.combinations(range(len(unpaired)), 2):
-            c = _team_pair_cost([unpaired[a], unpaired[b]], hist)
-            if c < best_cost:
-                best_cost = c
-                best_pair = [unpaired[a], unpaired[b]]
-        pool.append(best_pair)
-        for x in best_pair:
-            unpaired.remove(x)
-    for p in unpaired:
-        pool.append([p])
-    return pool
+    """Globally optimal pairing of singles by minimising total partner-repeat cost.
+
+    Enumerates all perfect pairings and picks the minimum-cost one.
+    Shuffle first so ties are broken randomly (respects the seeded RNG).
+    """
+    if len(active_singles) < 2:
+        return [[s] for s in active_singles]
+    shuffled = list(active_singles)
+    random.shuffle(shuffled)
+    best_cost = float('inf')
+    best: list[list[str]] = []
+    for pairing in _enumerate_pairings(shuffled):
+        cost = sum(_team_pair_cost([a, b], hist) for a, b in pairing)
+        if cost < best_cost:
+            best_cost = cost
+            best = [[a, b] for a, b in pairing]
+    return best
 
 
 # ---------------------------------------------------------------------------
@@ -269,36 +291,19 @@ def _generate_2v2(
     pool: list[list[str]] = list(active_pairs) + _pair_singles(active_singles, hist)
 
     courts: list[CourtAssignment] = []
-    court_num = 1
-    used: set[int] = set()
-
-    while len(courts) < num_courts and len([i for i in range(len(pool)) if i not in used]) >= 2:
-        available = [i for i in range(len(pool)) if i not in used]
-        if len(available) < 2:
-            break
-
-        first_idx = available[0]
-        team1 = pool[first_idx]
-        used.add(first_idx)
-
+    if len(pool) >= 2:
+        # Shuffle so ties are broken randomly (seeded RNG keeps previews deterministic).
+        random.shuffle(pool)
         best_cost = float('inf')
-        best_idx = -1
-        for idx in available[1:]:
-            cost = _match_cost(team1, pool[idx], hist)
+        # Enumerate all perfect pairings of teams; pick the globally minimum-cost one.
+        for pairing in _enumerate_pairings(pool):
+            cost = sum(_match_cost(list(t1), list(t2), hist, round_number) for t1, t2 in pairing)
             if cost < best_cost:
                 best_cost = cost
-                best_idx = idx
-
-        if best_idx == -1:
-            break
-
-        used.add(best_idx)
-        courts.append({'court': court_num, 'team1': team1, 'team2': pool[best_idx]})
-        court_num += 1
-
-    for i, grp in enumerate(pool):
-        if i not in used:
-            bye_players.extend(grp)
+                courts = [
+                    {'court': i + 1, 'team1': list(t1), 'team2': list(t2)}
+                    for i, (t1, t2) in enumerate(pairing)
+                ]
 
     return {'round_number': round_number, 'courts': courts, 'bye_players': bye_players}
 
@@ -354,37 +359,24 @@ def _generate_1v1(
     bye_count = total - players_needed
 
     jitter = {pid: random.random() for pid in all_ids}
-    sorted_ids = sorted(all_ids, key=lambda pid: (hist['wait'][pid], -hist['last_played'][pid], jitter[pid]))
+    sorted_ids = sorted(all_ids, key=lambda pid: (hist['wait'][pid], jitter[pid]))
     bye_players = sorted_ids[:bye_count]
-    active = sorted_ids[bye_count:]
+    active = list(sorted_ids[bye_count:])
 
     courts: list[CourtAssignment] = []
-    used: set[str] = set()
-    court_num = 1
-
-    while len(courts) < num_courts and len([x for x in active if x not in used]) >= 2:
-        available = [x for x in active if x not in used]
-        p1 = available[0]
-        used.add(p1)
-
+    if len(active) >= 2:
+        # Shuffle so ties in cost are broken randomly (seeded RNG keeps previews deterministic).
+        random.shuffle(active)
         best_cost = float('inf')
-        best_p2 = ''
-        for p2 in available[1:]:
-            cost = _match_cost([p1], [p2], hist)
+        # Enumerate all perfect pairings; pick the globally minimum-cost one.
+        for pairing in _enumerate_pairings(active):
+            cost = sum(_match_cost([p1], [p2], hist, round_number) for p1, p2 in pairing)
             if cost < best_cost:
                 best_cost = cost
-                best_p2 = p2
-
-        if not best_p2:
-            break
-
-        used.add(best_p2)
-        courts.append({'court': court_num, 'team1': [p1], 'team2': [best_p2]})
-        court_num += 1
-
-    for p in active:
-        if p not in used:
-            bye_players.append(p)
+                courts = [
+                    {'court': i + 1, 'team1': [p1], 'team2': [p2]}
+                    for i, (p1, p2) in enumerate(pairing)
+                ]
 
     return {'round_number': round_number, 'courts': courts, 'bye_players': bye_players}
 
@@ -451,6 +443,9 @@ def _copy_hist(hist: dict) -> dict:
         'opponent': defaultdict(lambda: defaultdict(int), {
             k: defaultdict(int, v) for k, v in hist['opponent'].items()
         }),
+        'last_opp_round': defaultdict(lambda: defaultdict(int), {
+            k: defaultdict(int, v) for k, v in hist.get('last_opp_round', {}).items()
+        }),
         'wait': defaultdict(int, hist['wait']),
         'last_sat_out': defaultdict(int, hist['last_sat_out']),
         'last_played': defaultdict(int, hist.get('last_played', {})),
@@ -460,6 +455,7 @@ def _copy_hist(hist: dict) -> dict:
 def _simulate_history_update(hist: dict, generated: GeneratedRound) -> dict:
     """Return a new hist dict reflecting a generated round as if it were committed."""
     h = _copy_hist(hist)
+    rn = generated['round_number']
     for court in generated['courts']:
         t1, t2 = court['team1'], court['team2']
         for pid in t1:
@@ -468,13 +464,14 @@ def _simulate_history_update(hist: dict, generated: GeneratedRound) -> dict:
                     h['partner'][pid][partner] += 1
             for opp in t2:
                 h['opponent'][pid][opp] += 1
+                h['last_opp_round'][pid][opp] = rn
         for pid in t2:
             for partner in t2:
                 if partner != pid:
                     h['partner'][pid][partner] += 1
             for opp in t1:
                 h['opponent'][pid][opp] += 1
-    rn = generated['round_number']
+                h['last_opp_round'][pid][opp] = rn
     for pid in generated['bye_players']:
         h['wait'][pid] += 1
         h['last_sat_out'][pid] = max(h['last_sat_out'].get(pid, 0), rn)
