@@ -78,11 +78,11 @@ export function SessionPage() {
   const [showClaimPrompt, setShowClaimPrompt] = useState(false)
 
   useEffect(() => {
-    if (showWizard || claimedPlayerId || claimPromptTriggered.current) return
+    if (admin || showWizard || claimedPlayerId || claimPromptTriggered.current) return
     if (!session?.players.length) return
     claimPromptTriggered.current = true
     setShowClaimPrompt(true)
-  }, [showWizard, claimedPlayerId, session?.players.length])
+  }, [admin, showWizard, claimedPlayerId, session?.players.length])
 
   const TABS = isTournament ? TOURNAMENT_TABS : ROTATION_TABS
   const TAB_ORDER = TABS.map((t) => t.key)
