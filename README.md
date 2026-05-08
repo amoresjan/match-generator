@@ -16,6 +16,9 @@ A mobile-first web app that generates fair, rotating matches for pickleball sess
 - **Manual overrides** — host can edit any court assignment after generation
 - **Retained player names** — removed players still appear by name in past round history
 - **Co-host support** — share the admin code with others to grant host access
+- **Web push notifications** — subscribers are notified when a new round is generated or the session closes; iOS 16.4+ supported in standalone/PWA mode
+- **Session deactivation** — hosts can manually close a session; sessions with no activity for 24 hours are auto-closed by a cron job
+- **Onboarding wizard** — first-time guests and newly-unlocked co-hosts are walked through the UI
 - **Dark mode**
 - **UUID-based host auth** — no accounts needed; admin token stored in `localStorage`
 - **Public session view** — share the session URL with players for a read-only view
@@ -72,6 +75,9 @@ The app is available at `http://localhost:5173`. In dev, Vite proxies `/api` →
 | `DATABASE_URL` | *(unset → SQLite)* | PostgreSQL URL for production |
 | `ALLOWED_HOSTS` | `localhost,127.0.0.1` | Comma-separated allowed hosts |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | Comma-separated frontend origins |
+| `VAPID_PRIVATE_KEY` | *(unset)* | VAPID private key for web push (generate with `scripts/generate_vapid_keys.py`) |
+| `VAPID_PUBLIC_KEY` | *(unset)* | VAPID public key — must match the private key |
+| `VAPID_CLAIMS_EMAIL` | *(unset)* | Contact email included in VAPID JWT claims |
 
 ### Frontend (`.env.local`)
 
@@ -84,8 +90,9 @@ The app is available at `http://localhost:5173`. In dev, Vite proxies `/api` →
 ### Backend → Railway
 
 1. Create a new Railway project and add a **PostgreSQL** plugin.
-2. Set environment variables: `SECRET_KEY`, `DEBUG=False`, `DATABASE_URL` (auto-set by Railway), `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`.
+2. Set environment variables: `SECRET_KEY`, `DEBUG=False`, `DATABASE_URL` (auto-set by Railway), `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_CLAIMS_EMAIL`.
 3. Push the `backend/` directory. Railway uses `railway.json` to run migrations and start gunicorn automatically.
+4. Add a second Railway service (cron) pointing at the same repo with `railway.cron.json` as its config. This runs `python manage.py deactivate_inactive_sessions` hourly to auto-close stale sessions.
 
 ### Frontend → Vercel
 
@@ -100,17 +107,20 @@ All admin endpoints require the `X-Admin-Token: <token>` header. The token is re
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
 | `POST` | `/api/sessions/` | — | Create a session |
-| `GET` | `/api/sessions/:id/` | — | Get session (players, rounds, matches) |
+| `GET` | `/api/sessions/:id/` | — | Get session (players, rounds, matches); accepts `?since_round=N` to return only rounds after N |
 | `PATCH` | `/api/sessions/:id/update/` | Admin | Update name, match type, courts, mode |
+| `PATCH` | `/api/sessions/:id/active/` | Admin | Set `is_active`; cannot reactivate an auto-deactivated session |
 | `POST` | `/api/sessions/:id/players/` | Admin | Add a player |
-| `PATCH` | `/api/sessions/:id/players/:id/` | Admin | Rename a player |
+| `PATCH` | `/api/sessions/:id/players/:id/` | Admin | Rename a player or toggle `sit_out` |
 | `DELETE` | `/api/sessions/:id/players/:id/` | Admin | Remove a player (name retained in history) |
 | `POST` | `/api/sessions/:id/players/:id/partner/` | Admin | Set or clear permanent partner |
-| `POST` | `/api/sessions/:id/players/:id/sit-out/` | Admin | Toggle player sit-out status |
 | `POST` | `/api/sessions/:id/generate/` | Admin | Generate and commit next round |
-| `POST` | `/api/sessions/:id/preview-rounds/` | — | Preview next N rounds without committing |
+| `GET` | `/api/sessions/:id/preview-rounds/` | — | Preview next N rounds without committing |
 | `PATCH` | `/api/sessions/:id/matches/:id/result/` | Admin | Set or clear match winner |
 | `PATCH` | `/api/sessions/:id/matches/:id/override/` | Admin | Manually override a court assignment |
+| `GET` | `/api/vapid-public-key/` | — | Get the VAPID public key for push subscription |
+| `POST` | `/api/sessions/:id/push-subscribe/` | — | Subscribe to web push notifications for this session |
+| `POST` | `/api/sessions/:id/push-unsubscribe/` | — | Unsubscribe from web push notifications |
 
 ## How the Algorithm Works
 
@@ -139,19 +149,29 @@ match-generator/
 ├── backend/
 │   ├── pickleball/          # Django project settings & URLs
 │   ├── sessions_app/
-│   │   ├── models.py        # Session, Player, Round, Match, PlayerRoundHistory
+│   │   ├── models.py        # Session, Player, Round, Match, PlayerRoundHistory, PushSubscription
 │   │   ├── views.py         # API endpoints
 │   │   ├── serializers.py
+│   │   ├── management/
+│   │   │   └── commands/
+│   │   │       └── deactivate_inactive_sessions.py   # Railway cron command
 │   │   └── services/
-│   │       └── match_generator.py   # Fair rotation & competitive algorithms
+│   │       ├── match_generator.py     # Fair rotation & competitive algorithms
+│   │       └── push_notifications.py  # VAPID web push helpers
+│   ├── railway.json         # Web service deploy config (gunicorn)
+│   ├── railway.cron.json    # Cron service config (hourly deactivation sweep)
 │   └── requirements.txt
 └── frontend/
+    ├── public/
+    │   ├── manifest.json    # PWA manifest (enables iOS standalone / install prompt)
+    │   └── sw.js            # Service worker (handles push events and background sync)
     └── src/
         ├── pages/           # HomePage, SessionPage
         ├── components/      # CourtCard, CurrentRound, PlayerList, RoundHistory,
-        │                    # UpcomingRounds, Leaderboard, OverrideMatchDialog, …
-        ├── hooks/           # useSession (TanStack Query)
-        └── lib/             # api.ts, types.ts, utils.ts
+        │                    # UpcomingRounds, Leaderboard, OverrideMatchDialog,
+        │                    # PushNotificationSettings, …
+        ├── hooks/           # useSession, usePushNotifications (TanStack Query)
+        └── lib/             # api.ts, push.ts, types.ts, utils.ts
 ```
 
 ## License
