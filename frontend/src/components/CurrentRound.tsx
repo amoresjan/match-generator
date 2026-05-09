@@ -3,7 +3,6 @@ import { Flame, PauseCircle } from 'lucide-react'
 import { CourtCard } from './CourtCard'
 import { OverrideMatchDialog } from './OverrideMatchDialog'
 import { UpcomingRounds } from './UpcomingRounds'
-import { Badge } from '@/components/ui/badge'
 import { useSetMatchResult } from '@/hooks/useSession'
 import type { Match, Round, Session } from '@/lib/types'
 
@@ -77,11 +76,13 @@ export function CurrentRound({ session, isAdmin, currentPlayerId }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-lg">Round {latestRound.number}</h2>
-        <Badge variant="outline">{latestRound.matches.length} court{latestRound.matches.length !== 1 ? 's' : ''}</Badge>
+        <h2 className="text-2xl font-bold tracking-tight">Round {latestRound.number}</h2>
+        <span className="text-sm text-muted-foreground">
+          {latestRound.matches.length} court{latestRound.matches.length !== 1 ? 's' : ''}
+        </span>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2">
         {latestRound.matches.map((match, i) => (
           <div
             key={match.id}
@@ -104,48 +105,61 @@ export function CurrentRound({ session, isAdmin, currentPlayerId }: Props) {
       </div>
 
       {streakPlayers.length > 0 && (
-        <div className="rounded-lg border border-orange-300 dark:border-orange-700 bg-orange-50/50 dark:bg-orange-900/10 p-3 animate-streak-glow">
-          <p className="text-xs text-orange-500 font-medium uppercase tracking-wide flex items-center gap-1">
-            <Flame className="h-3 w-3" /> Hot Streak
-          </p>
-          <p className="text-[10px] text-orange-400/80 mb-2">Won {STREAK_THRESHOLD}+ games in a row</p>
-          <div className="flex flex-wrap gap-2">
-            {streakPlayers.map((p) => (
-              <Badge key={p.id} variant="outline" className="border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 gap-1">
-                {p.name}
-                <span className="flex items-center gap-0.5 font-bold">
-                  <Flame className="h-3 w-3" />{streakMap.get(p.id)}
-                </span>
-              </Badge>
-            ))}
+        <div className="rounded-xl border border-orange-200 dark:border-orange-800/50 bg-orange-50 dark:bg-orange-950/20 px-3 py-2.5 animate-streak-glow">
+          <div className="flex items-center gap-1.5 mb-2.5">
+            <Flame className="h-3.5 w-3.5 text-orange-500 shrink-0 animate-streak-pulse" />
+            <span className="text-xs font-semibold text-orange-600 dark:text-orange-400">Hot Streak</span>
+            <span className="ml-auto text-[10px] text-orange-400/70 dark:text-orange-500/60">{STREAK_THRESHOLD}+ wins in a row</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {streakPlayers.map((p) => {
+              const count = streakMap.get(p.id)!
+              const isMe = p.id === currentPlayerId
+              return (
+                <div
+                  key={p.id}
+                  className={[
+                    'flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
+                    isMe
+                      ? 'bg-orange-500 text-white'
+                      : 'bg-orange-100 dark:bg-orange-900/40 border border-orange-200 dark:border-orange-700/50 text-orange-800 dark:text-orange-200',
+                  ].join(' ')}
+                >
+                  <span>{isMe ? 'You' : p.name}</span>
+                  <span className={`flex items-center gap-0.5 font-bold text-[11px] ${isMe ? 'text-orange-200' : 'text-orange-500 dark:text-orange-400'}`}>
+                    <Flame className="h-3 w-3 shrink-0" />
+                    {count}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
 
 
       {sittingOutPlayers.length > 0 && (
-        <div className="rounded-lg border border-dashed p-3">
-          <p className="text-xs text-muted-foreground mb-2 font-medium flex items-center gap-1">
-            <PauseCircle className="h-3 w-3" /> Sitting out
+        <div>
+          <p className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 mb-2">
+            <PauseCircle className="h-3.5 w-3.5" /> Sitting out
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {sittingOutPlayers.map((p) => (
-              <Badge key={p.id} variant="secondary" className="text-xs text-muted-foreground">
+              <span key={p.id} className="flex items-center rounded-full bg-muted border border-border px-2.5 py-1 text-xs text-muted-foreground font-medium">
                 {p.name}
-              </Badge>
+              </span>
             ))}
           </div>
           {!isAdmin && (
-            <p className="text-xs text-muted-foreground mt-2">Ready to play? Let the host know and they'll add you back in.</p>
+            <p className="text-xs text-muted-foreground/60 mt-2">Ready to play? Let the host know.</p>
           )}
         </div>
       )}
 
       {!isAdmin && (
-        <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground space-y-1">
-          <p className="font-medium">💡 Co-host tip</p>
-          <p>If you're helping manage this session, ask the host for the admin code and enter it in <span className="font-medium">Settings → Host Access</span>.</p>
-        </div>
+        <p className="text-xs text-muted-foreground/50 text-center">
+          Helping manage? Enter the admin code in <span className="font-medium text-muted-foreground/70">Settings → Host Access</span>.
+        </p>
       )}
 
       {isAdmin && (
@@ -155,6 +169,7 @@ export function CurrentRound({ session, isAdmin, currentPlayerId }: Props) {
           players={session.players}
           matchType={session.match_type}
           roundMatches={latestRound.matches}
+          sportType={session.sport_type}
           open={editingMatch !== null}
           onClose={() => setEditingMatch(null)}
         />

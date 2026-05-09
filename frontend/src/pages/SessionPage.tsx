@@ -84,6 +84,15 @@ export function SessionPage() {
     setShowClaimPrompt(true)
   }, [admin, showWizard, claimedPlayerId, session?.players.length])
 
+  const { theme, toggle: toggleTheme } = useTheme()
+  const sport = getSport(session?.sport_type ?? 'pickleball')
+  useEffect(() => {
+    const el = document.documentElement
+    SPORTS.forEach((s) => el.classList.remove(s.themeClass))
+    el.classList.add(sport.themeClass)
+    return () => { SPORTS.forEach((s) => el.classList.remove(s.themeClass)) }
+  }, [sport.themeClass])
+
   const TABS = isTournament ? TOURNAMENT_TABS : ROTATION_TABS
   const TAB_ORDER = TABS.map((t) => t.key)
 
@@ -131,27 +140,29 @@ export function SessionPage() {
     }
   }
 
-  const sport = getSport(session.sport_type)
-
   return (
-    <div className={`min-h-screen bg-background ${sport.themeClass}`}>
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background border-b px-4 py-3">
-        <div className="flex items-center justify-between max-w-2xl mx-auto">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="min-w-0">
+        <div className="flex items-start justify-between gap-3 max-w-2xl mx-auto">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 min-w-0">
               <h1 className="font-bold text-base leading-tight truncate">{session.name}</h1>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                {admin && <Badge className="text-xs shrink-0">Host</Badge>}
-                <Badge variant="secondary" className="text-xs shrink-0">{sport.emoji} {sport.label}</Badge>
-                <Badge variant="secondary" className="text-xs shrink-0">{session.match_type === '2v2' ? '👥 2v2' : '👤 1v1'}</Badge>
-                {isTournament
-                  ? <Badge className="text-xs shrink-0">🏆 Tournament</Badge>
-                  : <Badge variant={session.generation_mode === 'competitive' ? 'default' : 'outline'} className="text-xs shrink-0">{session.generation_mode === 'competitive' ? '🏆 Competitive' : '🔄 Fair'}</Badge>
-                }
-              </div>
+              {admin && (
+                <span className="shrink-0 text-[10px] font-semibold bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full leading-none">Host</span>
+              )}
             </div>
+            <p className="text-xs text-muted-foreground mt-0.5 leading-none">
+              {sport.emoji} {sport.label} · {session.match_type} · {isTournament ? 'Tournament' : session.generation_mode === 'competitive' ? 'Competitive' : 'Fair rotation'}
+            </p>
           </div>
+          <button
+            onClick={toggleTheme}
+            className="shrink-0 h-8 w-8 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground transition-colors -mr-1 mt-0.5"
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
         </div>
       </header>
 

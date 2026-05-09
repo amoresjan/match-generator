@@ -1,6 +1,6 @@
 import { AlertTriangle, Flame, Loader2, Pencil, Trophy, Users } from 'lucide-react'
-import { useRef, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useEffect, useRef, useState } from 'react'
+import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { isDuo } from '@/lib/utils'
 import type { Match, Player } from '@/lib/types'
@@ -36,6 +36,19 @@ export function CourtCard({ match, players, removedPlayers = {}, isAdmin, streak
   const [poppedSide, setPoppedSide] = useState<'team1' | 'team2' | null>(null)
   const popTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const prevWinner = useRef(match.winner)
+  const [winnerJustSet, setWinnerJustSet] = useState(false)
+
+  useEffect(() => {
+    if (match.winner !== null && prevWinner.current === null) {
+      setWinnerJustSet(true)
+      const t = setTimeout(() => setWinnerJustSet(false), 450)
+      prevWinner.current = match.winner
+      return () => clearTimeout(t)
+    }
+    prevWinner.current = match.winner
+  }, [match.winner])
+
   function handleTeamClick(side: 'team1' | 'team2') {
     if (!onSetResult) return
     const next = match.winner === side ? null : side
@@ -55,100 +68,122 @@ export function CourtCard({ match, players, removedPlayers = {}, isAdmin, streak
     (match.team1_players.includes(currentPlayerId) || match.team2_players.includes(currentPlayerId))
 
   return (
-    <Card className={`w-full ${isMyCard ? 'ring-2 ring-primary border-primary' : ''}`}>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Court {match.court_number}</CardTitle>
-          <div className="flex items-center gap-2">
-            {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-            {isAdmin && onEdit && (
-              <Button size="icon" variant="ghost" onClick={() => onEdit(match)} className="h-7 w-7" disabled={isPending} aria-label={`Edit Court ${match.court_number}`}>
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-col gap-1.5 text-sm">
-          {/* Team 1 */}
-          <button
-            aria-label={`Team 1: ${team1.map(m => m.name).join(' and ')}${team1Won ? ' — winner' : ''}`}
-            aria-pressed={team1Won}
-            disabled={!isAdmin || !onSetResult || isPending}
-            onClick={() => handleTeamClick('team1')}
-            className={[
-              'relative rounded-md px-3 py-2 text-center font-medium transition-all w-full',
-              isAdmin && onSetResult ? 'cursor-pointer active:scale-95' : 'cursor-default',
-              poppedSide === 'team1' ? 'animate-winner-pop' : '',
-              team1Won
-                ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
-                : hasResult
-                  ? 'bg-muted/40 text-muted-foreground/50'
-                  : 'bg-muted/40 hover:bg-muted',
-            ].join(' ')}
-          >
-            {team1Won && <Trophy className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 shrink-0" />}
-            <span className="flex items-center justify-center gap-1">
-              {team1.map((m, i) => (
-                <span key={m.id} className="flex items-center gap-0.5">
-                  {i > 0 && <span className="text-muted-foreground/60">&amp;</span>}
-                  <span className={m.id === currentPlayerId ? 'font-bold underline underline-offset-2' : ''}>{m.name}</span>
-                  {streakPlayerIds?.has(m.id) && (
-                    <Flame className="h-3 w-3 text-orange-500 shrink-0" />
-                  )}
-                </span>
-              ))}
-              {team1IsDuo && <span title="Permanent duo partnership"><Users className="h-3 w-3 shrink-0 opacity-40" /></span>}
-            </span>
-          </button>
+    <Card className={`w-full relative ${isMyCard ? 'ring-2 ring-primary border-primary' : ''}`}>
+      {isMyCard && (
+        <span className="pointer-events-none absolute inset-0 rounded-xl animate-my-card-pulse" aria-hidden="true" />
+      )}
 
-          <span className="text-muted-foreground font-bold text-xs text-center">vs</span>
-
-          {/* Team 2 */}
-          <button
-            aria-label={`Team 2: ${team2.map(m => m.name).join(' and ')}${team2Won ? ' — winner' : ''}`}
-            aria-pressed={team2Won}
-            disabled={!isAdmin || !onSetResult || isPending}
-            onClick={() => handleTeamClick('team2')}
-            className={[
-              'relative rounded-md px-3 py-2 text-center font-medium transition-all w-full',
-              isAdmin && onSetResult ? 'cursor-pointer active:scale-95' : 'cursor-default',
-              poppedSide === 'team2' ? 'animate-winner-pop' : '',
-              team2Won
-                ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
-                : hasResult
-                  ? 'bg-muted/40 text-muted-foreground/50'
-                  : 'bg-muted/40 hover:bg-muted',
-            ].join(' ')}
-          >
-            {team2Won && <Trophy className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 shrink-0" />}
-            <span className="flex items-center justify-center gap-1">
-              {team2.map((m, i) => (
-                <span key={m.id} className="flex items-center gap-0.5">
-                  {i > 0 && <span className="text-muted-foreground/60">&amp;</span>}
-                  <span className={m.id === currentPlayerId ? 'font-bold underline underline-offset-2' : ''}>{m.name}</span>
-                  {streakPlayerIds?.has(m.id) && (
-                    <Flame className="h-3 w-3 text-orange-500 shrink-0" />
-                  )}
-                </span>
-              ))}
-              {team2IsDuo && <span title="Permanent duo partnership"><Users className="h-3 w-3 shrink-0 opacity-40" /></span>}
-            </span>
-          </button>
+      {/* Court label row */}
+      <div className="flex items-center justify-between px-3 pt-3 pb-1">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Court {match.court_number}
+        </span>
+        <div className="flex items-center gap-1">
+          {isPending && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+          {isAdmin && onEdit && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => onEdit(match)}
+              className="h-6 w-6 -mr-1"
+              disabled={isPending}
+              aria-label={`Edit Court ${match.court_number}`}
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
+          )}
         </div>
+      </div>
+
+      {/* Matchup */}
+      <div className="px-3 pb-3 flex flex-col gap-1.5">
+        {/* Team 1 */}
+        <button
+          aria-label={`Team 1: ${team1.map(m => m.name).join(' and ')}${team1Won ? ' — winner' : ''}`}
+          aria-pressed={team1Won}
+          disabled={!isAdmin || !onSetResult || isPending}
+          onClick={() => handleTeamClick('team1')}
+          className={[
+            'relative rounded-md px-3 py-2.5 text-center text-sm font-medium transition-all w-full',
+            isAdmin && onSetResult ? 'cursor-pointer active:scale-95' : 'cursor-default',
+            poppedSide === 'team1' ? 'animate-winner-pop' : '',
+            team1Won
+              ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
+              : hasResult
+                ? 'bg-muted/40 text-muted-foreground/50'
+                : 'bg-muted/40 hover:bg-muted',
+          ].join(' ')}
+        >
+          {team1Won && (
+            <span className="absolute left-3 top-1/2 -translate-y-1/2">
+              <Trophy className={`h-3 w-3 shrink-0${winnerJustSet ? ' animate-duo-form' : ''}`} />
+            </span>
+          )}
+          <span className="flex items-center justify-center gap-1">
+            {team1.map((m, i) => (
+              <span key={m.id} className="flex items-center gap-0.5">
+                {i > 0 && <span className="text-muted-foreground/60">&amp;</span>}
+                <span className={m.id === currentPlayerId ? 'font-bold underline underline-offset-2' : ''}>{m.name}</span>
+                {streakPlayerIds?.has(m.id) && <Flame className="h-3 w-3 text-orange-500 shrink-0" />}
+              </span>
+            ))}
+            {team1IsDuo && <span title="Permanent duo partnership"><Users className="h-3 w-3 shrink-0 opacity-40" /></span>}
+          </span>
+        </button>
+
+        {/* Ruled "vs" divider */}
+        <div className="flex items-center gap-2 px-1">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-[9px] font-semibold tracking-[0.12em] text-muted-foreground/50 uppercase">vs</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
+        {/* Team 2 */}
+        <button
+          aria-label={`Team 2: ${team2.map(m => m.name).join(' and ')}${team2Won ? ' — winner' : ''}`}
+          aria-pressed={team2Won}
+          disabled={!isAdmin || !onSetResult || isPending}
+          onClick={() => handleTeamClick('team2')}
+          className={[
+            'relative rounded-md px-3 py-2.5 text-center text-sm font-medium transition-all w-full',
+            isAdmin && onSetResult ? 'cursor-pointer active:scale-95' : 'cursor-default',
+            poppedSide === 'team2' ? 'animate-winner-pop' : '',
+            team2Won
+              ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
+              : hasResult
+                ? 'bg-muted/40 text-muted-foreground/50'
+                : 'bg-muted/40 hover:bg-muted',
+          ].join(' ')}
+        >
+          {team2Won && (
+            <span className="absolute left-3 top-1/2 -translate-y-1/2">
+              <Trophy className={`h-3 w-3 shrink-0${winnerJustSet ? ' animate-duo-form' : ''}`} />
+            </span>
+          )}
+          <span className="flex items-center justify-center gap-1">
+            {team2.map((m, i) => (
+              <span key={m.id} className="flex items-center gap-0.5">
+                {i > 0 && <span className="text-muted-foreground/60">&amp;</span>}
+                <span className={m.id === currentPlayerId ? 'font-bold underline underline-offset-2' : ''}>{m.name}</span>
+                {streakPlayerIds?.has(m.id) && <Flame className="h-3 w-3 text-orange-500 shrink-0" />}
+              </span>
+            ))}
+            {team2IsDuo && <span title="Permanent duo partnership"><Users className="h-3 w-3 shrink-0 opacity-40" /></span>}
+          </span>
+        </button>
+
         {isAdmin && onSetResult && !hasResult && (
-          <p className="text-[10px] text-muted-foreground text-center mt-2">
+          <p className="text-[10px] text-muted-foreground text-center mt-0.5">
             Tap the winning team to record result
           </p>
         )}
         {sitOutWarning && (
-          <p className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 mt-2">
+          <p className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
             <AlertTriangle className="h-3 w-3 shrink-0" />
             {sitOutWarning}
           </p>
         )}
-      </CardContent>
+      </div>
     </Card>
   )
 }
