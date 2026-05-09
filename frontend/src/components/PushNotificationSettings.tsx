@@ -9,7 +9,7 @@ export function PushNotificationSettings({ sessionId, claimedPlayerId }: { sessi
 
   if (status === 'unsupported') {
     return (
-      <div className="flex items-start gap-3 rounded-lg border px-3 py-2.5 text-sm text-muted-foreground">
+      <div className="flex items-start gap-3 px-4 py-3 text-sm text-muted-foreground">
         <BellOff className="h-4 w-4 mt-0.5 shrink-0" />
         <span>
           Push notifications aren't supported on this browser
@@ -24,7 +24,7 @@ export function PushNotificationSettings({ sessionId, claimedPlayerId }: { sessi
 
   if (status === 'ios-needs-pwa') {
     return (
-      <div className="flex items-start gap-3 rounded-lg border px-3 py-2.5 text-sm text-muted-foreground">
+      <div className="flex items-start gap-3 px-4 py-3 text-sm text-muted-foreground">
         <Bell className="h-4 w-4 mt-0.5 shrink-0" />
         <span>
           To enable notifications on iOS, tap{' '}
@@ -37,7 +37,7 @@ export function PushNotificationSettings({ sessionId, claimedPlayerId }: { sessi
 
   if (status === 'permission-denied') {
     return (
-      <div className="flex items-start gap-3 rounded-lg border px-3 py-2.5 text-sm text-muted-foreground">
+      <div className="flex items-start gap-3 px-4 py-3 text-sm text-muted-foreground">
         <BellOff className="h-4 w-4 mt-0.5 shrink-0" />
         <span>
           Notifications are blocked. Allow them in your{' '}
@@ -50,10 +50,10 @@ export function PushNotificationSettings({ sessionId, claimedPlayerId }: { sessi
 
   if (status === 'subscribed') {
     return (
-      <div className="flex items-center justify-between rounded-lg border px-3 py-2.5">
+      <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2">
-          <BellRing className="h-4 w-4 text-green-500" />
-          <span className="text-sm">Notifications on</span>
+          <BellRing className="h-4 w-4 text-primary" />
+          <span className="text-sm">Notifications</span>
         </div>
         <Button size="sm" variant="ghost" onClick={unsubscribe} disabled={loading}>
           Turn off
@@ -64,14 +64,14 @@ export function PushNotificationSettings({ sessionId, claimedPlayerId }: { sessi
 
   // unsubscribed
   return (
-    <div className="space-y-2">
-      <Button className="w-full" variant="outline" onClick={subscribe} disabled={loading}>
-        <Bell className="h-4 w-4 mr-2" />
-        {loading ? 'Enabling…' : 'Turn on notifications'}
+    <div className="flex items-center justify-between px-4 py-3">
+      <div className="flex items-center gap-2">
+        <Bell className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm">Notifications</span>
+      </div>
+      <Button size="sm" variant="outline" onClick={subscribe} disabled={loading}>
+        {loading ? 'Enabling…' : 'Turn on'}
       </Button>
-      <p className="text-xs text-muted-foreground">
-        Get notified when a new round is generated or the session closes.
-      </p>
     </div>
   )
 }

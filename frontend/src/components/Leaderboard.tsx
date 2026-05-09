@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Trophy } from 'lucide-react'
+import { ChevronDown, Trophy } from 'lucide-react'
 import { useState } from 'react'
 import { computeStats, resolveNames } from '@/lib/utils'
 import type { PlayerStat } from '@/lib/utils'
@@ -24,18 +24,6 @@ function assignRanks(stats: PlayerStat[]): number[] {
     }
   }
   return ranks
-}
-
-const RANK_STYLES: Record<number, { border: string; bg: string }> = {
-  1: { border: 'border-yellow-300', bg: 'bg-yellow-50 dark:bg-yellow-900/20' },
-  2: { border: 'border-slate-400',  bg: 'bg-slate-50  dark:bg-slate-700/20'  },
-  3: { border: 'border-amber-700',  bg: 'bg-amber-50  dark:bg-amber-900/20'  },
-}
-
-const RANK_ICON_CLASS: Record<number, string> = {
-  1: 'text-yellow-500',
-  2: 'text-slate-400',
-  3: 'text-amber-700',
 }
 
 interface PlayerMatch {
@@ -67,14 +55,34 @@ function getPlayerMatches(playerId: string, players: Player[], rounds: Round[]):
   return result
 }
 
-export function Leaderboard({ players, rounds, currentPlayerId }: { players: Player[]; rounds: Round[]; currentPlayerId?: string }) {
+const RANK_ROW: Record<number, { border: string; bg: string }> = {
+  1: { border: 'border-yellow-300/80 dark:border-yellow-700/40', bg: 'bg-yellow-50/70 dark:bg-yellow-900/10' },
+  2: { border: 'border-slate-300/70 dark:border-slate-600/40',   bg: 'bg-slate-50/60 dark:bg-slate-700/10'   },
+  3: { border: 'border-amber-300/70 dark:border-amber-700/40',   bg: 'bg-amber-50/60 dark:bg-amber-900/10'   },
+}
+
+const TROPHY_CLASS: Record<number, string> = {
+  1: 'h-5 w-5 text-yellow-500',
+  2: 'h-4 w-4 text-slate-400',
+  3: 'h-4 w-4 text-amber-600',
+}
+
+export function Leaderboard({
+  players,
+  rounds,
+  currentPlayerId,
+}: {
+  players: Player[]
+  rounds: Round[]
+  currentPlayerId?: string
+}) {
   const [expandedId, setExpandedId] = useState<string | null>(currentPlayerId ?? null)
   const stats = computeStats(players, rounds)
 
   if (stats.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground text-sm">
-        No results recorded yet. Tap a winning team on the court card to start tracking.
+        No results recorded yet. Tap a winning team on a court card to start tracking.
       </div>
     )
   }
@@ -82,108 +90,96 @@ export function Leaderboard({ players, rounds, currentPlayerId }: { players: Pla
   const ranks = assignRanks(stats)
 
   return (
-    <table className="w-full text-sm border-separate border-spacing-y-1.5">
-      <thead>
-        <tr className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          <th className="text-center w-8 pb-1 font-medium">#</th>
-          <th className="text-left pb-1 font-medium">Player</th>
-          <th className="text-center w-10 pb-1 font-medium">GP</th>
-          <th className="text-center w-10 pb-1 font-medium">W</th>
-          <th className="text-center w-10 pb-1 font-medium">L</th>
-        </tr>
-      </thead>
-      <tbody>
-        {stats.map((s, i) => {
-          const rank = ranks[i]
-          const isFirst = rank === 1
-          const isMe = s.player.id === currentPlayerId
-          const style = RANK_STYLES[rank]
-          const border = isMe ? 'border-primary' : (style?.border ?? 'border-border')
-          const bg = isMe ? 'bg-primary/5 dark:bg-primary/10' : (style?.bg ?? 'bg-card')
-          const isExpanded = expandedId === s.player.id
-          const playerMatches = getPlayerMatches(s.player.id, players, rounds)
-          const py = isFirst ? 'py-3.5' : 'py-2.5'
+    <div className="space-y-1.5">
+      {stats.map((s, i) => {
+        const rank = ranks[i]
+        const isMe = s.player.id === currentPlayerId
+        const isExpanded = expandedId === s.player.id
+        const isPodium = rank <= 3
+        const podiumStyle = RANK_ROW[rank]
+        const rowBorder = isMe && !isPodium
+          ? 'border-primary/30 dark:border-primary/30'
+          : (podiumStyle?.border ?? 'border-border')
+        const rowBg = isMe && !isPodium
+          ? 'bg-primary/5 dark:bg-primary/10'
+          : (podiumStyle?.bg ?? 'bg-card')
+        const playerMatches = getPlayerMatches(s.player.id, players, rounds)
 
-          return (
-            <>
-              <tr
-                key={s.player.id}
-                tabIndex={0}
-                aria-expanded={isExpanded}
-                className={`cursor-pointer animate-card-enter ${isFirst ? 'animate-gold-glow' : ''}`}
-                style={{ animationDelay: `${i * 60}ms` }}
-                onClick={() => setExpandedId(isExpanded ? null : s.player.id)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedId(isExpanded ? null : s.player.id) } }}
-              >
-                <td className={`text-center font-bold text-muted-foreground ${py} pl-3 rounded-l-lg border-y border-l w-8 ${border} ${bg}`}>
-                  {rank <= 3
-                    ? <Trophy className={`${isFirst ? 'h-5 w-5' : 'h-4 w-4'} mx-auto ${RANK_ICON_CLASS[rank]}`} />
-                    : rank}
-                </td>
-                <td className={`font-medium truncate ${py} ${isFirst ? 'text-base' : ''} border-y ${border} ${bg}`}>
-                  <span className={isMe ? 'font-bold' : ''}>{s.player.name}</span>
-                  {isMe && <span className="ml-1.5 text-[10px] font-semibold text-primary bg-primary/10 rounded px-1 py-0.5">You</span>}
-                </td>
-                <td className={`text-center text-muted-foreground ${py} w-10 border-y ${border} ${bg}`}>
-                  {s.played}
-                </td>
-                <td className={`text-center font-semibold text-green-600 ${py} ${isFirst ? 'text-base' : ''} w-10 border-y ${border} ${bg}`}>
-                  {s.wins}
-                </td>
-                <td className={`relative text-center text-muted-foreground ${py} pr-3 rounded-r-lg border-y border-r w-10 ${border} ${bg}`}>
-                  {s.losses}
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2">
-                    {isExpanded
-                      ? <ChevronUp className="h-3 w-3 text-muted-foreground/60" />
-                      : <ChevronDown className="h-3 w-3 text-muted-foreground/60" />}
+        return (
+          <div
+            key={s.player.id}
+            className="animate-card-enter"
+            style={{ animationDelay: `${i * 60}ms` }}
+          >
+            <button
+              className={`w-full flex items-center gap-3 px-3 rounded-xl border text-left transition-transform active:scale-[0.99]
+                ${rank === 1 ? 'py-3.5 animate-gold-glow' : 'py-2.5'}
+                ${rowBorder} ${rowBg}
+              `}
+              onClick={() => setExpandedId(isExpanded ? null : s.player.id)}
+              aria-expanded={isExpanded}
+            >
+              <div className="w-7 flex-shrink-0 flex justify-center">
+                {isPodium
+                  ? <Trophy className={TROPHY_CLASS[rank]} />
+                  : <span className="text-sm font-bold text-muted-foreground tabular-nums">{rank}</span>}
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className={`truncate font-semibold ${rank === 1 ? 'text-base' : 'text-sm'} ${isMe ? 'font-bold' : ''}`}>
+                    {s.player.name}
                   </span>
-                </td>
-              </tr>
-              <tr key={`${s.player.id}-matches`}>
-                <td colSpan={5} className="pt-0">
-                  <div
-                    className="grid transition-all duration-300 ease-in-out"
-                    style={{ gridTemplateRows: isExpanded ? '1fr' : '0fr' }}
-                  >
-                    <div className="overflow-hidden">
-                      <div className="pb-2">
-                        <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
-                          {playerMatches.length === 0 ? (
-                            <p className="text-xs text-muted-foreground text-center py-1">No recorded results yet</p>
-                          ) : (
-                            <table className="w-full text-xs border-separate border-spacing-y-0.5">
-                              <colgroup>
-                                <col className="w-5" />
-                                <col className="w-8" />
-                                <col />
-                                <col className="w-6" />
-                                <col />
-                              </colgroup>
-                              <tbody>
-                                {playerMatches.map((pm) => (
-                                  <tr key={pm.match.id}>
-                                    <td className={`font-bold pr-1 ${pm.result === 'W' ? 'text-green-600' : 'text-muted-foreground'}`}>
-                                      {pm.result}
-                                    </td>
-                                    <td className="text-muted-foreground pr-2">R{pm.roundNumber}</td>
-                                    <td className="font-medium">{pm.myTeam}</td>
-                                    <td className="text-muted-foreground text-center px-1">vs</td>
-                                    <td className="text-muted-foreground">{pm.theirTeam}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          )}
-                        </div>
+                  {isMe && (
+                    <span className="flex-shrink-0 text-[10px] font-semibold text-primary bg-primary/10 rounded px-1.5 py-0.5 leading-none">
+                      You
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-baseline gap-1 flex-shrink-0 tabular-nums">
+                <span className={`font-bold text-green-600 ${rank === 1 ? 'text-base' : 'text-sm'}`}>{s.wins}W</span>
+                <span className="text-muted-foreground/40 text-xs mx-0.5">·</span>
+                <span className="text-sm text-muted-foreground">{s.losses}L</span>
+              </div>
+
+              <ChevronDown
+                className={`h-3.5 w-3.5 text-muted-foreground/50 flex-shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+              />
+            </button>
+
+            <div
+              className="grid transition-all duration-300 ease-in-out"
+              style={{ gridTemplateRows: isExpanded ? '1fr' : '0fr' }}
+            >
+              <div className="overflow-hidden">
+                <div className="pt-1 pb-2">
+                  <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 mx-0.5">
+                    {playerMatches.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-1">No recorded results yet</p>
+                    ) : (
+                      <div className="space-y-1">
+                        {playerMatches.map((pm) => (
+                          <div key={pm.match.id} className="flex items-baseline gap-2 text-xs">
+                            <span className={`flex-shrink-0 w-4 font-bold text-center ${pm.result === 'W' ? 'text-green-600' : 'text-muted-foreground'}`}>
+                              {pm.result}
+                            </span>
+                            <span className="flex-shrink-0 text-muted-foreground tabular-nums">R{pm.roundNumber}</span>
+                            <span className="font-medium truncate min-w-0">{pm.myTeam}</span>
+                            <span className="flex-shrink-0 text-muted-foreground/60">vs</span>
+                            <span className="text-muted-foreground truncate min-w-0">{pm.theirTeam}</span>
+                          </div>
+                        ))}
                       </div>
-                    </div>
+                    )}
                   </div>
-                </td>
-              </tr>
-            </>
-          )
-        })}
-      </tbody>
-    </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
   )
 }

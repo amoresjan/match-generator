@@ -1,6 +1,5 @@
 import { ChevronDown, ChevronUp, Trophy, Users } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useSetMatchResult } from '@/hooks/useSession'
 import { isDuo } from '@/lib/utils'
 import type { Match, Round, Player } from '@/lib/types'
@@ -19,29 +18,123 @@ function resolveMembers(ids: string[], players: Player[], removedPlayers: Record
   return ids.map((id) => ({ id, name: players.find((p) => p.id === id)?.name ?? removedPlayers[id] ?? '?' }))
 }
 
-function TeamNames({ members, currentPlayerId }: { members: { id: string; name: string }[]; currentPlayerId?: string }) {
+function YouPill() {
   return (
-    <>
-      {members.map((m, i) => (
-        <span key={m.id}>
-          {i > 0 && ' & '}
-          <span className={m.id === currentPlayerId ? 'font-bold underline underline-offset-2' : ''}>{m.name}</span>
-        </span>
-      ))}
-    </>
+    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 ml-1">
+      You
+    </span>
   )
 }
 
-function MatchRow({ sessionId, match, players, removedPlayers, isAdmin, isActive, currentPlayerId }: { sessionId: string; match: Match; players: Player[]; removedPlayers: Record<string, string>; isAdmin: boolean; isActive: boolean; currentPlayerId?: string }) {
+function CompletionChip({ matches }: { matches: Match[] }) {
+  const done = matches.filter((m) => m.winner !== null).length
+  const total = matches.length
+  if (done === 0) return null
+  const complete = done === total
+  return (
+    <span
+      className={[
+        'tabular-nums text-[11px] font-semibold rounded-full px-2 py-0.5',
+        complete
+          ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+          : 'bg-muted text-muted-foreground',
+      ].join(' ')}
+    >
+      {done}/{total}
+    </span>
+  )
+}
+
+interface TeamRowProps {
+  members: { id: string; name: string }[]
+  hasDuo: boolean
+  result: 'won' | 'lost' | null
+  isClickable: boolean
+  onClick?: () => void
+  currentPlayerId?: string
+}
+
+function TeamRow({ members, hasDuo, result, isClickable, onClick, currentPlayerId }: TeamRowProps) {
+  const names = (
+    <span className="flex items-center gap-1 flex-wrap min-w-0">
+      {members.map((m, i) => (
+        <span key={m.id} className="flex items-center">
+          {i > 0 && <span className="text-muted-foreground/40 text-xs mr-1">&amp;</span>}
+          <span
+            className={[
+              'text-sm font-medium leading-snug',
+              result === 'lost' ? 'text-muted-foreground/50' : '',
+            ].join(' ')}
+          >
+            {m.name}
+          </span>
+          {m.id === currentPlayerId && <YouPill />}
+        </span>
+      ))}
+      {hasDuo && <Users className="h-3 w-3 opacity-25 shrink-0 ml-0.5" />}
+    </span>
+  )
+
+  const badge =
+    result === 'won' ? (
+      <span className="shrink-0 flex items-center gap-1 rounded px-1.5 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">
+        <Trophy className="h-3 w-3" />
+        <span className="text-[11px] font-bold">W</span>
+      </span>
+    ) : result === 'lost' ? (
+      <span className="shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium bg-muted/40 text-muted-foreground/40">
+        L
+      </span>
+    ) : null
+
+  const rowClass = [
+    'flex items-center justify-between gap-3 w-full rounded-lg px-3 py-2 transition-colors',
+    result === 'won'
+      ? 'bg-green-50 dark:bg-green-950/20'
+      : result === 'lost'
+        ? 'bg-muted/20'
+        : isClickable
+          ? 'bg-muted/30 hover:bg-muted/50 active:scale-[0.98]'
+          : 'bg-muted/30',
+  ].join(' ')
+
+  if (isClickable && onClick) {
+    return (
+      <button onClick={onClick} className={rowClass}>
+        {names}
+        {badge}
+      </button>
+    )
+  }
+
+  return (
+    <div className={rowClass}>
+      {names}
+      {badge}
+    </div>
+  )
+}
+
+interface MatchBlockProps {
+  sessionId: string
+  match: Match
+  players: Player[]
+  removedPlayers: Record<string, string>
+  isAdmin: boolean
+  isActive: boolean
+  currentPlayerId?: string
+}
+
+function MatchBlock({ sessionId, match, players, removedPlayers, isAdmin, isActive, currentPlayerId }: MatchBlockProps) {
   const setResult = useSetMatchResult(sessionId)
-  const team1Members = resolveMembers(match.team1_players, players, removedPlayers)
-  const team2Members = resolveMembers(match.team2_players, players, removedPlayers)
+  const team1 = resolveMembers(match.team1_players, players, removedPlayers)
+  const team2 = resolveMembers(match.team2_players, players, removedPlayers)
   const team1IsDuo = isDuo(match.team1_players, players)
   const team2IsDuo = isDuo(match.team2_players, players)
   const team1Won = match.winner === 'team1'
-
   const team2Won = match.winner === 'team2'
   const hasResult = match.winner !== null
+  const canEdit = isAdmin && isActive
 
   function handleTeamClick(side: 'team1' | 'team2') {
     const next = match.winner === side ? null : side
@@ -49,53 +142,38 @@ function MatchRow({ sessionId, match, players, removedPlayers, isAdmin, isActive
   }
 
   return (
-    <div className="space-y-1">
-      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Court {match.court_number}</p>
-      <div className="flex flex-col gap-1">
-        {/* Team 1 */}
-        <button
-          disabled={!isAdmin || !isActive}
-          onClick={() => isAdmin && isActive && handleTeamClick('team1')}
-          className={[
-            'relative rounded px-3 py-1.5 text-xs text-center font-medium transition-colors w-full',
-            isAdmin && isActive ? 'cursor-pointer' : 'cursor-default',
-            team1Won
-              ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
-              : hasResult
-                ? 'bg-muted/40 text-muted-foreground/50'
-                : isAdmin && isActive ? 'bg-muted/40 hover:bg-muted' : 'bg-muted/40',
-          ].join(' ')}
-        >
-          {team1Won && <Trophy className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-yellow-500" />}
-          <span className="flex items-center justify-center gap-1">
-            <TeamNames members={team1Members} currentPlayerId={currentPlayerId} />
-            {team1IsDuo && <Users className="h-3 w-3 opacity-40 shrink-0" />}
-          </span>
-        </button>
-
-        <span className="text-[10px] text-muted-foreground font-bold text-center">vs</span>
-
-        {/* Team 2 */}
-        <button
-          disabled={!isAdmin || !isActive}
-          onClick={() => isAdmin && isActive && handleTeamClick('team2')}
-          className={[
-            'relative rounded px-3 py-1.5 text-xs text-center font-medium transition-colors w-full',
-            isAdmin && isActive ? 'cursor-pointer' : 'cursor-default',
-            team2Won
-              ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
-              : hasResult
-                ? 'bg-muted/40 text-muted-foreground/50'
-                : isAdmin && isActive ? 'bg-muted/40 hover:bg-muted' : 'bg-muted/40',
-          ].join(' ')}
-        >
-          {team2Won && <Trophy className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-yellow-500" />}
-          <span className="flex items-center justify-center gap-1">
-            <TeamNames members={team2Members} currentPlayerId={currentPlayerId} />
-            {team2IsDuo && <Users className="h-3 w-3 opacity-40 shrink-0" />}
-          </span>
-        </button>
+    <div className="space-y-1.5">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50 px-1">
+        Court {match.court_number}
+      </p>
+      <div className="space-y-1">
+        <TeamRow
+          members={team1}
+          hasDuo={team1IsDuo}
+          result={hasResult ? (team1Won ? 'won' : 'lost') : null}
+          isClickable={canEdit}
+          onClick={canEdit ? () => handleTeamClick('team1') : undefined}
+          currentPlayerId={currentPlayerId}
+        />
+        <div className="flex items-center gap-2 px-2">
+          <div className="h-px flex-1 bg-border/50" />
+          <span className="text-[9px] font-semibold tracking-[0.12em] uppercase text-muted-foreground/35">vs</span>
+          <div className="h-px flex-1 bg-border/50" />
+        </div>
+        <TeamRow
+          members={team2}
+          hasDuo={team2IsDuo}
+          result={hasResult ? (team2Won ? 'won' : 'lost') : null}
+          isClickable={canEdit}
+          onClick={canEdit ? () => handleTeamClick('team2') : undefined}
+          currentPlayerId={currentPlayerId}
+        />
       </div>
+      {canEdit && !hasResult && (
+        <p className="text-[10px] text-muted-foreground/40 text-center pt-0.5">
+          Tap a team to record the result
+        </p>
+      )}
     </div>
   )
 }
@@ -106,48 +184,59 @@ export function RoundHistory({ sessionId, rounds, players, removedPlayers, isAdm
 
   if (allRounds.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground text-center py-12">
-        No rounds yet. Generate the first round to get started.
-      </p>
+      <div className="py-16 text-center space-y-1.5">
+        <p className="text-sm font-medium text-foreground/50">No rounds played yet</p>
+        <p className="text-xs text-muted-foreground/60">Past rounds will appear here.</p>
+      </div>
     )
   }
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">All Rounds</h3>
-      {allRounds.map((round) => (
-        <Card key={round.id} className="overflow-hidden">
-          <CardHeader
-            role="button"
-            tabIndex={0}
-            aria-expanded={expanded === round.id}
-            aria-label={`Round ${round.number} — ${expanded === round.id ? 'collapse' : 'expand'}`}
-            className="py-3 px-4 cursor-pointer flex-row items-center justify-between"
-            onClick={() => setExpanded(expanded === round.id ? null : round.id)}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(expanded === round.id ? null : round.id) } }}
-          >
-            <CardTitle className="text-sm">Round {round.number}</CardTitle>
-            {expanded === round.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </CardHeader>
-          <div
-            className="grid transition-all duration-300 ease-in-out"
-            style={{ gridTemplateRows: expanded === round.id ? '1fr' : '0fr' }}
-          >
-            <div className="overflow-hidden">
-              <CardContent className="pt-0 pb-3 space-y-3">
-                {round.matches.map((m) => (
-                  <MatchRow key={m.id} sessionId={sessionId} match={m} players={players} removedPlayers={removedPlayers} isAdmin={isAdmin} isActive={isActive} currentPlayerId={currentPlayerId} />
-                ))}
-                {isAdmin && isActive && (
-                  <p className="text-[10px] text-muted-foreground text-center pt-1">
-                    Tap a team to mark as winner
-                  </p>
-                )}
-              </CardContent>
+      {allRounds.map((round) => {
+        const isExpanded = expanded === round.id
+
+        return (
+          <div key={round.id} className="rounded-xl border border-border bg-card overflow-hidden">
+            <button
+              aria-expanded={isExpanded}
+              aria-label={`Round ${round.number} — ${isExpanded ? 'collapse' : 'expand'}`}
+              className="w-full flex items-center justify-between px-4 py-3 text-left"
+              onClick={() => setExpanded(isExpanded ? null : round.id)}
+            >
+              <span className="text-[15px] font-semibold">Round {round.number}</span>
+              <span className="flex items-center gap-2">
+                <CompletionChip matches={round.matches} />
+                {isExpanded
+                  ? <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
+                  : <ChevronDown className="h-4 w-4 text-muted-foreground/60" />}
+              </span>
+            </button>
+
+            <div
+              className="grid transition-all duration-300 ease-in-out"
+              style={{ gridTemplateRows: isExpanded ? '1fr' : '0fr' }}
+            >
+              <div className="overflow-hidden">
+                <div className="border-t border-border/60 px-4 pt-3 pb-4 space-y-4">
+                  {round.matches.map((m) => (
+                    <MatchBlock
+                      key={m.id}
+                      sessionId={sessionId}
+                      match={m}
+                      players={players}
+                      removedPlayers={removedPlayers}
+                      isAdmin={isAdmin}
+                      isActive={isActive}
+                      currentPlayerId={currentPlayerId}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
-        </Card>
-      ))}
+        )
+      })}
     </div>
   )
 }

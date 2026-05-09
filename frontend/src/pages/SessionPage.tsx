@@ -84,7 +84,6 @@ export function SessionPage() {
     setShowClaimPrompt(true)
   }, [admin, showWizard, claimedPlayerId, session?.players.length])
 
-  const { theme, toggle: toggleTheme } = useTheme()
   const sport = getSport(session?.sport_type ?? 'pickleball')
   useEffect(() => {
     const el = document.documentElement
@@ -142,10 +141,10 @@ export function SessionPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-background border-b px-4 py-3">
-        <div className="flex items-start justify-between gap-3 max-w-2xl mx-auto">
-          <div className="min-w-0 flex-1">
+      {/* Header + tab bar — single sticky unit eliminates sub-pixel gap */}
+      <div className="sticky top-0 z-10 bg-background">
+        <header className="border-b px-4 py-3">
+          <div className="max-w-2xl mx-auto">
             <div className="flex items-center gap-1.5 min-w-0">
               <h1 className="font-bold text-base leading-tight truncate">{session.name}</h1>
               {admin && (
@@ -156,18 +155,9 @@ export function SessionPage() {
               {sport.emoji} {sport.label} · {session.match_type} · {isTournament ? 'Tournament' : session.generation_mode === 'competitive' ? 'Competitive' : 'Fair rotation'}
             </p>
           </div>
-          <button
-            onClick={toggleTheme}
-            className="shrink-0 h-8 w-8 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground transition-colors -mr-1 mt-0.5"
-            aria-label="Toggle theme"
-          >
-            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
-        </div>
-      </header>
+        </header>
 
-      {/* Tab bar */}
-      <nav className="bg-background sticky top-[61px] z-10">
+        <nav className="bg-background">
         <div role="tablist" className="flex max-w-2xl mx-auto border-b">
           {TABS.map((t) => (
             <button
@@ -193,7 +183,8 @@ export function SessionPage() {
               : 'This session has been closed by the host.'}
           </div>
         )}
-      </nav>
+        </nav>
+      </div>
 
       {/* Content */}
       <main key={tab} className={`max-w-2xl mx-auto p-4 space-y-6 ${admin && tab === 'round' && session.is_active ? 'pb-24' : ''} ${slideDir === 'left' ? 'animate-tab-slide-left' : 'animate-tab-slide-right'}`}>
@@ -574,38 +565,47 @@ function GuestSettings({ sessionId, session, onUnlocked, claimedPlayerId, onChan
 
   return (
     <div className="space-y-6">
-      <SettingsSection title="You">
-        {claimedName ? (
-          <div className="flex items-center justify-between rounded-lg border px-3 py-2.5">
-            <div>
-              <p className="text-xs text-muted-foreground">Playing as</p>
-              <p className="text-sm font-medium">{claimedName}</p>
+      <SettingsGroup title="You">
+        <SettingsRows>
+          {claimedName ? (
+            <div className="flex items-center justify-between px-4 py-3">
+              <div>
+                <p className="text-xs text-muted-foreground">Playing as</p>
+                <p className="text-sm font-medium">{claimedName}</p>
+              </div>
+              <Button size="sm" variant="ghost" onClick={onChangeClaim}>Change</Button>
             </div>
-            <Button size="sm" variant="ghost" onClick={onChangeClaim}>Change</Button>
+          ) : (
+            <div className="flex items-center justify-between px-4 py-3">
+              <span className="text-sm text-muted-foreground">Not set</span>
+              <Button size="sm" variant="outline" onClick={onChangeClaim}>Select</Button>
+            </div>
+          )}
+        </SettingsRows>
+      </SettingsGroup>
+
+      <SettingsGroup title="Preferences">
+        <SettingsRows>
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-sm">Dark mode</span>
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={toggleTheme}>
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
           </div>
-        ) : (
-          <Button variant="outline" className="w-full" onClick={onChangeClaim}>
-            Select your name
-          </Button>
-        )}
-      </SettingsSection>
-      <SettingsSection title="Appearance">
-        <div className="flex items-center justify-between rounded-lg border px-3 py-2.5">
-          <span className="text-sm">Dark mode</span>
-          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={toggleTheme}>
-            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
-        </div>
-      </SettingsSection>
-      <SettingsSection title="Notifications">
-        <PushNotificationSettings sessionId={sessionId} claimedPlayerId={claimedPlayerId} />
-      </SettingsSection>
-      <SettingsSection title="Share">
+          <PushNotificationSettings sessionId={sessionId} claimedPlayerId={claimedPlayerId} />
+        </SettingsRows>
+      </SettingsGroup>
+
+      <SettingsGroup title="Share">
         <ShareField session={session} />
-      </SettingsSection>
-      <SettingsSection title="Host Access">
-        <AdminCodeEntry sessionId={sessionId} onUnlocked={onUnlocked} />
-      </SettingsSection>
+      </SettingsGroup>
+
+      <SettingsGroup title="Host Access">
+        <div className="rounded-xl border px-4 py-3">
+          <AdminCodeEntry sessionId={sessionId} onUnlocked={onUnlocked} />
+        </div>
+      </SettingsGroup>
+
       <Button className="w-full" variant="outline" onClick={() => navigate('/')}>
         <LogOut className="h-4 w-4 mr-2" />
         Leave Session
@@ -621,10 +621,18 @@ function GuestSettings({ sessionId, session, onUnlocked, claimedPlayerId, onChan
   )
 }
 
-function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
+function SettingsGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-2">
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{title}</p>
+    <div className="space-y-1.5">
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide px-0.5">{title}</p>
+      {children}
+    </div>
+  )
+}
+
+function SettingsRows({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border overflow-hidden divide-y divide-border bg-background">
       {children}
     </div>
   )
@@ -670,75 +678,74 @@ function SessionSettings({ sessionId, session, onSave, saving, onSetActive, sett
   return (
     <div className="space-y-6">
 
-      <SettingsSection title="Game">
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Sport</label>
-          <div className="grid grid-cols-3 gap-1.5">
-            {SPORTS.map((s) => (
-              <button
-                key={s.value}
-                type="button"
-                onClick={() => !fieldDisabled && setSport(s.value)}
-                disabled={fieldDisabled}
-                className={`flex flex-col items-center gap-0.5 rounded-lg border p-2 text-xs transition-colors disabled:opacity-50 ${
-                  sport === s.value
-                    ? 'border-primary bg-primary/10 text-primary font-medium'
-                    : 'border-border hover:border-muted-foreground/40'
-                }`}
-              >
-                <span className="text-base leading-none">{s.emoji}</span>
-                <span>{s.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Match Type</label>
-            <Select value={matchType} onValueChange={(v) => setMatchType(v as '1v1' | '2v2')} disabled={fieldDisabled}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="2v2">2v2</SelectItem>
-                <SelectItem value="1v1">1v1</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Courts</label>
-            <Input type="text" inputMode="numeric" value={numCourts} onChange={(e) => setNumCourts(e.target.value.replace(/\D/g, ''))} disabled={fieldDisabled} />
-          </div>
-        </div>
-        {!isTournament && (
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Mode</label>
-            <Select value={mode} onValueChange={(v) => setMode(v as 'fair' | 'competitive')} disabled={fieldDisabled}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="fair">Fair Rotation</SelectItem>
-                <SelectItem value="competitive">Competitive</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-1.5">
-              {mode === 'competitive'
-                ? 'Players are matched by win count — top players face each other, bottom players face each other.'
-                : 'Everyone gets equal court time and varied opponents. Best for casual play.'}
-            </p>
-          </div>
-        )}
-      </SettingsSection>
-
-      <SettingsSection title="Session">
+      <SettingsGroup title="Game">
         {bracketLocked && (
           <div className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
             Settings are locked while a tournament bracket is active.
           </div>
         )}
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Name</label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} disabled={fieldDisabled} />
-        </div>
+        <SettingsRows>
+          <div className="px-4 py-3">
+            <p className="text-xs text-muted-foreground mb-2">Sport</p>
+            <div className="grid grid-cols-3 gap-1.5">
+              {SPORTS.map((s) => (
+                <button
+                  key={s.value}
+                  type="button"
+                  onClick={() => !fieldDisabled && setSport(s.value)}
+                  disabled={fieldDisabled}
+                  className={`flex flex-col items-center gap-0.5 rounded-lg border p-2 text-xs transition-colors disabled:opacity-50 ${
+                    sport === s.value
+                      ? 'border-primary bg-primary/10 text-primary font-medium'
+                      : 'border-border hover:border-muted-foreground/40'
+                  }`}
+                >
+                  <span className="text-base leading-none">{s.emoji}</span>
+                  <span>{s.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="px-4 py-3">
+            <label className="text-xs text-muted-foreground mb-1 block">Name</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} disabled={fieldDisabled} />
+          </div>
+          <div className="grid grid-cols-2 gap-3 px-4 py-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Match Type</label>
+              <Select value={matchType} onValueChange={(v) => setMatchType(v as '1v1' | '2v2')} disabled={fieldDisabled}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="2v2">2v2</SelectItem>
+                  <SelectItem value="1v1">1v1</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Courts</label>
+              <Input type="text" inputMode="numeric" value={numCourts} onChange={(e) => setNumCourts(e.target.value.replace(/\D/g, ''))} disabled={fieldDisabled} />
+            </div>
+          </div>
+          {!isTournament && (
+            <div className="px-4 py-3">
+              <label className="text-xs text-muted-foreground mb-1 block">Mode</label>
+              <Select value={mode} onValueChange={(v) => setMode(v as 'fair' | 'competitive')} disabled={fieldDisabled}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fair">Fair Rotation</SelectItem>
+                  <SelectItem value="competitive">Competitive</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1.5">
+                {mode === 'competitive'
+                  ? 'Players are matched by win count — top players face each other, bottom players face each other.'
+                  : 'Everyone gets equal court time and varied opponents. Best for casual play.'}
+              </p>
+            </div>
+          )}
+        </SettingsRows>
         {session.is_active && !bracketLocked && (
-          <div className="pt-1 space-y-1.5">
+          <div className="space-y-1.5">
             <p className={`text-xs text-amber-600 dark:text-amber-400 transition-opacity ${hasChanges ? 'opacity-100' : 'opacity-0'}`}>
               ● Unsaved changes
             </p>
@@ -747,44 +754,50 @@ function SessionSettings({ sessionId, session, onSave, saving, onSetActive, sett
             </Button>
           </div>
         )}
-      </SettingsSection>
+      </SettingsGroup>
 
-      <SettingsSection title="Appearance">
-        <div className="flex items-center justify-between rounded-lg border px-3 py-2.5">
-          <span className="text-sm">Dark mode</span>
-          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={toggleTheme}>
-            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
-        </div>
-      </SettingsSection>
-
-      <SettingsSection title="You">
-        {claimedPlayerId && session.players.find((p) => p.id === claimedPlayerId) ? (
-          <div className="flex items-center justify-between rounded-lg border px-3 py-2.5">
-            <div>
-              <p className="text-xs text-muted-foreground">Playing as</p>
-              <p className="text-sm font-medium">{session.players.find((p) => p.id === claimedPlayerId)!.name}</p>
+      <SettingsGroup title="You">
+        <SettingsRows>
+          {claimedPlayerId && session.players.find((p) => p.id === claimedPlayerId) ? (
+            <div className="flex items-center justify-between px-4 py-3">
+              <div>
+                <p className="text-xs text-muted-foreground">Playing as</p>
+                <p className="text-sm font-medium">{session.players.find((p) => p.id === claimedPlayerId)!.name}</p>
+              </div>
+              <Button size="sm" variant="ghost" onClick={onChangeClaim}>Change</Button>
             </div>
-            <Button size="sm" variant="ghost" onClick={onChangeClaim}>Change</Button>
+          ) : (
+            <div className="flex items-center justify-between px-4 py-3">
+              <span className="text-sm text-muted-foreground">Not set</span>
+              <Button size="sm" variant="outline" onClick={onChangeClaim}>Select</Button>
+            </div>
+          )}
+        </SettingsRows>
+      </SettingsGroup>
+
+      <SettingsGroup title="Preferences">
+        <SettingsRows>
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-sm">Dark mode</span>
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={toggleTheme}>
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
           </div>
-        ) : (
-          <Button variant="outline" className="w-full" onClick={onChangeClaim}>
-            Select your name
-          </Button>
-        )}
-      </SettingsSection>
+          <PushNotificationSettings sessionId={sessionId} claimedPlayerId={claimedPlayerId} />
+        </SettingsRows>
+      </SettingsGroup>
 
-      <SettingsSection title="Notifications">
-        <PushNotificationSettings sessionId={sessionId} claimedPlayerId={claimedPlayerId} />
-      </SettingsSection>
-
-      <SettingsSection title="Share">
+      <SettingsGroup title="Share">
         <ShareField session={session} />
-        <CopyField label="Admin Code — tap to copy & share with co-hosts" value={adminToken} />
-      </SettingsSection>
+      </SettingsGroup>
+
+      <SettingsGroup title="Host Access">
+        <CopyField label="Admin Code" value={adminToken} />
+        <p className="text-xs text-muted-foreground px-0.5">Share with co-hosts to give them admin access.</p>
+      </SettingsGroup>
 
       {session.is_active && (
-        <SettingsSection title="Session Status">
+        <SettingsGroup title="Session">
           <Button
             className="w-full"
             variant="destructive"
@@ -796,12 +809,12 @@ function SessionSettings({ sessionId, session, onSave, saving, onSetActive, sett
           <p className="text-xs text-muted-foreground">
             Players will no longer be able to generate new rounds. You can reopen it afterwards.
           </p>
-        </SettingsSection>
+        </SettingsGroup>
       )}
 
       {!session.is_active && (
-        <SettingsSection title="Session Status">
-          <div className="rounded-lg border px-3 py-2.5 text-sm text-muted-foreground">
+        <SettingsGroup title="Session">
+          <div className="rounded-xl border px-4 py-3 text-sm text-muted-foreground">
             {session.auto_deactivated
               ? 'This session was closed automatically and cannot be reopened.'
               : 'This session is closed.'}
@@ -816,7 +829,7 @@ function SessionSettings({ sessionId, session, onSave, saving, onSetActive, sett
               {settingActive ? 'Reopening…' : 'Reopen Session'}
             </Button>
           )}
-        </SettingsSection>
+        </SettingsGroup>
       )}
 
       <div className="pt-2">

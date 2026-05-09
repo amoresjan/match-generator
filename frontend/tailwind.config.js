@@ -64,9 +64,31 @@ export default {
           '100%': { transform: 'translateY(0)',    opacity: '1' },
         },
         'duo-form': {
-          '0%':   { transform: 'scale(0.92)', opacity: '0'   },
-          '60%':  { transform: 'scale(1.04)', opacity: '1'   },
-          '100%': { transform: 'scale(1)',    opacity: '1'   },
+          '0%':   { transform: 'scale(0.92)',  opacity: '0' },
+          '60%':  { transform: 'scale(1.025)', opacity: '1' },
+          '100%': { transform: 'scale(1)',     opacity: '1' },
+        },
+        'duo-ring': {
+          '0%':   { opacity: '0',    transform: 'scale(0.94)' },
+          '35%':  { opacity: '0.9',  transform: 'scale(1)'    },
+          '100%': { opacity: '0',    transform: 'scale(1.08)' },
+        },
+        'duo-snap-top': {
+          '0%':   { transform: 'translateY(-10px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)',     opacity: '1' },
+        },
+        'duo-snap-bottom': {
+          '0%':   { transform: 'translateY(10px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)',    opacity: '1' },
+        },
+        'duo-link-draw': {
+          '0%':   { transform: 'scaleX(0)', opacity: '0' },
+          '100%': { transform: 'scaleX(1)', opacity: '1' },
+        },
+        'duo-dot-pop': {
+          '0%':   { transform: 'scale(0)', opacity: '0' },
+          '60%':  { transform: 'scale(1.4)', opacity: '1' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
         },
         'streak-glow': {
           '0%, 100%': { boxShadow: '0 0 8px 0px rgba(249,115,22,0.2)'  },
@@ -81,8 +103,12 @@ export default {
           '100%': { transform: 'translateX(-24px)', opacity: '0' },
         },
         'toast-enter': {
-          '0%':   { transform: 'translateY(-100%)', opacity: '0' },
-          '100%': { transform: 'translateY(0)',      opacity: '1' },
+          '0%':   { transform: 'translateY(-14px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)',     opacity: '1' },
+        },
+        'toast-exit': {
+          '0%':   { transform: 'translateY(0)',    opacity: '1' },
+          '100%': { transform: 'translateY(-8px)', opacity: '0' },
         },
         'tab-slide-left': {
           '0%':   { transform: 'translateX(20px)', opacity: '0' },
@@ -103,8 +129,14 @@ export default {
         'streak-pulse':  'streak-pulse 2s ease-in-out infinite',
         'card-enter':    'card-enter 0.35s ease-out both',
         'card-exit':     'card-exit 0.3s ease-in forwards',
-        'duo-form':      'duo-form 0.4s ease-out both',
-        'toast-enter':   'toast-enter 0.3s ease-out both',
+        'duo-form':       'duo-form 0.45s cubic-bezier(0.22, 1, 0.36, 1) both',
+        'duo-ring':       'duo-ring 0.7s cubic-bezier(0.22, 1, 0.36, 1) both',
+        'duo-snap-top':   'duo-snap-top 0.32s cubic-bezier(0.22, 1, 0.36, 1) 80ms both',
+        'duo-snap-bottom':'duo-snap-bottom 0.32s cubic-bezier(0.22, 1, 0.36, 1) 80ms both',
+        'duo-link-draw':  'duo-link-draw 0.35s cubic-bezier(0.22, 1, 0.36, 1) 120ms both',
+        'duo-dot-pop':    'duo-dot-pop 0.35s cubic-bezier(0.22, 1, 0.36, 1) 240ms both',
+        'toast-enter':   'toast-enter 0.25s cubic-bezier(0.16, 1, 0.3, 1) both',
+        'toast-exit':    'toast-exit 0.18s cubic-bezier(0.7, 0, 0.84, 0) forwards',
         'streak-glow':    'streak-glow 2s ease-in-out infinite',
         'gold-glow':      'gold-glow 2s ease-in-out infinite',
         'tab-slide-left':  'tab-slide-left 0.22s ease-out backwards',

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 
-export type ToastVariant = 'default' | 'destructive'
+export type ToastVariant = 'default' | 'success' | 'destructive'
 
 export interface ToastItem {
   id: string
   title: string
   variant: ToastVariant
+  open: boolean
 }
 
 let _items: ToastItem[] = []
@@ -21,17 +22,23 @@ function _remove(id: string) {
   _notify()
 }
 
+function _close(id: string) {
+  _items = _items.map(t => t.id === id ? { ...t, open: false } : t)
+  _notify()
+  setTimeout(() => _remove(id), 280)
+}
+
 function _add(title: string, variant: ToastVariant) {
   const id = crypto.randomUUID()
-  _items = [..._items, { id, title, variant }]
+  _items = [..._items, { id, title, variant, open: true }]
   _notify()
-  setTimeout(() => _remove(id), 4000)
+  setTimeout(() => _close(id), 4000)
 }
 
 export const toast = Object.assign(
   (title: string) => _add(title, 'default'),
   {
-    success: (title: string) => _add(title, 'default'),
+    success: (title: string) => _add(title, 'success'),
     error: (title: string) => _add(title, 'destructive'),
   },
 )
@@ -44,5 +51,5 @@ export function useToastStore() {
     return () => { _listeners.delete(setItems) }
   }, [])
 
-  return { items, dismiss: _remove }
+  return { items, dismiss: _close }
 }
