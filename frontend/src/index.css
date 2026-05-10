@@ -78,6 +78,12 @@
 .sport-others { --primary: 260 55% 50%; --ring: 260 55% 50%; }
 .dark .sport-others { --primary: 260 55% 65%; --ring: 260 50% 32%; }
 
+@layer utilities {
+  .tab-indicator {
+    transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

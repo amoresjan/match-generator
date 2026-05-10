@@ -1,0 +1,198 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bggrad" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#020817"/>
+      <stop offset="100%" stop-color="#0c1628"/>
+    </linearGradient>
+    <linearGradient id="cardgrad" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.07"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.03"/>
+    </linearGradient>
+    <clipPath id="clip">
+      <rect width="1200" height="630"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bggrad)"/>
+
+  <!-- Subtle diagonal court lines -->
+  <g clip-path="url(#clip)" opacity="0.035" stroke="#ffffff" stroke-width="1" fill="none">
+    <line x1="-100" y1="630" x2="530" y2="0"/>
+    <line x1="50"   y1="630" x2="680" y2="0"/>
+    <line x1="200"  y1="630" x2="830" y2="0"/>
+    <line x1="350"  y1="630" x2="980" y2="0"/>
+    <line x1="500"  y1="630" x2="1130" y2="0"/>
+    <line x1="650"  y1="630" x2="1280" y2="0"/>
+    <line x1="800"  y1="630" x2="1430" y2="0"/>
+  </g>
+
+  <!-- Green top accent bar -->
+  <rect x="0" y="0" width="1200" height="6" fill="#16a34a"/>
+
+  <!-- ── Left column: brand ────────────────────────────────────────── -->
+
+  <!-- "RALLY" badge -->
+  <rect x="72" y="68" width="114" height="38" rx="10" fill="#16a34a"/>
+  <text
+    x="129" y="92"
+    font-family="Arial, Helvetica, sans-serif"
+    font-weight="700"
+    font-size="17"
+    letter-spacing="3"
+    fill="#ffffff"
+    text-anchor="middle"
+  >RALLY</text>
+
+  <!-- Main headline line 1 -->
+  <text
+    x="72" y="232"
+    font-family="Arial, Helvetica, sans-serif"
+    font-weight="800"
+    font-size="88"
+    fill="#f8fafc"
+  >Stop doing</text>
+
+  <!-- Main headline line 2 -->
+  <text
+    x="72" y="338"
+    font-family="Arial, Helvetica, sans-serif"
+    font-weight="800"
+    font-size="88"
+    fill="#f8fafc"
+  >the math.</text>
+
+  <!-- Green sub-headline -->
+  <text
+    x="72" y="418"
+    font-family="Arial, Helvetica, sans-serif"
+    font-weight="700"
+    font-size="52"
+    fill="#22c55e"
+  >Start playing.</text>
+
+  <!-- Description -->
+  <text
+    x="72" y="500"
+    font-family="Arial, Helvetica, sans-serif"
+    font-weight="400"
+    font-size="26"
+    fill="#475569"
+  >Fair rotation for any group sport.</text>
+
+  <!-- Sport pill tags -->
+  <rect x="72"  y="528" width="126" height="34" rx="8" fill="#0f2d1a"/>
+  <text x="135" y="551" font-family="Arial, Helvetica, sans-serif" font-weight="500" font-size="16" fill="#22c55e" text-anchor="middle">Pickleball</text>
+
+  <rect x="208"  y="528" width="90" height="34" rx="8" fill="#0f2314"/>
+  <text x="253"  y="551" font-family="Arial, Helvetica, sans-serif" font-weight="500" font-size="16" fill="#22c55e" text-anchor="middle">Tennis</text>
+
+  <rect x="308" y="528" width="104" height="34" rx="8" fill="#0f2314"/>
+  <text x="360" y="551" font-family="Arial, Helvetica, sans-serif" font-weight="500" font-size="16" fill="#22c55e" text-anchor="middle">Badminton</text>
+
+  <rect x="422" y="528" width="64" height="34" rx="8" fill="#0f2314"/>
+  <text x="454" y="551" font-family="Arial, Helvetica, sans-serif" font-weight="500" font-size="16" fill="#22c55e" text-anchor="middle">+more</text>
+
+  <!-- ── Right column: match card mockup ──────────────────────────── -->
+
+  <!-- Card shadow -->
+  <rect x="734" y="108" width="390" height="420" rx="20" fill="#000000" fill-opacity="0.4"/>
+
+  <!-- Card body -->
+  <rect x="728" y="100" width="390" height="420" rx="20" fill="url(#cardgrad)" stroke="#ffffff" stroke-opacity="0.1" stroke-width="1"/>
+
+  <!-- Card header: session info -->
+  <text
+    x="923" y="158"
+    font-family="Arial, Helvetica, sans-serif"
+    font-weight="600"
+    font-size="13"
+    letter-spacing="2"
+    fill="#64748b"
+    text-anchor="middle"
+  >COURT 1  ·  ROUND 3</text>
+
+  <!-- Divider under header -->
+  <line x1="748" y1="172" x2="1098" y2="172" stroke="#ffffff" stroke-opacity="0.06"/>
+
+  <!-- Team 1 box -->
+  <rect x="748" y="192" width="350" height="82" rx="14" fill="#16a34a" fill-opacity="0.14" stroke="#16a34a" stroke-opacity="0.35" stroke-width="1"/>
+  <text
+    x="923" y="230"
+    font-family="Arial, Helvetica, sans-serif"
+    font-weight="700"
+    font-size="24"
+    fill="#4ade80"
+    text-anchor="middle"
+  >Alex</text>
+  <text
+    x="923" y="257"
+    font-family="Arial, Helvetica, sans-serif"
+    font-weight="500"
+    font-size="15"
+    fill="#22c55e"
+    fill-opacity="0.7"
+    text-anchor="middle"
+  >+ Jamie</text>
+
+  <!-- VS -->
+  <text
+    x="923" y="313"
+    font-family="Arial, Helvetica, sans-serif"
+    font-weight="700"
+    font-size="18"
+    letter-spacing="2"
+    fill="#334155"
+    text-anchor="middle"
+  >VS</text>
+
+  <!-- Team 2 box -->
+  <rect x="748" y="328" width="350" height="82" rx="14" fill="#ffffff" fill-opacity="0.04" stroke="#ffffff" stroke-opacity="0.1" stroke-width="1"/>
+  <text
+    x="923" y="368"
+    font-family="Arial, Helvetica, sans-serif"
+    font-weight="700"
+    font-size="24"
+    fill="#e2e8f0"
+    text-anchor="middle"
+  >Sam</text>
+  <text
+    x="923" y="395"
+    font-family="Arial, Helvetica, sans-serif"
+    font-weight="500"
+    font-size="15"
+    fill="#94a3b8"
+    text-anchor="middle"
+  >+ Riley</text>
+
+  <!-- Bye row -->
+  <text
+    x="923" y="452"
+    font-family="Arial, Helvetica, sans-serif"
+    font-weight="400"
+    font-size="14"
+    fill="#334155"
+    text-anchor="middle"
+  >Sitting out: Jordan</text>
+
+  <!-- Card footer -->
+  <line x1="748" y1="468" x2="1098" y2="468" stroke="#ffffff" stroke-opacity="0.06"/>
+  <text
+    x="923" y="497"
+    font-family="Arial, Helvetica, sans-serif"
+    font-weight="600"
+    font-size="13"
+    fill="#16a34a"
+    text-anchor="middle"
+  >Fair rotation by Rally</text>
+
+  <!-- Bottom domain -->
+  <text
+    x="1128" y="614"
+    font-family="Arial, Helvetica, sans-serif"
+    font-weight="400"
+    font-size="14"
+    fill="#1e293b"
+    text-anchor="end"
+  >match.amoresjan.dev</text>
+</svg>

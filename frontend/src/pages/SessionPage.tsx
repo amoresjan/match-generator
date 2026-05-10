@@ -157,7 +157,7 @@ export function SessionPage() {
         </header>
 
         <nav className="bg-background">
-        <div role="tablist" className="flex max-w-2xl mx-auto border-b">
+        <div role="tablist" className="relative flex max-w-2xl mx-auto border-b">
           {TABS.map((t) => (
             <button
               key={t.key}
@@ -166,7 +166,7 @@ export function SessionPage() {
               onClick={() => switchTab(t.key)}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors ${
                 tab === t.key
-                  ? 'border-b-2 border-primary text-primary'
+                  ? 'text-primary'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -174,6 +174,14 @@ export function SessionPage() {
               {t.label}
             </button>
           ))}
+          <div
+            aria-hidden="true"
+            className="tab-indicator pointer-events-none absolute bottom-0 left-0 h-0.5 bg-primary"
+            style={{
+              width: `${100 / TABS.length}%`,
+              transform: `translateX(${TAB_ORDER.indexOf(tab) * 100}%)`,
+            }}
+          />
         </div>
         {!session.is_active && (
           <div className="border-b bg-muted px-4 py-2.5 text-center text-sm text-muted-foreground">
@@ -245,7 +253,15 @@ export function SessionPage() {
             <div className="space-y-6">
               <Leaderboard players={session.players} rounds={session.rounds} currentPlayerId={claimedPlayerId ?? undefined} />
               {session.rounds.some((r) => r.matches.some((m) => m.winner !== null)) && (
-                <SessionSummaryCard sessionName={session.name} players={session.players} rounds={session.rounds} />
+                <SessionSummaryCard
+                  sessionName={session.name}
+                  players={session.players}
+                  rounds={session.rounds}
+                  sportType={session.sport_type}
+                  generationMode={session.generation_mode}
+                  sessionMode={session.session_mode}
+                  matchType={session.match_type}
+                />
               )}
             </div>
           )}

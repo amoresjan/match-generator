@@ -111,11 +111,11 @@ export default {
           '100%': { transform: 'translateY(-8px)', opacity: '0' },
         },
         'tab-slide-left': {
-          '0%':   { transform: 'translateX(20px)', opacity: '0' },
+          '0%':   { transform: 'translateX(24px)', opacity: '0' },
           '100%': { transform: 'translateX(0)',    opacity: '1' },
         },
         'tab-slide-right': {
-          '0%':   { transform: 'translateX(-20px)', opacity: '0' },
+          '0%':   { transform: 'translateX(-24px)', opacity: '0' },
           '100%': { transform: 'translateX(0)',     opacity: '1' },
         },
         'my-card-pulse': {
@@ -139,8 +139,8 @@ export default {
         'toast-exit':    'toast-exit 0.18s cubic-bezier(0.7, 0, 0.84, 0) forwards',
         'streak-glow':    'streak-glow 2s ease-in-out infinite',
         'gold-glow':      'gold-glow 2s ease-in-out infinite',
-        'tab-slide-left':  'tab-slide-left 0.22s ease-out backwards',
-        'tab-slide-right': 'tab-slide-right 0.22s ease-out backwards',
+        'tab-slide-left':  'tab-slide-left 0.22s cubic-bezier(0.22, 1, 0.36, 1) backwards',
+        'tab-slide-right': 'tab-slide-right 0.22s cubic-bezier(0.22, 1, 0.36, 1) backwards',
         'my-card-pulse':   'my-card-pulse 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards',
       },
     },

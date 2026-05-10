@@ -11,171 +11,287 @@ interface SummaryCardProps {
   sessionName: string
   players: Player[]
   rounds: Round[]
+  sportType?: string
+  generationMode?: string
+  sessionMode?: string
+  matchType?: string
 }
 
-const MEDALS = ['🥇', '🥈', '🥉']
-const RANK_COLORS: Record<number, { name: string; wins: string; border: string }> = {
-  0: { name: '#fbbf24', wins: '#f59e0b', border: 'rgba(251,191,36,0.3)' },
-  1: { name: '#cbd5e1', wins: '#94a3b8', border: 'rgba(203,213,225,0.2)' },
-  2: { name: '#d97706', wins: '#b45309', border: 'rgba(217,119,6,0.25)' },
+type SportPalette = { primary: string; vivid: string; tint: string; glow: string }
+
+const SPORT_PALETTE: Record<string, SportPalette> = {
+  pickleball: { primary: '#16a34a', vivid: '#22c55e', tint: 'rgba(22,163,74,0.13)',   glow: 'rgba(22,163,74,0.18)' },
+  tennis:     { primary: '#8fb30e', vivid: '#b0d620', tint: 'rgba(143,179,14,0.13)',  glow: 'rgba(143,179,14,0.18)' },
+  badminton:  { primary: '#1a65e0', vivid: '#4a88f5', tint: 'rgba(26,101,224,0.14)',  glow: 'rgba(26,101,224,0.2)' },
+  ping_pong:  { primary: '#ce2316', vivid: '#f04234', tint: 'rgba(206,35,22,0.13)',   glow: 'rgba(206,35,22,0.18)' },
+  padel:      { primary: '#1c867c', vivid: '#20a89c', tint: 'rgba(28,134,124,0.13)',  glow: 'rgba(28,134,124,0.18)' },
+  others:     { primary: '#6839c5', vivid: '#9b6dea', tint: 'rgba(104,57,197,0.13)', glow: 'rgba(104,57,197,0.18)' },
 }
 
-// 1080×1920 — Instagram Story resolution
-// Safe zone: 252px top, 420px bottom (avoids IG UI chrome)
-function SummaryCardContent({ sessionName, players, rounds }: SummaryCardProps) {
-  const stats = computeStats(players, rounds)
-  const totalRounds = rounds.length
+const SPORT_LABELS: Record<string, string> = {
+  pickleball: 'Pickleball', tennis: 'Tennis', badminton: 'Badminton',
+  ping_pong: 'Ping Pong', padel: 'Padel', others: 'Others',
+}
+
+const BG       = '#060d1a'
+const SURFACE  = 'rgba(255,255,255,0.04)'
+const BORDER   = 'rgba(255,255,255,0.07)'
+const MUTED    = '#364560'
+const DIM      = '#8899bb'
+const WHITE    = '#eef3ff'
+
+function clip(name: string, max: number) {
+  return name.length > max ? name.slice(0, max - 1) + '…' : name
+}
+
+function Badge({ label, color, bg }: { label: string; color: string; bg: string }) {
+  return (
+    <div style={{
+      display: 'inline-block',
+      background: bg,
+      color,
+      fontSize: '22px',
+      fontWeight: 700,
+      letterSpacing: '2.5px',
+      padding: '10px 26px',
+      borderRadius: '100px',
+    }}>
+      {label}
+    </div>
+  )
+}
+
+// 1080×1920 — Instagram Story
+// Safe zone: 120px top, 120px bottom (plus absolute-positioned footer)
+function SummaryCardContent({
+  sessionName, players, rounds,
+  sportType = 'pickleball',
+  generationMode = 'fair',
+  sessionMode = 'rotation',
+  matchType = '2v2',
+}: SummaryCardProps) {
+  const stats    = computeStats(players, rounds)
+  const totalRounds  = rounds.length
   const totalMatches = rounds.reduce((n, r) => n + r.matches.filter((m) => m.winner !== null).length, 0)
 
-  const top3 = stats.slice(0, 3)
-  const podiumOrder = [
-    top3[1] ? { stat: top3[1], rank: 1 } : null,
-    top3[0] ? { stat: top3[0], rank: 0 } : null,
-    top3[2] ? { stat: top3[2], rank: 2 } : null,
-  ].filter(Boolean) as { stat: PlayerStat; rank: number }[]
+  const palette    = SPORT_PALETTE[sportType] ?? SPORT_PALETTE.pickleball
+  const sportLabel = SPORT_LABELS[sportType] ?? 'Sport'
+  const modeLabel  = sessionMode === 'tournament' ? 'Tournament'
+    : generationMode === 'competitive' ? 'Competitive'
+    : 'Fair Rotation'
 
-  const listStats = stats.slice(3, 10)
+  const winner    = stats[0] ?? null
+  const second    = stats[1] ?? null
+  const third     = stats[2] ?? null
+  const listStats = stats.slice(3, 8)  // positions 4–8
 
   return (
     <div style={{
-      width: '1080px',
-      height: '1920px',
-      position: 'relative',
-      color: '#f8fafc',
-      fontFamily: 'Arial, Helvetica, sans-serif',
-      boxSizing: 'border-box',
+      width: '1080px', height: '1920px', position: 'relative',
+      fontFamily: 'system-ui, -apple-system, Arial, Helvetica, sans-serif',
+      background: BG, color: WHITE, boxSizing: 'border-box', overflow: 'hidden',
     }}>
-      {/* Background + glow */}
+
+      {/* ── Corner glow ── */}
       <div style={{
-        position: 'absolute', inset: 0,
-        background: 'linear-gradient(170deg, #0f172a 0%, #1e293b 60%, #0f172a 100%)',
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          position: 'absolute', top: '-240px', right: '-240px',
-          width: '720px', height: '720px', borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(249,115,22,0.15) 0%, transparent 65%)',
-        }} />
-      </div>
+        position: 'absolute', top: '-200px', right: '-200px',
+        width: '700px', height: '700px', borderRadius: '50%',
+        background: `radial-gradient(circle, ${palette.glow} 0%, transparent 65%)`,
+        pointerEvents: 'none',
+      }} />
 
-      {/* Safe-area content — no flexbox to avoid html2canvas whitespace bugs */}
-      <div style={{ position: 'relative', padding: '150px 72px 0', height: '100%', boxSizing: 'border-box' }}>
+      {/* ── Content ── */}
+      <div style={{ padding: '120px 72px 0', position: 'relative' }}>
 
-        {/* ── Session title + stats ── */}
-        <div style={{ marginBottom: '54px' }}>
-          <div style={{ fontSize: '66px', fontWeight: 800, color: '#f8fafc', lineHeight: '78px', marginBottom: '12px' }}>
-            {sessionName}
-          </div>
-          <div style={{ fontSize: '33px', color: '#64748b' }}>
-            {`${totalRounds} round${totalRounds !== 1 ? 's' : ''} · ${totalMatches} match${totalMatches !== 1 ? 'es' : ''}`}
-          </div>
+        {/* Top label row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '44px', flexWrap: 'wrap' }}>
+          <Badge label="RALLY" color="#ffffff" bg={palette.primary} />
+          <Badge label={sportLabel.toUpperCase()} color={DIM} bg={SURFACE} />
+          <Badge label={matchType} color={DIM} bg={SURFACE} />
+          <Badge label={modeLabel.toUpperCase()} color={DIM} bg={SURFACE} />
         </div>
 
-        {/* ── Podium ── */}
-        {podiumOrder.length > 0 && (
-          <div style={{ marginBottom: '54px' }}>
-            <div style={{ fontSize: '27px', fontWeight: 700, color: '#475569', letterSpacing: '3px', marginBottom: '36px' }}>
-              TOP PLAYERS
+        {/* Session name */}
+        <div style={{
+          fontSize: '64px', fontWeight: 800, color: WHITE,
+          lineHeight: '72px', letterSpacing: '-1.5px', marginBottom: '14px',
+        }}>
+          {clip(sessionName, 28)}
+        </div>
+
+        {/* Session meta */}
+        <div style={{ fontSize: '28px', color: MUTED, fontWeight: 500, marginBottom: '52px' }}>
+          {`${totalRounds} round${totalRounds !== 1 ? 's' : ''} · ${totalMatches} match${totalMatches !== 1 ? 'es' : ''} played`}
+        </div>
+
+        {/* ── Winner block ── */}
+        {winner && (
+          <div style={{
+            background: palette.tint,
+            borderRadius: '36px',
+            borderTop: `5px solid ${palette.primary}`,
+            padding: '40px 56px 44px',
+            marginBottom: '20px',
+            position: 'relative',
+            overflow: 'hidden',
+            boxSizing: 'border-box',
+          }}>
+            {/* Inner bottom glow */}
+            <div style={{
+              position: 'absolute', bottom: '-80px', left: '-80px',
+              width: '400px', height: '400px', borderRadius: '50%',
+              background: `radial-gradient(circle, ${palette.glow} 0%, transparent 65%)`,
+              pointerEvents: 'none',
+            }} />
+
+            <div style={{
+              fontSize: '20px', fontWeight: 700,
+              color: palette.vivid, letterSpacing: '5px', marginBottom: '14px',
+            }}>
+              CHAMPION
             </div>
-            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '30px' }}>
-              {podiumOrder.map(({ stat, rank }) => {
-                const colors = RANK_COLORS[rank]
-                const isFirst = rank === 0
-                return (
-                  <div key={stat.player.id} style={{
-                    width: isFirst ? '336px' : '294px',
-                    flexShrink: 0,
-                    textAlign: 'center',
-                    background: 'rgba(255,255,255,0.05)',
-                    border: `3px solid ${colors.border}`,
-                    borderRadius: '36px',
-                    padding: isFirst ? '42px 24px 36px' : '33px 24px 30px',
-                    boxSizing: 'border-box',
-                  }}>
-                    <div style={{ fontSize: isFirst ? '72px' : '60px', lineHeight: '1', marginBottom: '24px' }}>
-                      {MEDALS[rank]}
-                    </div>
-                    <div style={{
-                      fontSize: isFirst ? '39px' : '36px',
-                      fontWeight: 700,
-                      color: colors.name,
-                      lineHeight: '48px',
-                      marginBottom: '18px',
-                      wordBreak: 'break-word',
-                    }}>
-                      {stat.player.name.length > 12 ? stat.player.name.slice(0, 11) + '…' : stat.player.name}
-                    </div>
-                    <div style={{
-                      fontSize: isFirst ? '78px' : '66px',
-                      fontWeight: 900,
-                      color: colors.wins,
-                      lineHeight: '1',
-                    }}>
-                      {`${stat.wins}`}<span style={{ fontSize: isFirst ? '42px' : '36px' }}>W</span>
-                    </div>
-                    <div style={{ fontSize: '30px', color: '#64748b', lineHeight: '42px', marginTop: '12px' }}>
-                      {`${stat.losses}L · ${stat.played}GP`}
-                    </div>
-                  </div>
-                )
-              })}
+
+            <div style={{
+              fontSize: '92px', fontWeight: 800, color: WHITE,
+              lineHeight: '100px', letterSpacing: '-2px', marginBottom: '22px',
+              wordBreak: 'break-word',
+            }}>
+              {clip(winner.player.name, 13)}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '20px' }}>
+              <span style={{
+                fontSize: '144px', fontWeight: 900,
+                color: palette.vivid, lineHeight: '1', letterSpacing: '-4px',
+              }}>
+                {winner.wins}
+              </span>
+              <div>
+                <div style={{
+                  fontSize: '34px', fontWeight: 700,
+                  color: palette.primary, letterSpacing: '3px',
+                }}>
+                  WINS
+                </div>
+                <div style={{ fontSize: '27px', color: MUTED, marginTop: '10px' }}>
+                  {`${winner.losses}L · ${winner.played} games`}
+                </div>
+              </div>
             </div>
           </div>
         )}
 
-        {/* ── Positions 4–10 ── */}
+        {/* ── 2nd + 3rd ── */}
+        {(second || third) && (
+          <div style={{ display: 'flex', gap: '20px', marginBottom: '36px' }}>
+            {([second, third] as (PlayerStat | null)[]).map((stat, idx) => {
+              if (!stat) return <div key={idx} style={{ flex: 1 }} />
+              const rank = idx + 2
+              const rankLabel  = rank === 2 ? '2ND' : '3RD'
+              const rankColor  = rank === 2 ? '#b8c8e0' : '#9a7848'
+              return (
+                <div key={stat.player.id} style={{
+                  flex: 1,
+                  background: SURFACE,
+                  border: `1px solid ${BORDER}`,
+                  borderRadius: '28px',
+                  padding: '30px 36px 34px',
+                  boxSizing: 'border-box',
+                  overflow: 'hidden',
+                }}>
+                  <div style={{
+                    fontSize: '18px', fontWeight: 700,
+                    color: rankColor, letterSpacing: '4px', marginBottom: '12px',
+                  }}>
+                    {rankLabel}
+                  </div>
+                  <div style={{
+                    fontSize: '48px', fontWeight: 800, color: WHITE,
+                    lineHeight: '54px', letterSpacing: '-1px', marginBottom: '16px',
+                    wordBreak: 'break-word',
+                  }}>
+                    {clip(stat.player.name, 11)}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
+                    <span style={{
+                      fontSize: '76px', fontWeight: 900,
+                      color: rankColor, lineHeight: '1', letterSpacing: '-2px',
+                    }}>
+                      {stat.wins}
+                    </span>
+                    <div>
+                      <div style={{ fontSize: '22px', fontWeight: 700, color: MUTED, letterSpacing: '2px' }}>WINS</div>
+                      <div style={{ fontSize: '22px', color: MUTED, marginTop: '4px' }}>{stat.losses}L</div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* ── Standings list ── */}
         {listStats.length > 0 && (
-          <div style={{
-            background: 'rgba(255,255,255,0.03)',
-            border: '3px solid rgba(255,255,255,0.07)',
-            borderRadius: '30px',
-            overflow: 'hidden',
-          }}>
+          <>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '24px',
+            }}>
+              <div style={{ flex: 1, height: '1px', background: BORDER }} />
+              <div style={{ fontSize: '18px', fontWeight: 700, color: MUTED, letterSpacing: '4px' }}>
+                STANDINGS
+              </div>
+              <div style={{ flex: 1, height: '1px', background: BORDER }} />
+            </div>
+
             {listStats.map((s, i) => (
               <div key={s.player.id} style={{
-                padding: '24px 42px',
-                borderBottom: i < listStats.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                lineHeight: '60px',
+                display: 'flex', alignItems: 'center',
+                padding: '16px 0',
+                borderBottom: i < listStats.length - 1 ? `1px solid ${BORDER}` : 'none',
               }}>
-                <span style={{ fontSize: '33px', color: '#475569', fontWeight: 600, display: 'inline-block', width: '66px' }}>
+                <span style={{
+                  width: '68px', fontSize: '26px', fontWeight: 700,
+                  color: MUTED, flexShrink: 0, letterSpacing: '1px',
+                }}>
                   {i + 4}
                 </span>
-                <span style={{ fontSize: '39px', fontWeight: 600, color: '#cbd5e1' }}>
-                  {s.player.name}
+                <span style={{ flex: 1, fontSize: '37px', fontWeight: 600, color: '#c0cee6' }}>
+                  {clip(s.player.name, 18)}
                 </span>
-                <span style={{ fontSize: '39px', fontWeight: 700, color: '#4ade80', float: 'right', marginLeft: '24px' }}>
-                  {`${s.wins}W`}
+                <span style={{ fontSize: '37px', fontWeight: 700, color: palette.primary, marginLeft: '14px' }}>
+                  {s.wins}W
                 </span>
-                <span style={{ fontSize: '36px', color: '#475569', float: 'right' }}>
-                  {`${s.losses}L`}
+                <span style={{ fontSize: '32px', fontWeight: 500, color: MUTED, marginLeft: '14px', width: '64px', textAlign: 'right' }}>
+                  {s.losses}L
                 </span>
               </div>
             ))}
-          </div>
+          </>
         )}
+      </div>
 
-        {/* ── Footer — pinned to bottom of safe area ── */}
-        <div style={{
-          position: 'absolute',
-          bottom: '150px',
-          left: '72px',
-          right: '72px',
-          textAlign: 'center',
-        }}>
-          <div style={{ fontSize: '30px', color: '#475569', marginBottom: '6px' }}>
-            Generate your matches at
-          </div>
-          <div style={{ fontSize: '39px', fontWeight: 700, color: '#f97316' }}>
-            match.amoresjan.dev
-          </div>
+      {/* ── Footer ── */}
+      <div style={{
+        position: 'absolute', bottom: '120px', left: '72px', right: '72px',
+        borderTop: `1px solid ${BORDER}`,
+        paddingTop: '36px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <div style={{ fontSize: '27px', color: MUTED }}>
+          match.amoresjan.dev
         </div>
-
+        <div style={{
+          fontSize: '27px', fontWeight: 800,
+          color: palette.primary, letterSpacing: '3px',
+        }}>
+          RALLY
+        </div>
       </div>
     </div>
   )
 }
 
-export function SessionSummaryCard({ sessionName, players, rounds }: SummaryCardProps) {
+export function SessionSummaryCard({ sessionName, players, rounds, sportType, generationMode, sessionMode, matchType }: SummaryCardProps) {
   const [exporting, setExporting] = useState(false)
 
   async function handleDownload() {
@@ -190,7 +306,15 @@ export function SessionSummaryCard({ sessionName, players, rounds }: SummaryCard
       const root = createRoot(wrapper)
       root.render(
         <div style={{ display: 'inline-block' }}>
-          <SummaryCardContent sessionName={sessionName} players={players} rounds={rounds} />
+          <SummaryCardContent
+            sessionName={sessionName}
+            players={players}
+            rounds={rounds}
+            sportType={sportType}
+            generationMode={generationMode}
+            sessionMode={sessionMode}
+            matchType={matchType}
+          />
         </div>
       )
 
@@ -200,7 +324,7 @@ export function SessionSummaryCard({ sessionName, players, rounds }: SummaryCard
       const canvas = await html2canvas(cardEl, {
         scale: 1,
         useCORS: true,
-        backgroundColor: '#0f172a',
+        backgroundColor: BG,
         logging: false,
         width: 1080,
         height: 1920,
