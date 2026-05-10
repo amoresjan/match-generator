@@ -121,7 +121,7 @@ def set_session_active(request, session_id):
 
 @api_view(['POST'])
 def add_player(request, session_id):
-    session = get_object_or_404(Session, id=session_id)
+    session = get_object_or_404(Session.objects.only('admin_token', 'is_active'), id=session_id)
     err = _require_admin(request, session) or _require_active(session)
     if err:
         return err
@@ -137,7 +137,7 @@ def player_detail(request, session_id, player_id):
     err = _require_admin(request, session) or _require_active(session)
     if err:
         return err
-    player = get_object_or_404(Player, id=player_id, session=session)
+    player = get_object_or_404(Player.objects.select_related('permanent_partner'), id=player_id, session=session)
 
     if request.method == 'DELETE':
         session.removed_players[str(player.id)] = player.name
@@ -183,13 +183,13 @@ def set_partner(request, session_id, player_id):
     if err:
         return err
 
-    player = get_object_or_404(Player, id=player_id, session=session)
+    player = get_object_or_404(Player.objects.select_related('permanent_partner'), id=player_id, session=session)
     ser = SetPartnerSerializer(data=request.data)
     ser.is_valid(raise_exception=True)
     partner_id = ser.validated_data['partner_id']
 
     if partner_id is not None:
-        partner = get_object_or_404(Player, id=partner_id, session=session)
+        partner = get_object_or_404(Player.objects.select_related('permanent_partner'), id=partner_id, session=session)
         if partner.id == player.id:
             return Response({'detail': 'Cannot partner with self.'}, status=400)
 
