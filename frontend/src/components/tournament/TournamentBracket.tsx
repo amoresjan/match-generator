@@ -1,19 +1,18 @@
 import { useRef, useState } from 'react'
-import { ChevronDown, ChevronUp, Loader2, Trophy } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { ChevronDown, Loader2, Trophy } from 'lucide-react'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import type { Round, TournamentBracket as Bracket, TournamentMatchSlot, TournamentTeam } from '@/lib/types'
 
-const RANK_STYLES: Record<number, { border: string; bg: string }> = {
-  1: { border: 'border-yellow-300', bg: 'bg-yellow-50 dark:bg-yellow-900/20' },
-  2: { border: 'border-slate-400',  bg: 'bg-slate-50  dark:bg-slate-700/20'  },
-  3: { border: 'border-amber-700',  bg: 'bg-amber-50  dark:bg-amber-900/20'  },
+const RANK_ROW: Record<number, { border: string; bg: string }> = {
+  1: { border: 'border-yellow-300/80 dark:border-yellow-700/40', bg: 'bg-yellow-50/70 dark:bg-yellow-900/10' },
+  2: { border: 'border-slate-300/70 dark:border-slate-600/40',   bg: 'bg-slate-50/60 dark:bg-slate-700/10'   },
+  3: { border: 'border-amber-300/70 dark:border-amber-700/40',   bg: 'bg-amber-50/60 dark:bg-amber-900/10'   },
 }
-const RANK_ICON_CLASS: Record<number, string> = {
-  1: 'text-yellow-500',
-  2: 'text-slate-400',
-  3: 'text-amber-700',
+const TROPHY_CLASS: Record<number, string> = {
+  1: 'h-5 w-5 text-yellow-500',
+  2: 'h-4 w-4 text-slate-400',
+  3: 'h-4 w-4 text-amber-600',
 }
 
 const SLOT_H = 88
@@ -22,7 +21,7 @@ const COL_W  = 152
 const CONN_W = 36
 
 function getRoundName(round: number, numRounds: number): string {
-  if (round === numRounds) return 'Final'
+  if (round === numRounds)     return 'Final'
   if (round === numRounds - 1) return 'Semis'
   if (round === numRounds - 2) return 'Quarters'
   return `Round ${round}`
@@ -88,6 +87,29 @@ function ConnectorLines({ leftSlots, rightSlots, totalHeight }: ConnectorProps) 
 // Match box — bracket visualization, display only
 // ---------------------------------------------------------------------------
 
+interface MatchBoxTeamRowProps {
+  team: TournamentTeam | null
+  isWinner: boolean
+  isBye: boolean
+  isDone: boolean
+  isPending: boolean
+}
+
+function MatchBoxTeamRow({ team, isWinner, isBye, isDone, isPending }: MatchBoxTeamRowProps) {
+  if (isBye) return (
+    <div className="px-2 py-1.5 text-[11px] text-muted-foreground/40 italic leading-tight">BYE</div>
+  )
+  return (
+    <div className={`px-2 py-1.5 text-[11px] font-medium truncate leading-tight ${
+      isWinner  ? 'text-primary font-semibold' :
+      isDone    ? 'text-muted-foreground/50 line-through' :
+      isPending ? 'text-muted-foreground/40' : ''
+    }`}>
+      {team?.name ?? <span className="text-muted-foreground/30 italic">TBD</span>}
+    </div>
+  )
+}
+
 interface MatchBoxProps {
   slot: TournamentMatchSlot
   topTeam: TournamentTeam | null
@@ -103,21 +125,6 @@ function MatchBox({ slot, topTeam, bottomTeam, isActive, isChampion }: MatchBoxP
   const isTopBye  = slot.is_bye && !slot.top_team_id
   const isBotBye  = slot.is_bye && !slot.bottom_team_id
 
-  function TeamRow({ team, isWinner, isBye }: { team: TournamentTeam | null; isWinner: boolean; isBye: boolean }) {
-    if (isBye) return (
-      <div className="px-2 py-1.5 text-[11px] text-muted-foreground/40 italic leading-tight">BYE</div>
-    )
-    return (
-      <div className={`px-2 py-1.5 text-[11px] font-medium truncate leading-tight ${
-        isWinner  ? 'text-primary font-semibold' :
-        isDone    ? 'text-muted-foreground/50 line-through' :
-        isPending ? 'text-muted-foreground/40' : ''
-      }`}>
-        {team?.name ?? <span className="text-muted-foreground/30 italic">TBD</span>}
-      </div>
-    )
-  }
-
   return (
     <div
       className={[
@@ -129,9 +136,9 @@ function MatchBox({ slot, topTeam, bottomTeam, isActive, isChampion }: MatchBoxP
       ].join(' ')}
       style={{ height: BOX_H }}
     >
-      <TeamRow team={topTeam}    isWinner={isTopWin}           isBye={isTopBye} />
+      <MatchBoxTeamRow team={topTeam}    isWinner={isTopWin}           isBye={isTopBye} isDone={isDone} isPending={isPending} />
       <div className="border-t border-dashed border-border/40 mx-2" />
-      <TeamRow team={bottomTeam} isWinner={!isTopWin && isDone} isBye={isBotBye} />
+      <MatchBoxTeamRow team={bottomTeam} isWinner={!isTopWin && isDone} isBye={isBotBye} isDone={isDone} isPending={isPending} />
     </div>
   )
 }
@@ -178,10 +185,10 @@ function TournamentCourtCard({ slot, topTeam, bottomTeam, roundName, courtLabel,
       disabled={!isAdmin || isPending || !team}
       onClick={() => handleClick(side)}
       className={[
-        'relative rounded-md px-3 py-2 text-center font-medium transition-all w-full',
-        isAdmin && team ? 'cursor-pointer active:scale-95' : 'cursor-default',
+        'relative w-full rounded-lg px-4 py-3.5 text-sm font-medium text-center transition-all',
+        isAdmin && team ? 'cursor-pointer active:scale-95 hover:bg-muted' : 'cursor-default',
         poppedSide === side ? 'animate-winner-pop' : '',
-        'bg-muted/40 hover:bg-muted',
+        'bg-muted/40',
       ].join(' ')}
     >
       {team?.name ?? <span className="text-muted-foreground/40 italic text-xs">TBD</span>}
@@ -190,40 +197,38 @@ function TournamentCourtCard({ slot, topTeam, bottomTeam, roundName, courtLabel,
 
   return (
     <>
-      <Card className="w-full">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">{roundName}</CardTitle>
-            <div className="flex items-center gap-2">
-              {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-              {courtLabel && <span className="text-xs text-muted-foreground">{courtLabel}</span>}
-            </div>
+      <div className="rounded-xl border bg-card p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{roundName}</span>
+            {courtLabel && <span className="text-xs text-muted-foreground/50">· {courtLabel}</span>}
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-1.5 text-sm">
-            {teamBtn('top', topTeam)}
-            <span className="text-muted-foreground font-bold text-xs text-center">vs</span>
-            {teamBtn('bottom', bottomTeam)}
-          </div>
-          {isAdmin && (
-            <p className="text-[10px] text-muted-foreground text-center mt-2">
-              Tap the winning team to record result
-            </p>
-          )}
-        </CardContent>
-      </Card>
+          {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          {teamBtn('top', topTeam)}
+          <span className="text-[11px] font-medium text-muted-foreground/40 text-center select-none">vs</span>
+          {teamBtn('bottom', bottomTeam)}
+        </div>
+
+        {isAdmin && (
+          <p className="text-[10px] text-muted-foreground text-center">
+            Tap the winning team to advance them
+          </p>
+        )}
+      </div>
 
       {pendingWinner && (
         <Dialog open onOpenChange={open => { if (!open) setPendingWinner(null) }}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Declare Winner?</DialogTitle>
-            </DialogHeader>
-            <p className="text-sm text-muted-foreground">
-              Declare <span className="font-semibold text-foreground">{pendingWinner.name}</span> as the winner of this match? This cannot be undone.
-            </p>
-            <div className="flex gap-2 mt-2">
+          <DialogContent className="max-w-sm p-0 gap-0 overflow-hidden">
+            <div className="px-6 pt-6 pb-4 space-y-1">
+              <DialogTitle className="text-base font-semibold">Declare winner?</DialogTitle>
+              <p className="text-sm text-muted-foreground">
+                <span className="font-semibold text-foreground">{pendingWinner.name}</span> wins this match and advances. This cannot be undone.
+              </p>
+            </div>
+            <div className="flex gap-2 px-6 pb-6">
               <Button variant="outline" className="flex-1" onClick={() => setPendingWinner(null)}>
                 Cancel
               </Button>
@@ -267,8 +272,8 @@ export function TournamentCourts({ bracket, isAdmin, onAdvance, isPending }: Cou
 
   if (!activeSlots.length) {
     return (
-      <p className="text-center text-muted-foreground text-sm py-16">
-        No active matches right now.
+      <p className="text-center text-sm text-muted-foreground py-16">
+        No matches on right now.
       </p>
     )
   }
@@ -326,10 +331,10 @@ export function TournamentBracket({ bracket }: BracketProps) {
   return (
     <div className="space-y-4">
       {champion && (
-        <div className="rounded-xl border-2 border-primary bg-primary/5 px-4 py-3 flex items-center gap-3">
-          <Trophy className="h-5 w-5 text-primary shrink-0" />
+        <div className="rounded-xl border-2 border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 px-4 py-3.5 flex items-center gap-3 animate-gold-glow">
+          <Trophy className="h-5 w-5 text-yellow-500 shrink-0" />
           <div>
-            <p className="text-xs text-primary font-medium uppercase tracking-wide">Champion</p>
+            <p className="text-[10px] font-semibold text-yellow-600 dark:text-yellow-400 uppercase tracking-widest">Champion</p>
             <p className="font-bold text-sm">{champion.name}</p>
           </div>
         </div>
@@ -398,7 +403,6 @@ export function TournamentLeaderboard({ bracket, rounds, currentPlayerId }: Lead
 
   const { teams, match_slots, num_rounds } = bracket
 
-  // db_match_id → slot for round-name lookup
   const slotByMatchId: Record<string, TournamentMatchSlot> = {}
   for (const slot of match_slots) {
     if (slot.db_match_id) slotByMatchId[slot.db_match_id] = slot
@@ -412,8 +416,8 @@ export function TournamentLeaderboard({ bracket, rounds, currentPlayerId }: Lead
   }
 
   interface TeamMatch { matchId: string; roundName: string; result: 'W' | 'L'; opponentName: string }
-  const statsMap: Record<string, { team: TournamentTeam; wins: number; matches: TeamMatch[] }> = {}
-  for (const t of teams) statsMap[t.id] = { team: t, wins: 0, matches: [] }
+  const statsMap: Record<string, { team: TournamentTeam; wins: number; losses: number; matches: TeamMatch[] }> = {}
+  for (const t of teams) statsMap[t.id] = { team: t, wins: 0, losses: 0, matches: [] }
 
   for (const round of rounds) {
     for (const match of round.matches) {
@@ -426,12 +430,11 @@ export function TournamentLeaderboard({ bracket, rounds, currentPlayerId }: Lead
       const t1Won = match.winner === 'team1'
       statsMap[t1.id].matches.push({ matchId: match.id, roundName, result: t1Won ? 'W' : 'L', opponentName: t2.name })
       statsMap[t2.id].matches.push({ matchId: match.id, roundName, result: t1Won ? 'L' : 'W', opponentName: t1.name })
-      if (t1Won) statsMap[t1.id].wins++; else statsMap[t2.id].wins++
+      if (t1Won) { statsMap[t1.id].wins++; statsMap[t2.id].losses++ }
+      else       { statsMap[t2.id].wins++; statsMap[t1.id].losses++ }
     }
   }
 
-  // Rank by bracket placement: which round was each team eliminated in?
-  // Champion (never eliminated) → num_rounds + 1; finalist → num_rounds; etc.
   const eliminationRound: Record<string, number> = {}
   for (const slot of match_slots) {
     if (slot.status !== 'done' || !slot.winner_id) continue
@@ -453,83 +456,95 @@ export function TournamentLeaderboard({ bracket, rounds, currentPlayerId }: Lead
   }
 
   return (
-    <table className="w-full text-sm border-separate border-spacing-y-1.5">
-      <thead>
-        <tr className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          <th className="text-center w-8 pb-1 font-medium">#</th>
-          <th className="text-left pb-1 font-medium">Team</th>
-        </tr>
-      </thead>
-      <tbody>
-        {stats.map((s, i) => {
-          const rank = ranks[i]
-          const isFirst = rank === 1
-          const isMe = currentPlayerId !== undefined && s.team.player_ids.includes(currentPlayerId)
-          const style = RANK_STYLES[rank]
-          const border = isMe ? 'border-primary' : (style?.border ?? 'border-border')
-          const bg = isMe ? 'bg-primary/5 dark:bg-primary/10' : (style?.bg ?? 'bg-card')
-          const isExpanded = expandedId === s.team.id
-          const py = isFirst ? 'py-3.5' : 'py-2.5'
+    <div className="space-y-1.5">
+      {stats.map((s, i) => {
+        const rank = ranks[i]
+        const isFirst = rank === 1
+        const isPodium = rank <= 3
+        const isMe = currentPlayerId !== undefined && s.team.player_ids.includes(currentPlayerId)
+        const isExpanded = expandedId === s.team.id
+        const podiumStyle = RANK_ROW[rank]
+        const rowBorder = isMe && !isPodium
+          ? 'border-primary/30 dark:border-primary/30'
+          : (podiumStyle?.border ?? 'border-border')
+        const rowBg = isMe && !isPodium
+          ? 'bg-primary/5 dark:bg-primary/10'
+          : (podiumStyle?.bg ?? 'bg-card')
 
-          return (
-            <>
-              <tr
-                key={s.team.id}
-                tabIndex={0}
-                aria-expanded={isExpanded}
-                className={`cursor-pointer animate-card-enter ${isFirst ? 'animate-gold-glow' : ''}`}
-                style={{ animationDelay: `${i * 60}ms` }}
-                onClick={() => setExpandedId(isExpanded ? null : s.team.id)}
-                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedId(isExpanded ? null : s.team.id) } }}
-              >
-                <td className={`text-center font-bold text-muted-foreground ${py} pl-3 rounded-l-lg border-y border-l w-8 ${border} ${bg}`}>
-                  {rank <= 3
-                    ? <Trophy className={`${isFirst ? 'h-5 w-5' : 'h-4 w-4'} mx-auto ${RANK_ICON_CLASS[rank]}`} />
-                    : rank}
-                </td>
-                <td className={`${py} ${isFirst ? 'text-base' : ''} border-y border-r rounded-r-lg pr-3 ${border} ${bg}`}>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className={`font-medium truncate ${isMe ? 'font-bold' : ''}`}>
-                      {s.team.name}
-                      {isMe && <span className="ml-1.5 text-[10px] font-semibold text-primary bg-primary/10 rounded px-1 py-0.5">You</span>}
+        return (
+          <div
+            key={s.team.id}
+            className="animate-card-enter"
+            style={{ animationDelay: `${i * 60}ms` }}
+          >
+            <button
+              className={`w-full flex items-center gap-3 px-3 rounded-xl border text-left transition-transform active:scale-[0.99]
+                ${isFirst ? 'py-3.5 animate-gold-glow' : 'py-2.5'}
+                ${rowBorder} ${rowBg}
+              `}
+              onClick={() => setExpandedId(isExpanded ? null : s.team.id)}
+              aria-expanded={isExpanded}
+            >
+              <div className="w-7 flex-shrink-0 flex justify-center">
+                {isPodium
+                  ? <Trophy className={TROPHY_CLASS[rank]} />
+                  : <span className="text-sm font-bold text-muted-foreground tabular-nums">{rank}</span>}
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className={`truncate font-semibold ${isFirst ? 'text-base' : 'text-sm'} ${isMe ? 'font-bold' : ''}`}>
+                    {s.team.name}
+                  </span>
+                  {isMe && (
+                    <span className="flex-shrink-0 text-[10px] font-semibold text-primary bg-primary/10 rounded px-1.5 py-0.5 leading-none">
+                      You
                     </span>
-                    {isExpanded
-                      ? <ChevronUp className="h-3 w-3 text-muted-foreground/60 shrink-0" />
-                      : <ChevronDown className="h-3 w-3 text-muted-foreground/60 shrink-0" />}
-                  </div>
-                </td>
-              </tr>
-              <tr key={`${s.team.id}-detail`}>
-                <td colSpan={2} className="pt-0">
-                  <div className="grid transition-all duration-300 ease-in-out" style={{ gridTemplateRows: isExpanded ? '1fr' : '0fr' }}>
-                    <div className="overflow-hidden">
-                      <div className="pb-2">
-                        <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
-                          {s.matches.length === 0 ? (
-                            <p className="text-xs text-muted-foreground text-center py-1">No matches recorded yet</p>
-                          ) : (
-                            <table className="w-full text-xs border-separate border-spacing-y-0.5">
-                              <tbody>
-                                {s.matches.map(m => (
-                                  <tr key={m.matchId}>
-                                    <td className={`font-bold pr-2 ${m.result === 'W' ? 'text-green-600' : 'text-muted-foreground'}`}>{m.result}</td>
-                                    <td className="text-muted-foreground pr-3 whitespace-nowrap">{m.roundName}</td>
-                                    <td className="text-muted-foreground">vs {m.opponentName}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          )}
-                        </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-baseline gap-1 flex-shrink-0 tabular-nums">
+                <span className={`font-bold text-green-600 ${isFirst ? 'text-base' : 'text-sm'}`}>{s.wins}W</span>
+                <span className="text-muted-foreground/40 text-xs mx-0.5">·</span>
+                <span className="text-sm text-muted-foreground">{s.losses}L</span>
+              </div>
+
+              <ChevronDown
+                className={`h-3.5 w-3.5 text-muted-foreground/50 flex-shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+              />
+            </button>
+
+            <div
+              className="grid transition-all duration-300 ease-in-out"
+              style={{ gridTemplateRows: isExpanded ? '1fr' : '0fr' }}
+            >
+              <div className="overflow-hidden">
+                <div className="pt-1 pb-2">
+                  <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 mx-0.5">
+                    {s.matches.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-1">No matches recorded yet</p>
+                    ) : (
+                      <div className="space-y-1">
+                        {s.matches.map(m => (
+                          <div key={m.matchId} className="flex items-baseline gap-2 text-xs">
+                            <span className={`flex-shrink-0 w-4 font-bold text-center ${m.result === 'W' ? 'text-green-600' : 'text-muted-foreground'}`}>
+                              {m.result}
+                            </span>
+                            <span className="flex-shrink-0 text-muted-foreground">{m.roundName}</span>
+                            <span className="flex-shrink-0 text-muted-foreground/60">vs</span>
+                            <span className="text-muted-foreground truncate min-w-0">{m.opponentName}</span>
+                          </div>
+                        ))}
                       </div>
-                    </div>
+                    )}
                   </div>
-                </td>
-              </tr>
-            </>
-          )
-        })}
-      </tbody>
-    </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
   )
 }
