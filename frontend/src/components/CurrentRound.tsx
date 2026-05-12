@@ -66,7 +66,7 @@ export function CurrentRound({ session, isAdmin, currentPlayerId }: Props) {
         ) : (
           <>
             <p className="font-semibold">Waiting to start</p>
-            <p className="text-sm text-muted-foreground">The host hasn't generated the first round yet.</p>
+            <p className="text-sm text-muted-foreground">The first round will appear here once the host starts.</p>
           </>
         )}
       </div>
@@ -74,7 +74,7 @@ export function CurrentRound({ session, isAdmin, currentPlayerId }: Props) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold tracking-tight">Round {latestRound.number}</h2>
         <span className="text-sm text-muted-foreground">
@@ -156,12 +156,6 @@ export function CurrentRound({ session, isAdmin, currentPlayerId }: Props) {
         </div>
       )}
 
-      {!isAdmin && (
-        <p className="text-xs text-muted-foreground/50 text-center">
-          Helping manage? Enter the admin code in <span className="font-medium text-muted-foreground/70">Settings → Host Access</span>.
-        </p>
-      )}
-
       {isAdmin && (
         <OverrideMatchDialog
           sessionId={session.id}
@@ -175,28 +169,27 @@ export function CurrentRound({ session, isAdmin, currentPlayerId }: Props) {
         />
       )}
 
-      <>
-        <div className="border-t" />
+      <div className="mt-5 pt-5 border-t space-y-0">
         <UpcomingRounds
-            sessionId={session.id}
-            players={session.players}
-            isAdmin={isAdmin}
-            roundCount={rounds.length}
-            currentPlayerId={currentPlayerId}
-            sessionKey={[
-              session.num_courts,
-              session.match_type,
-              session.players
-                .slice()
-                .sort((a, b) => a.id.localeCompare(b.id))
-                .map((p) => `${p.id}:${p.permanent_partner_id ?? ''}:${p.sit_out ? '1' : '0'}`)
-                .join(','),
-              latestRound.matches
-                .map((m) => `${m.id}:${[...m.team1_players, ...m.team2_players].sort().join(',')}`)
-                .join(';'),
-            ].join('|')}
-          />
-      </>
+          sessionId={session.id}
+          players={session.players}
+          isAdmin={isAdmin}
+          roundCount={rounds.length}
+          currentPlayerId={currentPlayerId}
+          sessionKey={[
+            session.num_courts,
+            session.match_type,
+            session.players
+              .slice()
+              .sort((a, b) => a.id.localeCompare(b.id))
+              .map((p) => `${p.id}:${p.permanent_partner_id ?? ''}:${p.sit_out ? '1' : '0'}`)
+              .join(','),
+            latestRound.matches
+              .map((m) => `${m.id}:${[...m.team1_players, ...m.team2_players].sort().join(',')}`)
+              .join(';'),
+          ].join('|')}
+        />
+      </div>
     </div>
   )
 }

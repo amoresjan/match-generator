@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { RefreshCw, Settings, Users, Clock, LogOut, Copy, Check, Trophy, Moon, Sun, Swords } from 'lucide-react'
+import { RefreshCw, Settings, Users, Clock, LogOut, Copy, Check, Trophy, Swords } from 'lucide-react'
 import { useSession, useGenerateRound, useUpdateSession, useSetSessionActive, useTournamentSetup, useTournamentAdvance } from '@/hooks/useSession'
 import { useClaimedPlayer } from '@/hooks/useClaimedPlayer'
 import { useTheme } from '@/hooks/useTheme'
@@ -14,6 +14,7 @@ import { SessionSummaryCard } from '@/components/SessionSummaryCard'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import { api, saveAdminToken, getAdminToken } from '@/lib/api'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { OnboardingWizard, hasBeenOnboarded, hasSeenAdminOnboarding } from '@/components/OnboardingWizard'
@@ -232,11 +233,32 @@ export function SessionPage() {
 
           {/* Rotation mode */}
           {tab === 'round' && (
-            <CurrentRound
-              session={session}
-              isAdmin={admin}
-              currentPlayerId={claimedPlayerId ?? undefined}
-            />
+            <>
+              <CurrentRound
+                session={session}
+                isAdmin={admin}
+                currentPlayerId={claimedPlayerId ?? undefined}
+              />
+              {session.players.length > 0 && (() => {
+                const claimedPlayer = session.players.find((p) => p.id === claimedPlayerId) ?? null
+                return claimedPlayer ? (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Playing as <span className="font-medium text-foreground">{claimedPlayer.name}</span>
+                    <Button size="sm" variant="ghost" className="h-auto px-1.5 py-0.5 text-xs ml-1" onClick={() => setShowClaimPrompt(true)}>Change</Button>
+                  </p>
+                ) : (
+                  <div className="rounded-xl border bg-primary/5 border-primary/20 px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium">Who are you playing as?</p>
+                        <p className="text-xs text-muted-foreground">Select your name to see yourself highlighted in matches</p>
+                      </div>
+                      <Button size="sm" className="shrink-0" onClick={() => setShowClaimPrompt(true)}>Select</Button>
+                    </div>
+                  </div>
+                )
+              })()}
+            </>
           )}
           {tab === 'players' && (
             admin && !(isTournament && session.tournament_data)
@@ -275,9 +297,8 @@ export function SessionPage() {
                   onSetActive={(v) => setSessionActive.mutate(v)}
                   settingActive={setSessionActive.isPending}
                   claimedPlayerId={claimedPlayerId}
-                  onChangeClaim={() => setShowClaimPrompt(true)}
                 />
-              : <GuestSettings sessionId={sessionId!} session={session} onUnlocked={handleAdminUnlocked} claimedPlayerId={claimedPlayerId} onChangeClaim={() => setShowClaimPrompt(true)} />
+              : <GuestSettings sessionId={sessionId!} session={session} onUnlocked={handleAdminUnlocked} claimedPlayerId={claimedPlayerId} />
           )}
         </ErrorBoundary>
       </main>
@@ -563,7 +584,6 @@ interface SettingsProps {
   onSetActive: (isActive: boolean) => void
   settingActive: boolean
   claimedPlayerId: string | null
-  onChangeClaim: () => void
 }
 
 function ShareField({ session }: { session: import('@/lib/types').Session }) {
@@ -586,7 +606,7 @@ function ShareField({ session }: { session: import('@/lib/types').Session }) {
   return (
     <div className="rounded-xl border bg-background overflow-hidden">
       <div className="px-4 py-4 space-y-1">
-        <p className="font-bold text-sm leading-snug">{session.name}</p>
+        <p className="font-bold text-sm leading-snug break-words">{session.name}</p>
         <p className="text-sm">{modeEmoji} {modeLabel}</p>
         <p className="text-sm">{typeEmoji} {session.match_type}</p>
         <p className="text-sm pt-2 text-muted-foreground break-all">See live matches: {link}</p>
@@ -635,73 +655,58 @@ function CopyField({ label, value }: { label: string; value: string }) {
   )
 }
 
-function GuestSettings({ sessionId, session, onUnlocked, claimedPlayerId, onChangeClaim }: { sessionId: string; session: import('@/lib/types').Session; onUnlocked: () => void; claimedPlayerId: string | null; onChangeClaim: () => void }) {
+function GuestSettings({ sessionId, session, onUnlocked, claimedPlayerId }: { sessionId: string; session: import('@/lib/types').Session; onUnlocked: () => void; claimedPlayerId: string | null }) {
   const { theme, toggle: toggleTheme } = useTheme()
   const navigate = useNavigate()
-  const claimedName = session.players.find((p) => p.id === claimedPlayerId)?.name ?? null
 
   return (
-    <div className="space-y-6">
-      <SettingsGroup title="You">
-        <SettingsRows>
-          {claimedName ? (
-            <div className="flex items-center justify-between px-4 py-3">
-              <div>
-                <p className="text-xs text-muted-foreground">Playing as</p>
-                <p className="text-sm font-medium">{claimedName}</p>
-              </div>
-              <Button size="sm" variant="ghost" onClick={onChangeClaim}>Change</Button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-sm text-muted-foreground">Not set</span>
-              <Button size="sm" variant="outline" onClick={onChangeClaim}>Select</Button>
-            </div>
-          )}
-        </SettingsRows>
-      </SettingsGroup>
-
+    <div className="space-y-8">
       <SettingsGroup title="Preferences">
         <SettingsRows>
           <div className="flex items-center justify-between px-4 py-3">
             <span className="text-sm">Dark mode</span>
-            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={toggleTheme}>
-              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
+            <Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
           </div>
           <PushNotificationSettings sessionId={sessionId} claimedPlayerId={claimedPlayerId} />
         </SettingsRows>
       </SettingsGroup>
 
-      <SettingsGroup title="Share">
-        <ShareField session={session} />
-      </SettingsGroup>
+      <div className="space-y-4">
+        <SettingsGroup title="Share">
+          <ShareField session={session} />
+        </SettingsGroup>
 
-      <SettingsGroup title="Host Access">
-        <div className="rounded-xl border px-4 py-3">
-          <AdminCodeEntry sessionId={sessionId} onUnlocked={onUnlocked} />
-        </div>
-      </SettingsGroup>
+        <SettingsGroup title="Host Access">
+          <div className="space-y-1.5">
+            <div className="rounded-xl border px-4 py-3">
+              <AdminCodeEntry sessionId={sessionId} onUnlocked={onUnlocked} />
+            </div>
+            <p className="text-xs text-muted-foreground px-0.5">The host can share an admin code to let you manage the session.</p>
+          </div>
+        </SettingsGroup>
+      </div>
 
       <Button className="w-full" variant="outline" onClick={() => navigate('/')}>
         <LogOut className="h-4 w-4 mr-2" />
         Leave Session
       </Button>
       <p className="text-center text-xs text-muted-foreground/60 pt-2">
-        Got feedback?{' '}
-        <a href="https://forms.gle/bFa9PwrG3DweFfnZ9" target="_blank" rel="noreferrer" className="underline underline-offset-2">
-          Let us know
-        </a>
+        by <a href="https://amoresjan.dev" target="_blank" rel="noreferrer" className="underline underline-offset-2">@amoresjan</a> · <a href="https://forms.gle/bFa9PwrG3DweFfnZ9" target="_blank" rel="noreferrer" className="underline underline-offset-2">Give feedback</a>
       </p>
-      <p className="text-center text-xs text-muted-foreground/50">by <a href="https://amoresjan.dev" target="_blank" rel="noreferrer" className="underline underline-offset-2">@amoresjan</a></p>
     </div>
   )
 }
 
-function SettingsGroup({ title, children }: { title: string; children: React.ReactNode }) {
+function SettingsGroup({ title, children, primary }: { title: string; children: React.ReactNode; primary?: boolean }) {
   return (
-    <div className="space-y-1.5">
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide px-0.5">{title}</p>
+    <div className="space-y-2">
+      <p className={`uppercase tracking-wide px-0.5 ${
+        primary
+          ? 'text-sm font-semibold text-foreground'
+          : 'text-xs font-medium text-muted-foreground'
+      }`}>
+        {title}
+      </p>
       {children}
     </div>
   )
@@ -715,7 +720,7 @@ function SettingsRows({ children }: { children: React.ReactNode }) {
   )
 }
 
-function SessionSettings({ sessionId, session, onSave, saving, onSetActive, settingActive, claimedPlayerId, onChangeClaim }: SettingsProps) {
+function SessionSettings({ sessionId, session, onSave, saving, onSetActive, settingActive, claimedPlayerId }: SettingsProps) {
   const [name, setName] = useState(session.name)
   const [sport, setSport] = useState<SportType>(session.sport_type)
   const [matchType, setMatchType] = useState<'1v1' | '2v2'>(session.match_type)
@@ -753,12 +758,17 @@ function SessionSettings({ sessionId, session, onSave, saving, onSetActive, sett
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
 
-      <SettingsGroup title="Game">
+      <SettingsGroup title="Game" primary>
         {bracketLocked && (
           <div className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
             Settings are locked while a tournament bracket is active.
+          </div>
+        )}
+        {!bracketLocked && !session.is_active && (
+          <div className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
+            Reopen the session to edit settings.
           </div>
         )}
         <SettingsRows>
@@ -785,7 +795,15 @@ function SessionSettings({ sessionId, session, onSave, saving, onSetActive, sett
           </div>
           <div className="px-4 py-3">
             <label className="text-xs text-muted-foreground mb-1 block">Name</label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} disabled={fieldDisabled} />
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={fieldDisabled}
+              maxLength={50}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              {name.length}/50 characters
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-3 px-4 py-3">
             <div>
@@ -800,7 +818,20 @@ function SessionSettings({ sessionId, session, onSave, saving, onSetActive, sett
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Courts</label>
-              <Input type="text" inputMode="numeric" value={numCourts} onChange={(e) => setNumCourts(e.target.value.replace(/\D/g, ''))} disabled={fieldDisabled} />
+              <Input
+                type="text"
+                inputMode="numeric"
+                value={numCourts}
+                onChange={(e) => setNumCourts(e.target.value.replace(/\D/g, ''))}
+                disabled={fieldDisabled}
+              />
+              {numCourts && (parsedCourts < 1 || parsedCourts > 8 || parsedCourts !== parseInt(numCourts)) ? (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  Will be saved as {parsedCourts} (1–8 courts allowed)
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-1">1–8 courts</p>
+              )}
             </div>
           </div>
           {!isTournament && (
@@ -833,48 +864,29 @@ function SessionSettings({ sessionId, session, onSave, saving, onSetActive, sett
         )}
       </SettingsGroup>
 
-      <SettingsGroup title="You">
-        <SettingsRows>
-          {claimedPlayerId && session.players.find((p) => p.id === claimedPlayerId) ? (
-            <div className="flex items-center justify-between px-4 py-3">
-              <div>
-                <p className="text-xs text-muted-foreground">Playing as</p>
-                <p className="text-sm font-medium">{session.players.find((p) => p.id === claimedPlayerId)!.name}</p>
-              </div>
-              <Button size="sm" variant="ghost" onClick={onChangeClaim}>Change</Button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-sm text-muted-foreground">Not set</span>
-              <Button size="sm" variant="outline" onClick={onChangeClaim}>Select</Button>
-            </div>
-          )}
-        </SettingsRows>
-      </SettingsGroup>
-
       <SettingsGroup title="Preferences">
         <SettingsRows>
           <div className="flex items-center justify-between px-4 py-3">
             <span className="text-sm">Dark mode</span>
-            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={toggleTheme}>
-              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
+            <Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
           </div>
           <PushNotificationSettings sessionId={sessionId} claimedPlayerId={claimedPlayerId} />
         </SettingsRows>
       </SettingsGroup>
 
-      <SettingsGroup title="Share">
-        <ShareField session={session} />
-      </SettingsGroup>
+      <div className="space-y-4">
+        <SettingsGroup title="Share">
+          <ShareField session={session} />
+        </SettingsGroup>
 
-      <SettingsGroup title="Host Access">
-        <CopyField label="Admin Code" value={adminToken} />
-        <p className="text-xs text-muted-foreground px-0.5">Share with co-hosts to give them admin access.</p>
-      </SettingsGroup>
+        <SettingsGroup title="Host Access">
+          <CopyField label="Admin Code" value={adminToken} />
+          <p className="text-xs text-muted-foreground px-0.5">Share with co-hosts to give them admin access.</p>
+        </SettingsGroup>
+      </div>
 
       {session.is_active && (
-        <SettingsGroup title="Session">
+        <SettingsGroup title="Session" primary>
           <Button
             className="w-full"
             variant="destructive"
@@ -890,7 +902,7 @@ function SessionSettings({ sessionId, session, onSave, saving, onSetActive, sett
       )}
 
       {!session.is_active && (
-        <SettingsGroup title="Session">
+        <SettingsGroup title="Session" primary>
           <div className="rounded-xl border px-4 py-3 text-sm text-muted-foreground">
             {session.auto_deactivated
               ? 'This session was closed automatically and cannot be reopened.'
@@ -940,12 +952,8 @@ function SessionSettings({ sessionId, session, onSave, saving, onSetActive, sett
         </DialogContent>
       </Dialog>
       <p className="text-center text-xs text-muted-foreground/60 pt-2">
-        Got feedback?{' '}
-        <a href="https://forms.gle/bFa9PwrG3DweFfnZ9" target="_blank" rel="noreferrer" className="underline underline-offset-2">
-          Let us know
-        </a>
+        by <a href="https://amoresjan.dev" target="_blank" rel="noreferrer" className="underline underline-offset-2">@amoresjan</a> · <a href="https://forms.gle/bFa9PwrG3DweFfnZ9" target="_blank" rel="noreferrer" className="underline underline-offset-2">Give feedback</a>
       </p>
-      <p className="text-center text-xs text-muted-foreground/50">by <a href="https://amoresjan.dev" target="_blank" rel="noreferrer" className="underline underline-offset-2">@amoresjan</a></p>
     </div>
   )
 }
