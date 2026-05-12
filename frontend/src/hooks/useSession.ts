@@ -77,7 +77,7 @@ export function useSetPartner(sessionId: string) {
     mutationFn: ({ playerId, partnerId }: { playerId: string; partnerId: string | null }) =>
       api.setPartner(sessionId, playerId, partnerId),
     onSuccess: () => qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) }),
-    onError: () => toast.error('Failed to update duo partner'),
+    onError: () => toast.error('Failed to update partner'),
   })
 }
 

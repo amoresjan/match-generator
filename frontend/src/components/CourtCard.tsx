@@ -127,7 +127,7 @@ export function CourtCard({ match, players, removedPlayers = {}, isAdmin, streak
                 {streakPlayerIds?.has(m.id) && <Flame className="h-3 w-3 text-orange-500 shrink-0" />}
               </span>
             ))}
-            {team1IsDuo && <span title="Permanent duo partnership"><Users className="h-3 w-3 shrink-0 opacity-40" /></span>}
+            {team1IsDuo && <span title="Permanent partners"><Users className="h-3 w-3 shrink-0 opacity-40" /></span>}
           </span>
         </button>
 
@@ -168,7 +168,7 @@ export function CourtCard({ match, players, removedPlayers = {}, isAdmin, streak
                 {streakPlayerIds?.has(m.id) && <Flame className="h-3 w-3 text-orange-500 shrink-0" />}
               </span>
             ))}
-            {team2IsDuo && <span title="Permanent duo partnership"><Users className="h-3 w-3 shrink-0 opacity-40" /></span>}
+            {team2IsDuo && <span title="Permanent partners"><Users className="h-3 w-3 shrink-0 opacity-40" /></span>}
           </span>
         </button>
 

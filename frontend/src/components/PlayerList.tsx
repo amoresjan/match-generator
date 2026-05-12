@@ -86,23 +86,23 @@ function PlayerRow({
         <Button
           size="icon"
           variant="ghost"
-          className={`h-7 w-7 shrink-0 transition-colors ${player.sit_out ? 'text-orange-500 hover:text-orange-600' : 'text-muted-foreground hover:text-foreground'}`}
+          className={`h-9 w-9 shrink-0 transition-colors ${player.sit_out ? 'text-orange-500 hover:text-orange-600' : 'text-muted-foreground hover:text-foreground'}`}
           disabled={disabled || sitOutPromptId === player.id}
           onClick={() => onSitOutToggle(player)}
           aria-label={player.sit_out ? `Bring ${player.name} back` : `Sit out ${player.name}`}
         >
-          <PauseCircle className="h-3.5 w-3.5" />
+          <PauseCircle className="h-4 w-4" />
         </Button>
 
         <Button
           size="icon"
           variant="ghost"
-          className="h-7 w-7 shrink-0 text-muted-foreground/50 hover:text-foreground"
+          className="h-9 w-9 shrink-0 text-muted-foreground/60 hover:text-foreground"
           disabled={disabled}
           onClick={() => onStartEdit(player)}
           aria-label={`Rename ${player.name}`}
         >
-          <Pencil className="h-3.5 w-3.5" />
+          <Pencil className="h-4 w-4" />
         </Button>
 
         {confirmDeleteId === player.id ? (
@@ -110,7 +110,7 @@ function PlayerRow({
             <Button
               size="sm"
               variant="destructive"
-              className="h-7 text-xs px-2"
+              className="h-8 text-xs px-2"
               disabled={disabled}
               onClick={() => onRemove(player.id)}
             >
@@ -119,7 +119,7 @@ function PlayerRow({
             <Button
               size="sm"
               variant="ghost"
-              className="h-7 text-xs px-2"
+              className="h-8 text-xs px-2"
               disabled={disabled}
               onClick={onCancelDelete}
             >
@@ -130,12 +130,12 @@ function PlayerRow({
           <Button
             size="icon"
             variant="ghost"
-            className="h-7 w-7 shrink-0 text-muted-foreground/40 hover:text-destructive"
+            className="h-9 w-9 shrink-0 text-muted-foreground/50 hover:text-destructive"
             disabled={disabled}
             onClick={() => onConfirmDelete(player.id)}
             aria-label={`Remove ${player.name}`}
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-4 w-4" />
           </Button>
         )}
       </div>
@@ -166,7 +166,7 @@ function PlayerRow({
 
       {matchType === '2v2' && !inDuoBox && (
         <div className="flex items-center gap-2 mt-1 ml-10">
-          <span className="text-xs text-muted-foreground w-20 shrink-0">Duo:</span>
+          <span className="text-xs text-muted-foreground shrink-0">Partner</span>
           {isThisPartnerPending && (
             <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
           )}
@@ -330,30 +330,28 @@ export function PlayerList({ session, currentPlayerId }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2.5">
-        <form ref={formRef} onSubmit={handleAdd} className="flex gap-2">
-          <label htmlFor="add-player-name" className="sr-only">Player name</label>
-          <Input
-            id="add-player-name"
-            ref={inputRef}
-            placeholder="Add a player…"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            className="flex-1"
-            disabled={disabled}
-          />
-          <Button type="submit" size="sm" disabled={disabled || addPlayer.isPending} className="shrink-0 gap-1.5 px-3">
-            {addPlayer.isPending
-              ? <Loader2 className="h-4 w-4 animate-spin" />
-              : <><UserPlus className="h-4 w-4" /><span className="text-xs">Add</span></>}
-          </Button>
-        </form>
+      <form ref={formRef} onSubmit={handleAdd} className="flex gap-2">
+        <label htmlFor="add-player-name" className="sr-only">Player name</label>
+        <Input
+          id="add-player-name"
+          ref={inputRef}
+          placeholder="Add a player…"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          className="flex-1"
+          disabled={disabled}
+        />
+        <Button type="submit" size="sm" disabled={disabled || addPlayer.isPending} className="shrink-0 gap-1.5 px-3">
+          {addPlayer.isPending
+            ? <Loader2 className="h-4 w-4 animate-spin" />
+            : <><UserPlus className="h-4 w-4" /><span className="text-xs">Add</span></>}
+        </Button>
+      </form>
 
+      <div className="space-y-2">
         {session.players.length > 0 && (
           <div className="flex items-center gap-3 px-0.5">
-            <span className="text-xs text-muted-foreground">
-              {activeCount} active
-            </span>
+            <span className="text-xs font-medium text-muted-foreground">{activeCount} active</span>
             {sittingOutCount > 0 && (
               <span className="text-xs text-muted-foreground flex items-center gap-1">
                 <PauseCircle className="h-3 w-3" />
@@ -362,9 +360,6 @@ export function PlayerList({ session, currentPlayerId }: Props) {
             )}
           </div>
         )}
-      </div>
-
-      <div className="space-y-2">
         {duoPairs.map(([a, b]) => {
           const pairKey = [a.id, b.id].sort().join('-')
           const isBreaking = setPartner.isPending && setPartner.variables?.playerId === a.id && setPartner.variables?.partnerId === null
@@ -381,7 +376,7 @@ export function PlayerList({ session, currentPlayerId }: Props) {
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                     <Users className="h-3 w-3" />
-                    Duo
+                    Partners
                   </span>
                   {session.match_type === '2v2' && (
                     <Button
@@ -414,22 +409,26 @@ export function PlayerList({ session, currentPlayerId }: Props) {
           )
         })}
 
-        {solos.map((player) => (
-          <div key={player.id} className={`flex flex-col gap-1 rounded-lg border p-3 transition-colors ${
-            player.sit_out ? 'bg-muted/20 border-border/50' : 'bg-card'
-          }`}>
-            <PlayerRow player={player} inDuoBox={false} {...sharedRowProps} />
+        {solos.length > 0 && (
+          <div className="rounded-lg border overflow-hidden divide-y">
+            {solos.map((player) => (
+              <div key={player.id} className={`flex flex-col gap-1 px-3 py-2.5 transition-colors ${
+                player.sit_out ? 'bg-muted/20' : 'bg-card'
+              }`}>
+                <PlayerRow player={player} inDuoBox={false} {...sharedRowProps} />
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
 
       {session.players.length === 0 && (
-        <p className="text-sm text-muted-foreground text-center py-4">No players yet. Add some above.</p>
+        <p className="text-sm text-muted-foreground text-center py-4">Who's playing today? Add your first player above.</p>
       )}
 
       {session.match_type === '2v2' && session.players.length >= 2 && duoPairs.length === 0 && (
         <p className="text-xs text-muted-foreground/60 text-center px-2">
-          Use the <span className="font-medium text-muted-foreground/80">Duo</span> selector to permanently pair players. Duos always play together.
+          Use the <span className="font-medium text-muted-foreground/80">Partner</span> selector to permanently pair players. Partners always play together.
         </p>
       )}
 

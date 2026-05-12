@@ -600,7 +600,7 @@ function PublicPlayerList({ players, currentPlayerId, bracketLocked, matchType }
                 <span className="shrink-0 flex items-center gap-2">
                   <WaitLabel rounds={a.total_wait_rounds} />
                   <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
-                    <Users className="h-2.5 w-2.5" />Duo
+                    <Users className="h-2.5 w-2.5" />Partners
                   </span>
                 </span>
               </div>
@@ -630,7 +630,7 @@ function PublicPlayerList({ players, currentPlayerId, bracketLocked, matchType }
         <p className="text-xs text-muted-foreground px-0.5">Player list is locked for the tournament.</p>
       )}
       {!bracketLocked && matchType === '2v2' && duoPairs.length === 0 && (
-        <p className="text-xs text-muted-foreground px-0.5">Ask the host to set up permanent duos.</p>
+        <p className="text-xs text-muted-foreground px-0.5">Ask the host to set up permanent partners.</p>
       )}
     </div>
   )
