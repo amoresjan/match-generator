@@ -123,6 +123,14 @@ export default {
           '65%':  { boxShadow: '0 0 0 9px  rgba(22, 163, 74, 0.1)'  },
           '100%': { boxShadow: '0 0 0 14px rgba(22, 163, 74, 0)'    },
         },
+        'hero-up': {
+          '0%':   { opacity: '0', transform: 'translateY(14px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)'    },
+        },
+        'tab-in': {
+          '0%':   { opacity: '0', transform: 'translateY(6px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)'   },
+        },
       },
       animation: {
         'winner-pop':    'winner-pop 0.25s ease-out',
@@ -142,6 +150,9 @@ export default {
         'tab-slide-left':  'tab-slide-left 0.22s cubic-bezier(0.22, 1, 0.36, 1) backwards',
         'tab-slide-right': 'tab-slide-right 0.22s cubic-bezier(0.22, 1, 0.36, 1) backwards',
         'my-card-pulse':   'my-card-pulse 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        'hero-up':         'hero-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both',
+        'hero-up-delay':   'hero-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both',
+        'tab-in':          'tab-in 0.18s cubic-bezier(0.16, 1, 0.3, 1) both',
       },
     },
   },

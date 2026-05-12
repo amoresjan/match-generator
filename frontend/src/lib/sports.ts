@@ -6,7 +6,7 @@ export const SPORTS = [
   { value: 'badminton' as SportType, label: 'Badminton', emoji: '🏸', themeClass: 'sport-badminton' },
   { value: 'ping_pong' as SportType, label: 'Ping Pong', emoji: '🏓', themeClass: 'sport-ping-pong' },
   { value: 'padel' as SportType, label: 'Padel', emoji: '🎾', themeClass: 'sport-padel' },
-  { value: 'others' as SportType, label: 'Others', emoji: '🏅', themeClass: 'sport-others' },
+  { value: 'others' as SportType, label: 'Other', emoji: '🏅', themeClass: 'sport-others' },
 ]
 
 export function getSport(value: SportType) {
