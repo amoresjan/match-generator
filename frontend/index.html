@@ -34,7 +34,51 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <style>
+        #rally-shell {
+          min-height: 100dvh;
+          background: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .dark #rally-shell { background: #020817; }
+        #rally-shell-wordmark {
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: #16a34a;
+          letter-spacing: -0.01em;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
+        }
+        .dark #rally-shell-wordmark { color: #22c55e; }
+        #rally-shell-dot {
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background: #16a34a;
+          animation: rally-boot 1.2s ease-in-out infinite;
+        }
+        .dark #rally-shell-dot { background: #22c55e; }
+        @keyframes rally-boot {
+          0%, 100% { opacity: 0.25; transform: scale(0.75); }
+          50% { opacity: 1; transform: scale(1); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          #rally-shell-dot { animation: none; opacity: 0.5; }
+        }
+      </style>
+      <div id="rally-shell">
+        <div id="rally-shell-wordmark">
+          Rally
+          <div id="rally-shell-dot"></div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

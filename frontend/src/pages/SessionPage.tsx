@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { RefreshCw, Settings, Users, Clock, LogOut, Copy, Check, Trophy, Swords } from 'lucide-react'
+import { RefreshCw, Settings, Users, Clock, LogOut, Home, Copy, Check, Trophy, Swords } from 'lucide-react'
 import { useSession, useGenerateRound, useUpdateSession, useSetSessionActive, useTournamentSetup, useTournamentAdvance } from '@/hooks/useSession'
 import { useClaimedPlayer } from '@/hooks/useClaimedPlayer'
 import { useTheme } from '@/hooks/useTheme'
@@ -77,6 +77,13 @@ export function SessionPage() {
   const { claimedPlayerId, claimPlayer } = useClaimedPlayer(sessionId!)
   const claimPromptTriggered = useRef(false)
   const [showClaimPrompt, setShowClaimPrompt] = useState(false)
+  const [isSlowLoad, setIsSlowLoad] = useState(false)
+
+  useEffect(() => {
+    if (!isLoading) { setIsSlowLoad(false); return }
+    const t = setTimeout(() => setIsSlowLoad(true), 3000)
+    return () => clearTimeout(t)
+  }, [isLoading])
 
   useEffect(() => {
     if (admin || showWizard || claimedPlayerId || claimPromptTriggered.current) return
@@ -126,9 +133,9 @@ export function SessionPage() {
         </div>
         <div className="border-b">
           <div className="flex max-w-2xl mx-auto">
-            {[0,1,2,3,4].map((i) => (
+            {[0,1,2,3].map((i) => (
               <div key={i} className="flex-1 flex flex-col items-center gap-1.5 py-2.5">
-                <div className="h-4 w-4 rounded bg-muted animate-pulse" style={{ animationDelay: `${i * 40}ms` }} />
+                <div className="h-4 w-4 rounded-full bg-muted animate-pulse" style={{ animationDelay: `${i * 40}ms` }} />
                 <div className="h-2 w-7 rounded bg-muted/50 animate-pulse" style={{ animationDelay: `${i * 40 + 20}ms` }} />
               </div>
             ))}
@@ -163,6 +170,9 @@ export function SessionPage() {
               </div>
             ))}
           </div>
+          {isSlowLoad && (
+            <p className="text-xs text-muted-foreground text-center mt-2">Taking a bit longer than usual…</p>
+          )}
         </main>
       </div>
     )
@@ -171,13 +181,13 @@ export function SessionPage() {
   if (error || !session) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-5 px-6 text-center">
-        <p className="text-5xl leading-none select-none">🏓</p>
+        <p className="text-5xl leading-none select-none">🎾</p>
         <div className="space-y-1.5">
           <p className="font-bold text-lg leading-snug">Session not found</p>
           <p className="text-sm text-muted-foreground max-w-xs">This link may be invalid or the session has expired.</p>
         </div>
         <Button variant="outline" onClick={() => navigate('/')}>
-          <LogOut className="h-4 w-4 mr-2" />
+          <Home className="h-4 w-4 mr-2" />
           Back to home
         </Button>
       </div>
