@@ -4,6 +4,14 @@ import { useSetMatchResult } from '@/hooks/useSession'
 import { isDuo } from '@/lib/utils'
 import type { Match, Round, Player } from '@/lib/types'
 
+function formatRelative(isoString: string): string {
+  const diff = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000)
+  if (diff < 60) return 'just now'
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+  return new Date(isoString).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
 interface Props {
   sessionId: string
   rounds: Round[]
@@ -15,7 +23,7 @@ interface Props {
 }
 
 function resolveMembers(ids: string[], players: Player[], removedPlayers: Record<string, string> = {}): { id: string; name: string }[] {
-  return ids.map((id) => ({ id, name: players.find((p) => p.id === id)?.name ?? removedPlayers[id] ?? '?' }))
+  return ids.map((id) => ({ id, name: players.find((p) => p.id === id)?.name ?? removedPlayers[id] ?? '(removed)' }))
 }
 
 function YouPill() {
@@ -29,15 +37,17 @@ function YouPill() {
 function CompletionChip({ matches }: { matches: Match[] }) {
   const done = matches.filter((m) => m.winner !== null).length
   const total = matches.length
-  if (done === 0) return null
-  const complete = done === total
+  const complete = done === total && done > 0
   return (
     <span
+      aria-label={`${done} of ${total} results recorded`}
       className={[
         'tabular-nums text-[11px] font-semibold rounded-full px-2 py-0.5',
         complete
           ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
-          : 'bg-muted text-muted-foreground',
+          : done > 0
+            ? 'bg-muted text-muted-foreground'
+            : 'bg-muted/50 text-muted-foreground/50',
       ].join(' ')}
     >
       {done}/{total}
@@ -71,18 +81,18 @@ function TeamRow({ members, hasDuo, result, isClickable, onClick, currentPlayerI
           {m.id === currentPlayerId && <YouPill />}
         </span>
       ))}
-      {hasDuo && <Users className="h-3 w-3 opacity-25 shrink-0 ml-0.5" />}
+      {hasDuo && <Users aria-label="Permanent partners" className="h-3 w-3 opacity-50 shrink-0 ml-0.5" />}
     </span>
   )
 
   const badge =
     result === 'won' ? (
-      <span className="shrink-0 flex items-center gap-1 rounded px-1.5 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">
+      <span aria-label="won" className="shrink-0 flex items-center gap-1 rounded px-1.5 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">
         <Trophy className="h-3 w-3" />
         <span className="text-[11px] font-bold">W</span>
       </span>
     ) : result === 'lost' ? (
-      <span className="shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium bg-muted/40 text-muted-foreground/40">
+      <span aria-label="lost" className="shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium bg-muted/40 text-muted-foreground/60">
         L
       </span>
     ) : null
@@ -99,8 +109,9 @@ function TeamRow({ members, hasDuo, result, isClickable, onClick, currentPlayerI
   ].join(' ')
 
   if (isClickable && onClick) {
+    const label = `Mark ${members.map((m) => m.name).join(' and ')} as winner`
     return (
-      <button onClick={onClick} className={rowClass}>
+      <button aria-label={label} onClick={onClick} className={rowClass}>
         {names}
         {badge}
       </button>
@@ -143,7 +154,7 @@ function MatchBlock({ sessionId, match, players, removedPlayers, isAdmin, isActi
 
   return (
     <div className="space-y-1.5">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50 px-1">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">
         Court {match.court_number}
       </p>
       <div className="space-y-1">
@@ -157,7 +168,7 @@ function MatchBlock({ sessionId, match, players, removedPlayers, isAdmin, isActi
         />
         <div className="flex items-center gap-2 px-2">
           <div className="h-px flex-1 bg-border/50" />
-          <span className="text-[9px] font-semibold tracking-[0.12em] uppercase text-muted-foreground/35">vs</span>
+          <span className="text-[10px] font-semibold tracking-[0.12em] uppercase text-muted-foreground/60">vs</span>
           <div className="h-px flex-1 bg-border/50" />
         </div>
         <TeamRow
@@ -170,8 +181,8 @@ function MatchBlock({ sessionId, match, players, removedPlayers, isAdmin, isActi
         />
       </div>
       {canEdit && !hasResult && (
-        <p className="text-[10px] text-muted-foreground/40 text-center pt-0.5">
-          Tap a team to record the result
+        <p className="text-xs text-muted-foreground/70 text-center pt-0.5">
+          Tap a team to mark the winner
         </p>
       )}
     </div>
@@ -179,14 +190,35 @@ function MatchBlock({ sessionId, match, players, removedPlayers, isAdmin, isActi
 }
 
 export function RoundHistory({ sessionId, rounds, players, removedPlayers, isAdmin, isActive, currentPlayerId }: Props) {
-  const [expanded, setExpanded] = useState<string | null>(null)
-  const allRounds = useMemo(() => [...rounds].reverse(), [rounds])
+  const allRounds = useMemo(
+    () => (isActive ? rounds.slice(0, -1) : rounds).slice().reverse(),
+    [rounds, isActive],
+  )
+
+  const [expanded, setExpanded] = useState<Set<string>>(() => {
+    const base = isActive ? rounds.slice(0, -1) : rounds
+    const latest = base[base.length - 1]?.id
+    return latest ? new Set([latest]) : new Set()
+  })
+
+  function toggle(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
 
   if (allRounds.length === 0) {
+    const hasLiveRound = isActive && rounds.length > 0
     return (
-      <div className="py-16 text-center space-y-1.5">
-        <p className="text-sm font-medium text-foreground/50">No rounds played yet</p>
-        <p className="text-xs text-muted-foreground/60">Past rounds will appear here.</p>
+      <div className="py-16 text-center space-y-2">
+        <p className="font-semibold">{hasLiveRound ? 'No past rounds yet' : 'No rounds yet'}</p>
+        <p className="text-sm text-muted-foreground">
+          {hasLiveRound
+            ? 'History fills in after each round is completed.'
+            : 'Rounds will appear here after the host generates one.'}
+        </p>
       </div>
     )
   }
@@ -194,17 +226,24 @@ export function RoundHistory({ sessionId, rounds, players, removedPlayers, isAdm
   return (
     <div className="space-y-2">
       {allRounds.map((round) => {
-        const isExpanded = expanded === round.id
+        const isExpanded = expanded.has(round.id)
 
         return (
           <div key={round.id} className="rounded-xl border border-border bg-card overflow-hidden">
             <button
               aria-expanded={isExpanded}
-              aria-label={`Round ${round.number} — ${isExpanded ? 'collapse' : 'expand'}`}
-              className="w-full flex items-center justify-between px-4 py-3 text-left"
-              onClick={() => setExpanded(isExpanded ? null : round.id)}
+              aria-label={`Round ${round.number}, ${isExpanded ? 'collapse' : 'expand'}`}
+              className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/30 transition-colors"
+              onClick={() => toggle(round.id)}
             >
-              <span className="text-[15px] font-semibold">Round {round.number}</span>
+              <span className="flex items-baseline gap-2">
+                <span className="text-[15px] font-semibold">Round {round.number}</span>
+                {round.created_at && (
+                  <span className="text-[11px] text-muted-foreground/60 font-normal">
+                    {formatRelative(round.created_at)}
+                  </span>
+                )}
+              </span>
               <span className="flex items-center gap-2">
                 <CompletionChip matches={round.matches} />
                 {isExpanded
@@ -214,7 +253,7 @@ export function RoundHistory({ sessionId, rounds, players, removedPlayers, isAdm
             </button>
 
             <div
-              className="grid transition-all duration-300 ease-in-out"
+              className="grid transition-[grid-template-rows] duration-300 ease-out"
               style={{ gridTemplateRows: isExpanded ? '1fr' : '0fr' }}
             >
               <div className="overflow-hidden">

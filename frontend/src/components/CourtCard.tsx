@@ -174,7 +174,7 @@ export function CourtCard({ match, players, removedPlayers = {}, isAdmin, streak
 
         {isAdmin && onSetResult && !hasResult && (
           <p className="text-[10px] text-muted-foreground text-center mt-0.5">
-            Tap the winning team to record result
+            Tap a team to mark the winner
           </p>
         )}
         {sitOutWarning && (
