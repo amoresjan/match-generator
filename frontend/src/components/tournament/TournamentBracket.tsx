@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, Loader2, Trophy } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -70,6 +70,7 @@ function ConnectorLines({ leftSlots, rightSlots, totalHeight }: ConnectorProps) 
     <svg
       width={CONN_W}
       height={totalHeight}
+      aria-hidden="true"
       className="shrink-0 overflow-visible self-start"
       style={{ marginTop: 28 }}
     >
@@ -97,7 +98,7 @@ interface MatchBoxTeamRowProps {
 
 function MatchBoxTeamRow({ team, isWinner, isBye, isDone, isPending }: MatchBoxTeamRowProps) {
   if (isBye) return (
-    <div className="px-2 py-1.5 text-[11px] text-muted-foreground/40 italic leading-tight">BYE</div>
+    <div className="px-2 py-1.5 text-[11px] text-muted-foreground/40 italic leading-tight">Bye</div>
   )
   return (
     <div className={`px-2 py-1.5 text-[11px] font-medium truncate leading-tight ${
@@ -154,14 +155,19 @@ interface CourtCardProps {
   roundName: string
   courtLabel: string | null
   isAdmin: boolean
+  showHint?: boolean
   onAdvance: (matchSlotId: string, winnerTeamId: string) => void
   isPending: boolean
 }
 
-function TournamentCourtCard({ slot, topTeam, bottomTeam, roundName, courtLabel, isAdmin, onAdvance, isPending }: CourtCardProps) {
+function TournamentCourtCard({ slot, topTeam, bottomTeam, roundName, courtLabel, isAdmin, showHint, onAdvance, isPending }: CourtCardProps) {
   const [pendingWinner, setPendingWinner] = useState<TournamentTeam | null>(null)
   const [poppedSide, setPoppedSide] = useState<'top' | 'bottom' | null>(null)
   const popTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => { if (popTimer.current) clearTimeout(popTimer.current) }
+  }, [])
 
   function handleClick(side: 'top' | 'bottom') {
     if (!isAdmin || isPending) return
@@ -184,14 +190,17 @@ function TournamentCourtCard({ slot, topTeam, bottomTeam, roundName, courtLabel,
     <button
       disabled={!isAdmin || isPending || !team}
       onClick={() => handleClick(side)}
+      aria-label={team ? `Record win for ${team.name}` : undefined}
       className={[
-        'relative w-full rounded-lg px-4 py-3.5 text-sm font-medium text-center transition-all',
+        'relative w-full rounded-lg px-4 py-3.5 text-sm font-medium text-center transition-all overflow-hidden',
         isAdmin && team ? 'cursor-pointer active:scale-95 hover:bg-muted' : 'cursor-default',
         poppedSide === side ? 'animate-winner-pop' : '',
         'bg-muted/40',
       ].join(' ')}
     >
-      {team?.name ?? <span className="text-muted-foreground/40 italic text-xs">TBD</span>}
+      <span className="block truncate">
+        {team?.name ?? <span className="text-muted-foreground/40 italic text-xs">TBD</span>}
+      </span>
     </button>
   )
 
@@ -212,9 +221,9 @@ function TournamentCourtCard({ slot, topTeam, bottomTeam, roundName, courtLabel,
           {teamBtn('bottom', bottomTeam)}
         </div>
 
-        {isAdmin && (
+        {isAdmin && showHint && (
           <p className="text-[10px] text-muted-foreground text-center">
-            Tap the winning team to advance them
+            Tap a team to record the winner
           </p>
         )}
       </div>
@@ -223,9 +232,9 @@ function TournamentCourtCard({ slot, topTeam, bottomTeam, roundName, courtLabel,
         <Dialog open onOpenChange={open => { if (!open) setPendingWinner(null) }}>
           <DialogContent className="max-w-sm p-0 gap-0 overflow-hidden">
             <div className="px-6 pt-6 pb-4 space-y-1">
-              <DialogTitle className="text-base font-semibold">Declare winner?</DialogTitle>
+              <DialogTitle className="text-base font-semibold">Record the winner?</DialogTitle>
               <p className="text-sm text-muted-foreground">
-                <span className="font-semibold text-foreground">{pendingWinner.name}</span> wins this match and advances. This cannot be undone.
+                <span className="font-semibold text-foreground">{pendingWinner.name}</span> wins this match and advances to the next round.
               </p>
             </div>
             <div className="flex gap-2 px-6 pb-6">
@@ -233,7 +242,7 @@ function TournamentCourtCard({ slot, topTeam, bottomTeam, roundName, courtLabel,
                 Cancel
               </Button>
               <Button className="flex-1" disabled={isPending} onClick={handleConfirm}>
-                {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Confirm'}
+                {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Record win'}
               </Button>
             </div>
           </DialogContent>
@@ -273,7 +282,7 @@ export function TournamentCourts({ bracket, isAdmin, onAdvance, isPending }: Cou
   if (!activeSlots.length) {
     return (
       <p className="text-center text-sm text-muted-foreground py-16">
-        No matches on right now.
+        No active matches.
       </p>
     )
   }
@@ -292,6 +301,7 @@ export function TournamentCourts({ bracket, isAdmin, onAdvance, isPending }: Cou
             roundName={getRoundName(slot.round, num_rounds)}
             courtLabel={activeSlots.length > 1 ? `Court ${i + 1}` : null}
             isAdmin={isAdmin}
+            showHint={i === 0}
             onAdvance={onAdvance}
             isPending={isPending}
           />
@@ -320,9 +330,20 @@ export function TournamentBracket({ bracket }: BracketProps) {
       : []
   )
 
-  const teamsById = Object.fromEntries(teams.map(t => [t.id, t]))
-  const champion  = champion_team_id ? teamsById[champion_team_id] : null
-  const totalH    = bracket_size * SLOT_H
+  const teamsById    = Object.fromEntries(teams.map(t => [t.id, t]))
+  const champion     = champion_team_id ? teamsById[champion_team_id] : null
+  const totalH       = bracket_size * SLOT_H
+  const activeRound  = match_slots.find(s => activeIds.has(s.id))?.round ?? null
+  const scrollRef    = useRef<HTMLDivElement>(null)
+  const didAutoScroll = useRef(false)
+
+  useEffect(() => {
+    if (didAutoScroll.current || !scrollRef.current || activeRound === null) return
+    didAutoScroll.current = true
+    const el = scrollRef.current
+    const colCenter = 16 + (activeRound - 1) * (COL_W + CONN_W) + COL_W / 2
+    el.scrollLeft = colCenter - el.clientWidth / 2
+  }, [activeRound])
 
   const rounds = Array.from({ length: num_rounds }, (_, i) =>
     match_slots.filter(s => s.round === i + 1).sort((a, b) => a.position - b.position)
@@ -335,12 +356,39 @@ export function TournamentBracket({ bracket }: BracketProps) {
           <Trophy className="h-5 w-5 text-yellow-500 shrink-0" />
           <div>
             <p className="text-[10px] font-semibold text-yellow-600 dark:text-yellow-400 uppercase tracking-widest">Champion</p>
-            <p className="font-bold text-sm">{champion.name}</p>
+            <p className="font-bold text-sm truncate">{champion.name}</p>
           </div>
         </div>
       )}
 
-      <div className="overflow-x-auto -mx-4 px-4 pb-2">
+      {!champion && activeRound !== null && num_rounds > 1 && (
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-semibold text-foreground shrink-0">
+            {getRoundName(activeRound, num_rounds)}
+          </span>
+          <div className="flex items-center gap-1 flex-1">
+            {Array.from({ length: num_rounds }, (_, i) => {
+              const r = i + 1
+              return (
+                <div
+                  key={i}
+                  className={[
+                    'h-1.5 rounded-full transition-all duration-300',
+                    r < activeRound   ? 'flex-1 bg-primary/35' :
+                    r === activeRound ? 'flex-[2] bg-primary'  :
+                    'flex-1 bg-border/60',
+                  ].join(' ')}
+                />
+              )
+            })}
+          </div>
+          <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
+            {activeRound}/{num_rounds}
+          </span>
+        </div>
+      )}
+
+      <div ref={scrollRef} className="overflow-x-auto -mx-4 px-4 pb-2">
         <div className="flex items-start min-w-max">
           {rounds.map((roundSlots, roundIdx) => {
             const countInRound = roundSlots.length
@@ -511,6 +559,7 @@ export function TournamentLeaderboard({ bracket, rounds, currentPlayerId }: Lead
               </div>
 
               <ChevronDown
+                aria-hidden="true"
                 className={`h-3.5 w-3.5 text-muted-foreground/50 flex-shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
               />
             </button>

@@ -665,8 +665,9 @@ function ShareField({ session }: { session: import('@/lib/types').Session }) {
   const [copied, setCopied] = useState(false)
   const link = `${window.location.origin}/session/${session.id}`
 
-  const modeEmoji = session.generation_mode === 'competitive' ? '🏆' : '🔄'
-  const modeLabel = session.generation_mode === 'competitive' ? 'Competitive' : 'Fair Rotation'
+  const isTournamentMode = session.session_mode === 'tournament'
+  const modeEmoji = isTournamentMode ? '🎖️' : session.generation_mode === 'competitive' ? '🏆' : '🔄'
+  const modeLabel = isTournamentMode ? 'Tournament' : session.generation_mode === 'competitive' ? 'Competitive' : 'Fair Rotation'
   const typeEmoji = session.match_type === '2v2' ? '👥' : '👤'
 
   const message = `${session.name}\n${modeEmoji} ${modeLabel}\n${typeEmoji} ${session.match_type}\n\nSee live matches: ${link}`

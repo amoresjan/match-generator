@@ -13,7 +13,7 @@ type HomeTab = 'create' | 'join'
 const MODE_COPY: Record<string, string> = {
   fair: 'Everyone gets equal court time and varied opponents.',
   competitive: 'Players are sorted by wins. Top players face top players; lower-ranked players face each other.',
-  tournament: 'Single-elimination bracket. Add players, then play match by match until a winner.',
+  tournament: 'Single-elimination bracket. Add players, then play until one team wins it all.',
 }
 
 export function HomePage() {
