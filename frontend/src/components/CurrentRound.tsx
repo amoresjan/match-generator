@@ -138,23 +138,38 @@ export function CurrentRound({ session, isAdmin, currentPlayerId }: Props) {
       )}
 
 
-      {sittingOutPlayers.length > 0 && (
-        <div>
-          <p className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 mb-2">
-            <PauseCircle className="h-3.5 w-3.5" /> Sitting out
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {sittingOutPlayers.map((p) => (
-              <span key={p.id} className="flex items-center rounded-full bg-muted border border-border px-2.5 py-1 text-xs text-muted-foreground font-medium">
-                {p.name}
-              </span>
-            ))}
+      {sittingOutPlayers.length > 0 && (() => {
+        const isMeSittingOut = sittingOutPlayers.some((p) => p.id === currentPlayerId)
+        return (
+          <div className="rounded-xl border border-border bg-muted/40 px-3 py-2.5">
+            <p className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 mb-2">
+              <PauseCircle className="h-3.5 w-3.5" />
+              {isMeSittingOut ? "You're sitting this one out" : 'Sitting out'}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {sittingOutPlayers.map((p) => {
+                const isMe = p.id === currentPlayerId
+                return (
+                  <span
+                    key={p.id}
+                    className={[
+                      'flex items-center rounded-full px-2.5 py-1 text-xs font-medium',
+                      isMe
+                        ? 'bg-primary/10 text-primary border border-primary/20'
+                        : 'bg-muted border border-border text-muted-foreground',
+                    ].join(' ')}
+                  >
+                    {isMe ? 'You' : p.name}
+                  </span>
+                )
+              })}
+            </div>
+            {!isAdmin && isMeSittingOut && (
+              <p className="text-xs text-muted-foreground/60 mt-2">Ask your host to add you back in.</p>
+            )}
           </div>
-          {!isAdmin && (
-            <p className="text-xs text-muted-foreground/60 mt-2">Ready to play? Let the host know.</p>
-          )}
-        </div>
-      )}
+        )
+      })()}
 
       {isAdmin && (
         <OverrideMatchDialog
