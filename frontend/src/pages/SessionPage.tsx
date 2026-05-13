@@ -5,7 +5,7 @@ import { useSession, useGenerateRound, useUpdateSession, useSetSessionActive, us
 import { useClaimedPlayer } from '@/hooks/useClaimedPlayer'
 import { useTheme } from '@/hooks/useTheme'
 import { SPORTS, getSport, type SportType } from '@/lib/sports'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { CurrentRound } from '@/components/CurrentRound'
 import { PlayerList } from '@/components/PlayerList'
 import { RoundHistory } from '@/components/RoundHistory'
@@ -30,7 +30,7 @@ const ROTATION_TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
   { key: 'round', label: 'Round', icon: <RefreshCw className="h-4 w-4" /> },
   { key: 'players', label: 'Players', icon: <Users className="h-4 w-4" /> },
   { key: 'history', label: 'History', icon: <Clock className="h-4 w-4" /> },
-  { key: 'leaderboard', label: 'Board', icon: <Trophy className="h-4 w-4" /> },
+  { key: 'leaderboard', label: 'Ranks', icon: <Trophy className="h-4 w-4" /> },
   { key: 'settings', label: 'Settings', icon: <Settings className="h-4 w-4" /> },
 ]
 
@@ -133,9 +133,9 @@ export function SessionPage() {
         </div>
         <div className="border-b">
           <div className="flex max-w-2xl mx-auto">
-            {[0,1,2,3].map((i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-1.5 py-2.5">
-                <div className="h-4 w-4 rounded-full bg-muted animate-pulse" style={{ animationDelay: `${i * 40}ms` }} />
+            {[0,1,2,3,4].map((i) => (
+              <div key={i} className="flex-1 flex items-center justify-center gap-1.5 py-2.5">
+                <div className="h-4 w-4 rounded bg-muted animate-pulse" style={{ animationDelay: `${i * 40}ms` }} />
                 <div className="h-2 w-7 rounded bg-muted/50 animate-pulse" style={{ animationDelay: `${i * 40 + 20}ms` }} />
               </div>
             ))}
@@ -211,12 +211,15 @@ export function SessionPage() {
           <div className="max-w-2xl mx-auto">
             <div className="flex items-center gap-1.5 min-w-0">
               <h1 className="font-bold text-base leading-tight truncate">{session.name}</h1>
+              {!session.is_active && (
+                <span className="shrink-0 text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full leading-none">Ended</span>
+              )}
               {admin && (
                 <span className="shrink-0 text-[10px] font-semibold bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full leading-none">Host</span>
               )}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5 leading-none">
-              {sport.emoji} {sport.label} · {session.match_type} · {isTournament ? 'Tournament' : session.generation_mode === 'competitive' ? 'Competitive' : 'Fair rotation'}
+              {sport.emoji} {sport.label} · <span className="text-foreground/75 font-medium">{session.match_type}</span> · {isTournament ? 'Tournament' : session.generation_mode === 'competitive' ? 'Competitive' : 'Fair rotation'}
             </p>
           </div>
         </header>
@@ -226,8 +229,10 @@ export function SessionPage() {
           {TABS.map((t) => (
             <button
               key={t.key}
+              id={`tab-${t.key}`}
               role="tab"
               aria-selected={tab === t.key}
+              aria-controls="tab-panel"
               onClick={() => switchTab(t.key)}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors ${
                 tab === t.key
@@ -251,15 +256,15 @@ export function SessionPage() {
         {!session.is_active && (
           <div className="border-b bg-muted px-4 py-2.5 text-center text-sm text-muted-foreground">
             {session.auto_deactivated
-              ? 'This session was closed automatically after 24 hours of inactivity.'
-              : 'This session has been closed by the host.'}
+              ? 'Session ended. History and past rounds are still viewable.'
+              : 'Closed by the host. History and past rounds are still viewable.'}
           </div>
         )}
         </nav>
       </div>
 
       {/* Content */}
-      <main key={tab} className={`max-w-2xl mx-auto p-4 space-y-6 ${admin && tab === 'round' && session.is_active ? 'pb-24' : ''} ${slideDir === 'left' ? 'animate-tab-slide-left' : 'animate-tab-slide-right'}`}>
+      <main key={tab} id="tab-panel" role="tabpanel" aria-labelledby={`tab-${tab}`} className={`max-w-2xl mx-auto p-4 space-y-6 ${admin && tab === 'round' && session.is_active ? 'pb-24' : ''} ${slideDir === 'left' ? 'animate-tab-slide-left' : 'animate-tab-slide-right'}`}>
         <ErrorBoundary>
           {/* Tournament — Courts tab */}
           {tab === 'courts' && (
@@ -395,35 +400,41 @@ export function SessionPage() {
         <DialogContent className="max-w-sm p-0 gap-0 overflow-hidden">
           <div className="px-6 pt-6 pb-3">
             <DialogTitle className="text-base font-semibold">Which one is you?</DialogTitle>
-            <p className="text-xs text-muted-foreground mt-1">Tap your name to personalize your view.</p>
+            <DialogDescription className="text-xs mt-1">Tap your name to personalize your view.</DialogDescription>
           </div>
 
-          <div className="px-3 pb-3 max-h-64 overflow-y-auto">
-            {session.players.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4 px-3">
-                No players yet — the host will add everyone before play starts.
-              </p>
-            ) : session.players.map((player) => {
-              const isClaimed = player.id === claimedPlayerId
-              const initial = player.name.charAt(0).toUpperCase()
-              return (
-                <button
-                  key={player.id}
-                  onClick={() => { claimPlayer(player.id); setShowClaimPrompt(false) }}
-                  className={`w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors active:scale-[0.98] ${
-                    isClaimed ? 'bg-primary/10' : 'hover:bg-muted/60'
-                  }`}
-                >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 select-none ${
-                    isClaimed ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
-                  }`}>
-                    {initial}
-                  </div>
-                  <span className="flex-1 text-sm font-medium">{player.name}</span>
-                  {isClaimed && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
-                </button>
-              )
-            })}
+          <div className="relative px-3 pb-3">
+            <div className="max-h-56 overflow-y-auto">
+              {session.players.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4 px-3">
+                  No players yet — the host will add everyone before play starts.
+                </p>
+              ) : [...session.players].sort((a, b) => a.name.localeCompare(b.name)).map((player) => {
+                const isClaimed = player.id === claimedPlayerId
+                const initial = player.name.charAt(0).toUpperCase()
+                return (
+                  <button
+                    key={player.id}
+                    onClick={() => {
+                      claimPlayer(player.id)
+                      setTimeout(() => setShowClaimPrompt(false), 300)
+                    }}
+                    className={`w-full flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors active:scale-[0.98] ${
+                      isClaimed ? 'bg-primary/10' : 'hover:bg-muted/60'
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 select-none transition-colors duration-150 ${
+                      isClaimed ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
+                    }`}>
+                      {initial}
+                    </div>
+                    <span className="flex-1 text-sm font-medium truncate">{player.name}</span>
+                    {isClaimed && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="pointer-events-none absolute bottom-3 left-3 right-3 h-8 bg-gradient-to-t from-background to-transparent rounded-b-lg" />
           </div>
 
           <div className="border-t px-6 py-3.5">
