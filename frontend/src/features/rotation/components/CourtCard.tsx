@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { isDuo } from '@/lib/utils'
-import type { Match, Player } from '@/lib/types'
+import type { Match, Player } from '@/types'
 
 interface Props {
   match: Match
@@ -73,7 +73,6 @@ export function CourtCard({ match, players, removedPlayers = {}, isAdmin, streak
         <span className="pointer-events-none absolute inset-0 rounded-xl animate-my-card-pulse" aria-hidden="true" />
       )}
 
-      {/* Court label row */}
       <div className="flex items-center justify-between px-3 pt-3 pb-1">
         <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           Court {match.court_number}
@@ -95,9 +94,7 @@ export function CourtCard({ match, players, removedPlayers = {}, isAdmin, streak
         </div>
       </div>
 
-      {/* Matchup */}
       <div className="px-3 pb-3 flex flex-col gap-1.5">
-        {/* Team 1 */}
         <button
           aria-label={`Team 1: ${team1.map(m => m.name).join(' and ')}${team1Won ? ' — winner' : ''}`}
           aria-pressed={team1Won}
@@ -131,14 +128,12 @@ export function CourtCard({ match, players, removedPlayers = {}, isAdmin, streak
           </span>
         </button>
 
-        {/* Ruled "vs" divider */}
         <div className="flex items-center gap-2 px-1">
           <div className="h-px flex-1 bg-border" />
           <span className="text-[9px] font-semibold tracking-[0.12em] text-muted-foreground/50 uppercase">vs</span>
           <div className="h-px flex-1 bg-border" />
         </div>
 
-        {/* Team 2 */}
         <button
           aria-label={`Team 2: ${team2.map(m => m.name).join(' and ')}${team2Won ? ' — winner' : ''}`}
           aria-pressed={team2Won}

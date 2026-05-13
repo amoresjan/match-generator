@@ -2,7 +2,7 @@ import { ChevronDown, Trophy } from 'lucide-react'
 import { useState } from 'react'
 import { computeStats, resolveNames } from '@/lib/utils'
 import type { PlayerStat } from '@/lib/utils'
-import type { Match, Player, Round } from '@/lib/types'
+import type { Match, Player, Round } from '@/types'
 
 function isTied(a: PlayerStat, b: PlayerStat): boolean {
   if (a.wins !== b.wins) return false

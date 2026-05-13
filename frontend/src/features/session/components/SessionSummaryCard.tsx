@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { toast } from '@/lib/toast'
 import { computeStats } from '@/lib/utils'
 import type { PlayerStat } from '@/lib/utils'
-import type { Player, Round } from '@/lib/types'
+import type { Player, Round } from '@/types'
 
 interface SummaryCardProps {
   sessionName: string

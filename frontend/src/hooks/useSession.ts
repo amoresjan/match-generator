@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { toast } from '@/lib/toast'
-import type { PreviewRound, Session } from '@/lib/types'
+import type { PreviewRound, Session } from '@/types'
 
 export const sessionKeys = {
   all: ['sessions'] as const,

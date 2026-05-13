@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useAddPlayer, useRemovePlayer, useSetPartner, useSetSitOut, useUpdatePlayer } from '@/hooks/useSession'
 import { partitionPlayers } from '@/lib/utils'
-import type { Player, Session } from '@/lib/types'
+import type { Player, Session } from '@/types'
 
 interface PlayerRowProps {
   player: Player

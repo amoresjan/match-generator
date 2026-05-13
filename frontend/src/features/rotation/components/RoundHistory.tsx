@@ -2,7 +2,7 @@ import { ChevronDown, ChevronUp, Trophy, Users } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useSetMatchResult } from '@/hooks/useSession'
 import { isDuo } from '@/lib/utils'
-import type { Match, Round, Player } from '@/lib/types'
+import type { Match, Round, Player } from '@/types'
 
 function formatRelative(isoString: string): string {
   const diff = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000)

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, RefreshCw } from 'lucide-react'
 import { usePreviewRounds } from '@/hooks/useSession'
 import { toast } from '@/lib/toast'
-import type { Player, PreviewRound } from '@/lib/types'
+import type { Player, PreviewRound } from '@/types'
 
 interface Props {
   sessionId: string

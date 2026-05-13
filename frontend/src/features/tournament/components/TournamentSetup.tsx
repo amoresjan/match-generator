@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Shuffle, Trophy, X, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { Player, Session } from '@/lib/types'
+import type { Player, Session } from '@/types'
 
 interface Team {
   player_ids: (string | null)[]
@@ -54,31 +54,22 @@ export function TournamentSetup({ session, onSetup, isPending }: Props) {
 
     const nextTeams = teams.map((t) => ({ player_ids: [...t.player_ids] }))
 
-    // Remove from any existing slot first
     for (const t of nextTeams) {
       const idx = t.player_ids.indexOf(playerId)
       if (idx !== -1) t.player_ids[idx] = null
     }
 
-    // Assign to focused team's first empty slot
     const emptySlot = nextTeams[focusedTeam].player_ids.indexOf(null)
     if (emptySlot === -1) return
     nextTeams[focusedTeam].player_ids[emptySlot] = playerId
 
-    // Advance focus to next team with empty slots
     let nextFocus: number | null = null
     for (let t = focusedTeam; t < nextTeams.length; t++) {
-      if (nextTeams[t].player_ids.includes(null)) {
-        nextFocus = t
-        break
-      }
+      if (nextTeams[t].player_ids.includes(null)) { nextFocus = t; break }
     }
     if (nextFocus === null) {
       for (let t = 0; t < focusedTeam; t++) {
-        if (nextTeams[t].player_ids.includes(null)) {
-          nextFocus = t
-          break
-        }
+        if (nextTeams[t].player_ids.includes(null)) { nextFocus = t; break }
       }
     }
 
@@ -108,7 +99,6 @@ export function TournamentSetup({ session, onSetup, isPending }: Props) {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="font-semibold text-base flex items-center gap-2">
@@ -134,7 +124,6 @@ export function TournamentSetup({ session, onSetup, isPending }: Props) {
       </div>
 
       {is1v1 ? (
-        /* 1v1: ordered player list, auto-seeded */
         <div className="space-y-1">
           {teams.map((team, i) => {
             const player = playerById[team.player_ids[0] as string]
@@ -155,9 +144,7 @@ export function TournamentSetup({ session, onSetup, isPending }: Props) {
           </p>
         </div>
       ) : (
-        /* 2v2: team rows + tap-to-assign chip pool */
         <>
-          {/* Team rows */}
           <div className="space-y-2">
             {teams.map((team, teamIdx) => {
               const isFocused = focusedTeam === teamIdx
@@ -181,7 +168,6 @@ export function TournamentSetup({ session, onSetup, isPending }: Props) {
                         : 'border-border cursor-pointer',
                   ].join(' ')}
                 >
-                  {/* Seed bubble */}
                   <span
                     className={[
                       'w-6 h-6 rounded-full text-[11px] font-bold flex items-center justify-center shrink-0 tabular-nums select-none',
@@ -195,7 +181,6 @@ export function TournamentSetup({ session, onSetup, isPending }: Props) {
                     {teamIdx + 1}
                   </span>
 
-                  {/* Player slots */}
                   <div className="flex-1 flex items-center gap-2 min-w-0">
                     {team.player_ids.map((pid, slotIdx) => {
                       const player = pid ? playerById[pid] : null
@@ -240,7 +225,6 @@ export function TournamentSetup({ session, onSetup, isPending }: Props) {
             })}
           </div>
 
-          {/* Player chip pool */}
           {unassignedPlayers.length > 0 && !allFilled && (
             <div>
               <p className="text-xs text-muted-foreground mb-2">
@@ -274,11 +258,9 @@ export function TournamentSetup({ session, onSetup, isPending }: Props) {
               </div>
             </div>
           )}
-
         </>
       )}
 
-      {/* CTA */}
       <div className="space-y-1.5 pt-1">
         <Button
           className="w-full h-11 text-sm font-semibold active:scale-95 transition-transform"

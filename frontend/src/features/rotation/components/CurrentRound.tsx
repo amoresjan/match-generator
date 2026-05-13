@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import { Flame, PauseCircle } from 'lucide-react'
 import { CourtCard } from './CourtCard'
-import { OverrideMatchDialog } from './OverrideMatchDialog'
+import { OverrideMatchDialog } from '../dialogs/OverrideMatchDialog'
 import { UpcomingRounds } from './UpcomingRounds'
 import { useSetMatchResult } from '@/hooks/useSession'
-import type { Match, Round, Session } from '@/lib/types'
+import type { Match, Round, Session } from '@/types'
 
 const STREAK_THRESHOLD = 3
 
@@ -42,7 +42,6 @@ interface Props {
   isAdmin: boolean
   currentPlayerId?: string
 }
-
 
 export function CurrentRound({ session, isAdmin, currentPlayerId }: Props) {
   const [editingMatch, setEditingMatch] = useState<Match | null>(null)
@@ -136,7 +135,6 @@ export function CurrentRound({ session, isAdmin, currentPlayerId }: Props) {
           </div>
         </div>
       )}
-
 
       {sittingOutPlayers.length > 0 && (() => {
         const isMeSittingOut = sittingOutPlayers.some((p) => p.id === currentPlayerId)

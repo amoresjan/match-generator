@@ -5,7 +5,7 @@ import { api, saveAdminToken } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ThemeToggle } from '@/components/ThemeToggle'
+import { ThemeToggle } from '@/components/shared/ThemeToggle'
 import { SPORTS, getSport, type SportType } from '@/lib/sports'
 
 type HomeTab = 'create' | 'join'

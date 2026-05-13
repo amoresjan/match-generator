@@ -1,4 +1,4 @@
-import type { Match, Player, PreviewRound, Round, Session, SessionWithToken, TournamentBracket } from './types'
+import type { Match, Player, PreviewRound, Round, Session, SessionWithToken, TournamentBracket } from '@/types'
 
 export const BASE = import.meta.env.VITE_API_URL ?? '/api'
 

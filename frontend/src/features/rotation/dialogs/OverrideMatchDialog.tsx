@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { useOverrideMatch } from '@/hooks/useSession'
 import { toast } from '@/lib/toast'
 import { getSport } from '@/lib/sports'
-import type { Match, Player } from '@/lib/types'
+import type { Match, Player } from '@/types'
 import type { SportType } from '@/lib/sports'
 
 interface Props {
@@ -34,7 +34,6 @@ export function OverrideMatchDialog({ sessionId, match, players, matchType, roun
   const [team1, setTeam1] = useState<string[]>(match?.team1_players ?? [])
   const [team2, setTeam2] = useState<string[]>(match?.team2_players ?? [])
 
-  // Cycle: unassigned → Team 1 → Team 2 → unassigned (one tap to switch teams)
   function togglePlayer(id: string) {
     if (team1.includes(id)) {
       setTeam1(team1.filter((x) => x !== id))
@@ -67,7 +66,6 @@ export function OverrideMatchDialog({ sessionId, match, players, matchType, roun
   return (
     <Dialog key={match?.id} open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-sm overflow-hidden">
-        {/* Sport-colored accent bar */}
         <div className="absolute top-0 inset-x-0 h-[3px] bg-primary" aria-hidden="true" />
 
         <DialogHeader>
@@ -77,7 +75,6 @@ export function OverrideMatchDialog({ sessionId, match, players, matchType, roun
           </DialogTitle>
         </DialogHeader>
 
-        {/* Team slot counters */}
         <div className="flex gap-2">
           <div className="flex-1 flex items-center justify-between rounded-md bg-primary/10 px-3 py-2">
             <span className="text-xs text-primary/70 font-medium">Team 1</span>
@@ -91,7 +88,6 @@ export function OverrideMatchDialog({ sessionId, match, players, matchType, roun
 
         <p className="text-xs text-muted-foreground -mt-1">{instruction}</p>
 
-        {/* Player grid */}
         <div className="flex flex-wrap gap-2 rounded-md border p-3">
           {players.map((p) => {
             const inT1 = team1.includes(p.id)

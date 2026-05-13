@@ -1,7 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import { HomePage } from '@/pages/HomePage'
-import { SessionPage } from '@/pages/SessionPage'
-import { Toaster } from '@/components/Toaster'
+import { SessionPage } from '@/pages/session/SessionPage'
+import { Toaster } from '@/components/shared/Toaster'
 
 export default function App() {
   return (
