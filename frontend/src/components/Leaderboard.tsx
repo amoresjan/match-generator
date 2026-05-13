@@ -82,7 +82,7 @@ export function Leaderboard({
   if (stats.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground text-sm">
-        No results recorded yet. Tap a winning team on a court card to start tracking.
+        No results yet. Open the Round tab and tap the winning team on any court.
       </div>
     )
   }
@@ -105,11 +105,15 @@ export function Leaderboard({
           : (podiumStyle?.bg ?? 'bg-card')
         const playerMatches = getPlayerMatches(s.player.id, players, rounds)
 
+        const winRate = s.played >= 2 ? Math.round((s.wins / s.played) * 100) : null
+        const drawerWins = playerMatches.filter((m) => m.result === 'W').length
+        const drawerLosses = playerMatches.filter((m) => m.result === 'L').length
+
         return (
           <div
             key={s.player.id}
             className="animate-card-enter"
-            style={{ animationDelay: `${i * 60}ms` }}
+            style={{ animationDelay: `${Math.min(i * 60, 300)}ms` }}
           >
             <button
               className={`w-full flex items-center gap-3 px-3 rounded-xl border text-left transition-transform active:scale-[0.99]
@@ -118,11 +122,12 @@ export function Leaderboard({
               `}
               onClick={() => setExpandedId(isExpanded ? null : s.player.id)}
               aria-expanded={isExpanded}
+              aria-label={`${s.player.name}: view match history`}
             >
-              <div className="w-7 flex-shrink-0 flex justify-center">
+              <div className="w-7 shrink-0 flex justify-center">
                 {isPodium
                   ? <Trophy className={TROPHY_CLASS[rank]} />
-                  : <span className="text-sm font-bold text-muted-foreground tabular-nums">{rank}</span>}
+                  : <span className="text-[11px] font-semibold text-muted-foreground bg-muted rounded px-1.5 py-0.5 tabular-nums leading-none">{rank}</span>}
               </div>
 
               <div className="flex-1 min-w-0">
@@ -131,26 +136,29 @@ export function Leaderboard({
                     {s.player.name}
                   </span>
                   {isMe && (
-                    <span className="flex-shrink-0 text-[10px] font-semibold text-primary bg-primary/10 rounded px-1.5 py-0.5 leading-none">
+                    <span className="shrink-0 text-[10px] font-semibold text-primary bg-primary/15 rounded-full px-1.5 py-0.5 leading-none">
                       You
                     </span>
                   )}
                 </div>
+                {winRate !== null && (
+                  <span className="text-[11px] text-muted-foreground tabular-nums">{winRate}% win rate</span>
+                )}
               </div>
 
-              <div className="flex items-baseline gap-1 flex-shrink-0 tabular-nums">
-                <span className={`font-bold text-green-600 ${rank === 1 ? 'text-base' : 'text-sm'}`}>{s.wins}W</span>
+              <div className="flex items-baseline gap-1 shrink-0 tabular-nums">
+                <span className={`font-bold text-primary ${rank === 1 ? 'text-base' : 'text-sm'}`}>{s.wins}W</span>
                 <span className="text-muted-foreground/40 text-xs mx-0.5">·</span>
-                <span className="text-sm text-muted-foreground">{s.losses}L</span>
+                <span className="text-sm text-foreground/60">{s.losses}L</span>
               </div>
 
               <ChevronDown
-                className={`h-3.5 w-3.5 text-muted-foreground/50 flex-shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                className={`h-3.5 w-3.5 text-muted-foreground/50 shrink-0 transition-transform duration-200 ease-out ${isExpanded ? 'rotate-180' : ''}`}
               />
             </button>
 
             <div
-              className="grid transition-all duration-300 ease-in-out"
+              className="grid transition-all duration-300 ease-out"
               style={{ gridTemplateRows: isExpanded ? '1fr' : '0fr' }}
             >
               <div className="overflow-hidden">
@@ -160,12 +168,18 @@ export function Leaderboard({
                       <p className="text-xs text-muted-foreground text-center py-1">No recorded results yet</p>
                     ) : (
                       <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 pb-1.5 mb-0.5 border-b border-border/50">
+                          <span className="text-xs font-semibold text-primary tabular-nums">{drawerWins}W</span>
+                          <span className="text-muted-foreground/40 text-xs">·</span>
+                          <span className="text-xs text-foreground/60 tabular-nums">{drawerLosses}L</span>
+                          <span className="text-xs text-muted-foreground">this session</span>
+                        </div>
                         {playerMatches.map((pm) => (
                           <div key={pm.match.id} className="flex items-baseline gap-2 text-xs">
-                            <span className={`flex-shrink-0 w-4 font-bold text-center ${pm.result === 'W' ? 'text-green-600' : 'text-muted-foreground'}`}>
+                            <span className={`flex-shrink-0 w-4 font-bold text-center ${pm.result === 'W' ? 'text-primary' : 'text-foreground/50'}`}>
                               {pm.result}
                             </span>
-                            <span className="flex-shrink-0 text-muted-foreground tabular-nums">R{pm.roundNumber}</span>
+                            <span className="flex-shrink-0 text-muted-foreground tabular-nums">Rd {pm.roundNumber}</span>
                             <span className="font-medium truncate min-w-0">{pm.myTeam}</span>
                             <span className="flex-shrink-0 text-muted-foreground/60">vs</span>
                             <span className="text-muted-foreground truncate min-w-0">{pm.theirTeam}</span>
