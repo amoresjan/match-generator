@@ -420,6 +420,7 @@ def tournament_advance(request, session_id):
     prev_active = set(bracket.get('active_match_ids', []))
 
     with transaction.atomic():
+        session = Session.objects.select_for_update().get(pk=session.pk)
         rnd = Round.objects.create(session=session, number=session.rounds.count() + 1)
         match = Match.objects.create(
             round=rnd,

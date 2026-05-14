@@ -33,6 +33,9 @@ WAIT_ADVANTAGE_W = 3.0   # reward for giving a long-waiting player a game
 BYE_PENALTY_W = 1.0      # per bye player — prefer fewer byes
 RECENCY_W = 3.0          # 1/rounds_ago penalty — breaks cost ties toward least-recently-used matchups
 
+# Above this item count, _enumerate_pairings is O(n!!) and too slow; use greedy instead.
+PAIRING_ENUM_LIMIT = 12
+
 
 class CourtAssignment(TypedDict):
     court: int
@@ -257,23 +260,39 @@ def _enumerate_pairings(items: list) -> list[list[tuple]]:
 
 
 def _pair_singles(active_singles: list[str], hist: dict) -> list[list[str]]:
-    """Globally optimal pairing of singles by minimising total partner-repeat cost.
+    """Pair singles by minimising total partner-repeat cost.
 
-    Enumerates all perfect pairings and picks the minimum-cost one.
-    Shuffle first so ties are broken randomly (respects the seeded RNG).
+    Uses full enumeration (exact) for small groups and a greedy O(n²) matching
+    for larger ones to avoid O(n!!) blowup on busy sessions.
     """
     if len(active_singles) < 2:
         return [[s] for s in active_singles]
     shuffled = list(active_singles)
     random.shuffle(shuffled)
-    best_cost = float('inf')
-    best: list[list[str]] = []
-    for pairing in _enumerate_pairings(shuffled):
-        cost = sum(_team_pair_cost([a, b], hist) for a, b in pairing)
-        if cost < best_cost:
-            best_cost = cost
-            best = [[a, b] for a, b in pairing]
-    return best
+
+    if len(shuffled) <= PAIRING_ENUM_LIMIT:
+        best_cost = float('inf')
+        best: list[list[str]] = []
+        for pairing in _enumerate_pairings(shuffled):
+            cost = sum(_team_pair_cost([a, b], hist) for a, b in pairing)
+            if cost < best_cost:
+                best_cost = cost
+                best = [[a, b] for a, b in pairing]
+        return best
+
+    # Greedy fallback: sort all candidate pairs by cost, pick non-conflicting.
+    candidates = sorted(
+        ((shuffled[i], shuffled[j]) for i in range(len(shuffled)) for j in range(i + 1, len(shuffled))),
+        key=lambda pair: _team_pair_cost(list(pair), hist),
+    )
+    paired: set[str] = set()
+    result: list[list[str]] = []
+    for a, b in candidates:
+        if a not in paired and b not in paired:
+            result.append([a, b])
+            paired.add(a)
+            paired.add(b)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -294,16 +313,31 @@ def _generate_2v2(
     if len(pool) >= 2:
         # Shuffle so ties are broken randomly (seeded RNG keeps previews deterministic).
         random.shuffle(pool)
-        best_cost = float('inf')
-        # Enumerate all perfect pairings of teams; pick the globally minimum-cost one.
-        for pairing in _enumerate_pairings(pool):
-            cost = sum(_match_cost(list(t1), list(t2), hist, round_number) for t1, t2 in pairing)
-            if cost < best_cost:
-                best_cost = cost
-                courts = [
-                    {'court': i + 1, 'team1': list(t1), 'team2': list(t2)}
-                    for i, (t1, t2) in enumerate(pairing)
-                ]
+
+        if len(pool) <= PAIRING_ENUM_LIMIT:
+            best_cost = float('inf')
+            for pairing in _enumerate_pairings(pool):
+                cost = sum(_match_cost(list(t1), list(t2), hist, round_number) for t1, t2 in pairing)
+                if cost < best_cost:
+                    best_cost = cost
+                    courts = [
+                        {'court': i + 1, 'team1': list(t1), 'team2': list(t2)}
+                        for i, (t1, t2) in enumerate(pairing)
+                    ]
+        else:
+            # Greedy fallback: sort all team matchups by cost, pick non-conflicting.
+            candidates = sorted(
+                ((i, j) for i in range(len(pool)) for j in range(i + 1, len(pool))),
+                key=lambda ij: _match_cost(pool[ij[0]], pool[ij[1]], hist, round_number),
+            )
+            used_idx: set[int] = set()
+            for i, j in candidates:
+                if i not in used_idx and j not in used_idx:
+                    courts.append({'court': len(courts) + 1, 'team1': pool[i], 'team2': pool[j]})
+                    used_idx.add(i)
+                    used_idx.add(j)
+                    if len(courts) == num_courts:
+                        break
 
     return {'round_number': round_number, 'courts': courts, 'bye_players': bye_players}
 
@@ -367,16 +401,31 @@ def _generate_1v1(
     if len(active) >= 2:
         # Shuffle so ties in cost are broken randomly (seeded RNG keeps previews deterministic).
         random.shuffle(active)
-        best_cost = float('inf')
-        # Enumerate all perfect pairings; pick the globally minimum-cost one.
-        for pairing in _enumerate_pairings(active):
-            cost = sum(_match_cost([p1], [p2], hist, round_number) for p1, p2 in pairing)
-            if cost < best_cost:
-                best_cost = cost
-                courts = [
-                    {'court': i + 1, 'team1': [p1], 'team2': [p2]}
-                    for i, (p1, p2) in enumerate(pairing)
-                ]
+
+        if len(active) <= PAIRING_ENUM_LIMIT:
+            best_cost = float('inf')
+            for pairing in _enumerate_pairings(active):
+                cost = sum(_match_cost([p1], [p2], hist, round_number) for p1, p2 in pairing)
+                if cost < best_cost:
+                    best_cost = cost
+                    courts = [
+                        {'court': i + 1, 'team1': [p1], 'team2': [p2]}
+                        for i, (p1, p2) in enumerate(pairing)
+                    ]
+        else:
+            # Greedy fallback: sort all matchups by cost, pick non-conflicting.
+            candidates = sorted(
+                ((active[i], active[j]) for i in range(len(active)) for j in range(i + 1, len(active))),
+                key=lambda pair: _match_cost([pair[0]], [pair[1]], hist, round_number),
+            )
+            used: set[str] = set()
+            for p1, p2 in candidates:
+                if p1 not in used and p2 not in used:
+                    courts.append({'court': len(courts) + 1, 'team1': [p1], 'team2': [p2]})
+                    used.add(p1)
+                    used.add(p2)
+                    if len(courts) == num_courts:
+                        break
 
     return {'round_number': round_number, 'courts': courts, 'bye_players': bye_players}
 
@@ -618,7 +667,11 @@ def commit_round(session: Session, generated: GeneratedRound) -> Round:
     player_map = {str(p.id): p for p in session.players.filter(sit_out=False)}
 
     with transaction.atomic():
-        rnd = Round.objects.create(session=session, number=generated['round_number'])
+        # Lock the session row so concurrent /generate calls are serialised and
+        # can't produce duplicate round numbers.
+        session = Session.objects.select_for_update().get(pk=session.pk)
+        round_number = _next_round_number(session)
+        rnd = Round.objects.create(session=session, number=round_number)
 
         for court in generated['courts']:
             Match.objects.create(
