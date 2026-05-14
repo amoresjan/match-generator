@@ -1,8 +1,8 @@
 import { AlertTriangle, Flame, Loader2, Pencil, Trophy, Users } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { isDuo } from '@/lib/utils'
+import { isDuo, resolveMembers } from '@/lib/utils'
 import type { Match, Player } from '@/types'
 
 interface Props {
@@ -17,9 +17,6 @@ interface Props {
   isPending?: boolean
 }
 
-function resolveMembers(ids: string[], players: Player[], removedPlayers: Record<string, string> = {}): { id: string; name: string }[] {
-  return ids.map((id) => ({ id, name: players.find((p) => p.id === id)?.name ?? removedPlayers[id] ?? '?' }))
-}
 
 export function CourtCard({ match, players, removedPlayers = {}, isAdmin, streakPlayerIds, currentPlayerId, onEdit, onSetResult, isPending }: Props) {
   const team1 = resolveMembers(match.team1_players, players, removedPlayers)
@@ -49,7 +46,7 @@ export function CourtCard({ match, players, removedPlayers = {}, isAdmin, streak
     prevWinner.current = match.winner
   }, [match.winner])
 
-  function handleTeamClick(side: 'team1' | 'team2') {
+  const handleTeamClick = useCallback((side: 'team1' | 'team2') => {
     if (!onSetResult) return
     const next = match.winner === side ? null : side
     if (next !== null) {
@@ -58,7 +55,7 @@ export function CourtCard({ match, players, removedPlayers = {}, isAdmin, streak
       popTimer.current = setTimeout(() => setPoppedSide(null), 300)
     }
     onSetResult(match.id, next)
-  }
+  }, [match.winner, match.id, onSetResult])
 
   const team1Won = match.winner === 'team1'
   const team2Won = match.winner === 'team2'

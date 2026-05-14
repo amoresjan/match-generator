@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2, Pencil, Trash2, UserPlus, Users, Link2Off, PauseCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,7 +32,7 @@ interface PlayerRowProps {
   onSetPartner: (playerId: string, partnerId: string | null) => void
 }
 
-function PlayerRow({
+const PlayerRow = memo(function PlayerRow({
   player, inDuoBox, sessionPlayers, matchType,
   currentPlayerId,
   editingId, editName, confirmDeleteId, sitOutPromptId,
@@ -193,7 +193,62 @@ function PlayerRow({
       )}
     </div>
   )
+})
+
+interface DuoBoxProps {
+  a: Player
+  b: Player
+  isBreaking: boolean
+  isForming: boolean
+  onBreak: () => void
+  rowProps: Omit<PlayerRowProps, 'player' | 'inDuoBox'>
 }
+
+const DuoBox = memo(function DuoBox({ a, b, isBreaking, isForming, onBreak, rowProps }: DuoBoxProps) {
+  return (
+    <div className="relative">
+      {isForming && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -inset-px rounded-[13px] ring-2 ring-primary/55 animate-duo-ring"
+        />
+      )}
+      <div className={`relative rounded-lg border border-primary/25 bg-primary/[0.02] p-3 space-y-2 ${isForming ? 'animate-duo-form' : ''}`}>
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+            <Users className="h-3 w-3" />
+            Partners
+          </span>
+          {rowProps.matchType === '2v2' && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 text-xs text-muted-foreground hover:text-destructive px-2 gap-1"
+              disabled={rowProps.disabled || isBreaking}
+              onClick={onBreak}
+            >
+              {isBreaking && <Loader2 className="h-3 w-3 animate-spin" />}
+              Break
+            </Button>
+          )}
+        </div>
+        <div className="relative pt-3 space-y-1.5">
+          <div aria-hidden className="absolute inset-x-0 top-1 flex items-center pointer-events-none">
+            <div className={`h-px flex-1 origin-right bg-border ${isForming ? 'animate-duo-link-draw' : ''}`} />
+            <div className={`mx-1.5 h-1.5 w-1.5 rounded-full bg-primary/55 ${isForming ? 'animate-duo-dot-pop' : ''}`} />
+            <div className={`h-px flex-1 origin-left bg-border ${isForming ? 'animate-duo-link-draw' : ''}`} />
+          </div>
+          <div className={isForming ? 'animate-duo-snap-top' : ''}>
+            <PlayerRow player={a} inDuoBox {...rowProps} />
+          </div>
+          <div className={isForming ? 'animate-duo-snap-bottom' : ''}>
+            <PlayerRow player={b} inDuoBox {...rowProps} />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+})
 
 interface Props {
   session: Session
@@ -255,7 +310,7 @@ export function PlayerList({ session, currentPlayerId }: Props) {
   }, [session.players, currentPlayerId])
   const sittingOutCount = session.players.filter((p) => p.sit_out).length
 
-  function handleSetPartner(playerId: string, partnerId: string | null) {
+  const handleSetPartner = useCallback((playerId: string, partnerId: string | null) => {
     if (partnerId) {
       const pairKey = [playerId, partnerId].sort().join('-')
       setPartner.mutateAsync({ playerId, partnerId }).then(() => {
@@ -266,25 +321,25 @@ export function PlayerList({ session, currentPlayerId }: Props) {
     } else {
       setPartner.mutate({ playerId, partnerId })
     }
-  }
+  }, [setPartner])
 
-  async function handleAdd(e: React.FormEvent) {
+  const handleAdd = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newName.trim()) return
     await addPlayer.mutateAsync(newName.trim())
     setNewName('')
-  }
+  }, [newName, addPlayer])
 
-  async function handleRename(player: Player) {
+  const handleRename = useCallback(async (player: Player) => {
     if (!editName.trim() || editName === player.name) {
       setEditingId(null)
       return
     }
     await updatePlayer.mutateAsync({ playerId: player.id, name: editName.trim() })
     setEditingId(null)
-  }
+  }, [editName, updatePlayer])
 
-  function handleSitOutToggle(player: Player) {
+  const handleSitOutToggle = useCallback((player: Player) => {
     const next = !player.sit_out
     if (next && player.permanent_partner_id) {
       const partner = session.players.find((p) => p.id === player.permanent_partner_id)
@@ -294,9 +349,22 @@ export function PlayerList({ session, currentPlayerId }: Props) {
       }
     }
     setSitOut.mutate({ playerId: player.id, sitOut: next })
-  }
+  }, [session.players, setSitOut])
 
-  const sharedRowProps = {
+  const handleStartEdit = useCallback((p: Player) => { setEditingId(p.id); setEditName(p.name) }, [])
+  const handleCancelDelete = useCallback(() => setConfirmDeleteId(null), [])
+  const handleRemove = useCallback((id: string) => { removePlayer.mutate(id); setConfirmDeleteId(null) }, [removePlayer])
+  const handleSitOutBoth = useCallback((playerId: string, partnerId: string) => {
+    setSitOut.mutate({ playerId, sitOut: true })
+    setSitOut.mutate({ playerId: partnerId, sitOut: true })
+    setSitOutPromptId(null)
+  }, [setSitOut])
+  const handleSitOutSolo = useCallback((playerId: string) => {
+    setSitOut.mutate({ playerId, sitOut: true })
+    setSitOutPromptId(null)
+  }, [setSitOut])
+
+  const sharedRowProps = useMemo(() => ({
     sessionPlayers: session.players,
     matchType: session.match_type,
     currentPlayerId,
@@ -307,24 +375,23 @@ export function PlayerList({ session, currentPlayerId }: Props) {
     isSetPartnerPending: setPartner.isPending,
     setPartnerVariables: setPartner.variables,
     disabled,
-    onStartEdit: (p: Player) => { setEditingId(p.id); setEditName(p.name) },
+    onStartEdit: handleStartEdit,
     onEditNameChange: setEditName,
     onRename: handleRename,
     onConfirmDelete: setConfirmDeleteId,
-    onCancelDelete: () => setConfirmDeleteId(null),
-    onRemove: (id: string) => { removePlayer.mutate(id); setConfirmDeleteId(null) },
+    onCancelDelete: handleCancelDelete,
+    onRemove: handleRemove,
     onSitOutToggle: handleSitOutToggle,
-    onSitOutBoth: (playerId: string, partnerId: string) => {
-      setSitOut.mutate({ playerId, sitOut: true })
-      setSitOut.mutate({ playerId: partnerId, sitOut: true })
-      setSitOutPromptId(null)
-    },
-    onSitOutSolo: (playerId: string) => {
-      setSitOut.mutate({ playerId, sitOut: true })
-      setSitOutPromptId(null)
-    },
+    onSitOutBoth: handleSitOutBoth,
+    onSitOutSolo: handleSitOutSolo,
     onSetPartner: handleSetPartner,
-  }
+  }), [
+    session.players, session.match_type, currentPlayerId,
+    editingId, editName, confirmDeleteId, sitOutPromptId,
+    setPartner.isPending, setPartner.variables, disabled,
+    handleStartEdit, handleRename, handleCancelDelete,
+    handleRemove, handleSitOutToggle, handleSitOutBoth, handleSitOutSolo, handleSetPartner,
+  ])
 
   const activeCount = session.players.length - sittingOutCount
 
@@ -365,47 +432,15 @@ export function PlayerList({ session, currentPlayerId }: Props) {
           const isBreaking = setPartner.isPending && setPartner.variables?.playerId === a.id && setPartner.variables?.partnerId === null
           const isForming = newDuoKey === pairKey
           return (
-            <div key={pairKey} className="relative">
-              {isForming && (
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute -inset-px rounded-[13px] ring-2 ring-primary/55 animate-duo-ring"
-                />
-              )}
-              <div className={`relative rounded-lg border border-primary/25 bg-primary/[0.02] p-3 space-y-2 ${isForming ? 'animate-duo-form' : ''}`}>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                    <Users className="h-3 w-3" />
-                    Partners
-                  </span>
-                  {session.match_type === '2v2' && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 text-xs text-muted-foreground hover:text-destructive px-2 gap-1"
-                      disabled={disabled || isBreaking}
-                      onClick={() => setPartner.mutate({ playerId: a.id, partnerId: null })}
-                    >
-                      {isBreaking && <Loader2 className="h-3 w-3 animate-spin" />}
-                      Break
-                    </Button>
-                  )}
-                </div>
-                <div className="relative pt-3 space-y-1.5">
-                  <div aria-hidden className="absolute inset-x-0 top-1 flex items-center pointer-events-none">
-                    <div className={`h-px flex-1 origin-right bg-border ${isForming ? 'animate-duo-link-draw' : ''}`} />
-                    <div className={`mx-1.5 h-1.5 w-1.5 rounded-full bg-primary/55 ${isForming ? 'animate-duo-dot-pop' : ''}`} />
-                    <div className={`h-px flex-1 origin-left bg-border ${isForming ? 'animate-duo-link-draw' : ''}`} />
-                  </div>
-                  <div className={isForming ? 'animate-duo-snap-top' : ''}>
-                    <PlayerRow key={a.id} player={a} inDuoBox {...sharedRowProps} />
-                  </div>
-                  <div className={isForming ? 'animate-duo-snap-bottom' : ''}>
-                    <PlayerRow key={b.id} player={b} inDuoBox {...sharedRowProps} />
-                  </div>
-                </div>
-              </div>
-            </div>
+            <DuoBox
+              key={pairKey}
+              a={a}
+              b={b}
+              isBreaking={isBreaking}
+              isForming={isForming}
+              onBreak={() => setPartner.mutate({ playerId: a.id, partnerId: null })}
+              rowProps={sharedRowProps}
+            />
           )
         })}
 

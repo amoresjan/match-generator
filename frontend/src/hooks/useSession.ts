@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { toast } from '@/lib/toast'
 import type { PreviewRound, Session } from '@/types'
@@ -6,6 +6,10 @@ import type { PreviewRound, Session } from '@/types'
 export const sessionKeys = {
   all: ['sessions'] as const,
   detail: (id: string) => ['sessions', id] as const,
+}
+
+function invalidateSession(qc: QueryClient, sessionId: string) {
+  return qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) })
 }
 
 export function useSession(sessionId: string) {
@@ -37,7 +41,7 @@ export function useAddPlayer(sessionId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (name: string) => api.addPlayer(sessionId, name),
-    onSuccess: () => qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) }),
+    onSuccess: () => invalidateSession(qc, sessionId),
     onError: () => toast.error('Failed to add player'),
   })
 }
@@ -46,7 +50,7 @@ export function useRemovePlayer(sessionId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (playerId: string) => api.removePlayer(sessionId, playerId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) }),
+    onSuccess: () => invalidateSession(qc, sessionId),
     onError: () => toast.error('Failed to remove player'),
   })
 }
@@ -56,7 +60,7 @@ export function useUpdatePlayer(sessionId: string) {
   return useMutation({
     mutationFn: ({ playerId, name }: { playerId: string; name: string }) =>
       api.updatePlayer(sessionId, playerId, name),
-    onSuccess: () => qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) }),
+    onSuccess: () => invalidateSession(qc, sessionId),
     onError: () => toast.error('Failed to rename player'),
   })
 }
@@ -66,7 +70,7 @@ export function useSetSitOut(sessionId: string) {
   return useMutation({
     mutationFn: ({ playerId, sitOut }: { playerId: string; sitOut: boolean }) =>
       api.setSitOut(sessionId, playerId, sitOut),
-    onSuccess: () => qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) }),
+    onSuccess: () => invalidateSession(qc, sessionId),
     onError: () => toast.error('Failed to update sit-out status'),
   })
 }
@@ -76,7 +80,7 @@ export function useSetPartner(sessionId: string) {
   return useMutation({
     mutationFn: ({ playerId, partnerId }: { playerId: string; partnerId: string | null }) =>
       api.setPartner(sessionId, playerId, partnerId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) }),
+    onSuccess: () => invalidateSession(qc, sessionId),
     onError: () => toast.error('Failed to update partner'),
   })
 }
@@ -86,7 +90,7 @@ export function useGenerateRound(sessionId: string) {
   return useMutation({
     mutationFn: () => api.generateRound(sessionId),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) })
+      invalidateSession(qc, sessionId)
       toast.success('Round generated')
     },
     onError: () => toast.error('Failed to generate round'),
@@ -118,7 +122,7 @@ export function useOverrideMatch(sessionId: string) {
           })),
         }
       })
-      qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) })
+      invalidateSession(qc, sessionId)
     },
     onError: () => toast.error('Failed to save match override'),
   })
@@ -150,7 +154,7 @@ export function useSetMatchResult(sessionId: string) {
       if (context?.previous) qc.setQueryData(sessionKeys.detail(sessionId), context.previous)
       toast.error('Failed to record result')
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) }),
+    onSettled: () => invalidateSession(qc, sessionId),
   })
 }
 
@@ -158,7 +162,7 @@ export function useSetSessionActive(sessionId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (isActive: boolean) => api.setSessionActive(sessionId, isActive),
-    onSuccess: () => qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) }),
+    onSuccess: () => invalidateSession(qc, sessionId),
     onError: (err: Error) => toast.error(err.message || 'Failed to update session status'),
   })
 }
@@ -175,7 +179,7 @@ export function useUpdateSession(sessionId: string) {
     mutationFn: (data: Partial<Pick<Session, 'name' | 'match_type' | 'num_courts'>>) =>
       api.updateSession(sessionId, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) })
+      invalidateSession(qc, sessionId)
       toast.success('Settings saved')
     },
     onError: () => toast.error('Failed to save settings'),
@@ -191,7 +195,7 @@ export function useTournamentSetup(sessionId: string) {
       qc.setQueryData<Session>(sessionKeys.detail(sessionId), (old) =>
         old ? { ...old, tournament_data: data.tournament_data } : old
       )
-      qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) })
+      invalidateSession(qc, sessionId)
     },
     onError: () => toast.error('Failed to set up tournament'),
   })

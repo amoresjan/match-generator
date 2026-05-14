@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronUp, Trophy, Users } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useSetMatchResult } from '@/hooks/useSession'
-import { isDuo } from '@/lib/utils'
+import { isDuo, resolveMembers } from '@/lib/utils'
 import type { Match, Round, Player } from '@/types'
 
 function formatRelative(isoString: string): string {
@@ -22,9 +22,6 @@ interface Props {
   currentPlayerId?: string
 }
 
-function resolveMembers(ids: string[], players: Player[], removedPlayers: Record<string, string> = {}): { id: string; name: string }[] {
-  return ids.map((id) => ({ id, name: players.find((p) => p.id === id)?.name ?? removedPlayers[id] ?? '(removed)' }))
-}
 
 function YouPill() {
   return (
@@ -138,8 +135,8 @@ interface MatchBlockProps {
 
 function MatchBlock({ sessionId, match, players, removedPlayers, isAdmin, isActive, currentPlayerId }: MatchBlockProps) {
   const setResult = useSetMatchResult(sessionId)
-  const team1 = resolveMembers(match.team1_players, players, removedPlayers)
-  const team2 = resolveMembers(match.team2_players, players, removedPlayers)
+  const team1 = resolveMembers(match.team1_players, players, removedPlayers, '(removed)')
+  const team2 = resolveMembers(match.team2_players, players, removedPlayers, '(removed)')
   const team1IsDuo = isDuo(match.team1_players, players)
   const team2IsDuo = isDuo(match.team2_players, players)
   const team1Won = match.winner === 'team1'

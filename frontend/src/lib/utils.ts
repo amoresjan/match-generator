@@ -36,6 +36,15 @@ export function resolveNames(ids: string[], players: Player[], removedPlayers: R
   return ids.map((id) => players.find((p) => p.id === id)?.name ?? removedPlayers[id] ?? '?').join(' & ')
 }
 
+export function resolveMembers(
+  ids: string[],
+  players: Player[],
+  removedPlayers: Record<string, string> = {},
+  fallback = '?',
+): { id: string; name: string }[] {
+  return ids.map((id) => ({ id, name: players.find((p) => p.id === id)?.name ?? removedPlayers[id] ?? fallback }))
+}
+
 export function isDuo(ids: string[], players: Player[]): boolean {
   if (ids.length !== 2) return false
   const a = players.find((p) => p.id === ids[0])
