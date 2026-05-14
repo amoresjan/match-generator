@@ -303,11 +303,11 @@ def override_match(request, session_id, match_id):
 # Preview future rounds (fair rotation only, no DB writes)
 # ---------------------------------------------------------------------------
 
-@api_view(['POST'])
+@api_view(['GET'])
 def preview_rounds_view(request, session_id):
     session = get_object_or_404(Session, id=session_id)
 
-    count = max(1, min(int(request.data.get('count', 5)), 10))
+    count = max(1, min(int(request.query_params.get('count', 5)), 10))
 
     try:
         rounds = preview_rounds(session, count)

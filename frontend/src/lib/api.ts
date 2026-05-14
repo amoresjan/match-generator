@@ -112,9 +112,8 @@ export const api = {
     }),
 
   previewRounds: (sessionId: string, count = 5) =>
-    request<PreviewRound[]>(`/sessions/${sessionId}/preview-rounds/`, {
-      method: 'POST',
-      body: JSON.stringify({ count }),
+    request<PreviewRound[]>(`/sessions/${sessionId}/preview-rounds/?count=${count}`, {
+      method: 'GET',
       adminToken: getAdminToken(sessionId) ?? undefined,
     }),
 

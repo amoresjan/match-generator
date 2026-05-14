@@ -239,7 +239,7 @@ def _select_byes_2v2(
         bye_players.extend(unit['ids'])
         remaining_byes -= unit['cost']
         if unit['cost'] == 2:
-            active_pairs = [p for p in active_pairs if p is not unit['ids']]
+            active_pairs = [p for p in active_pairs if p != unit['ids']]
         else:
             active_singles = [s for s in active_singles if s != unit['ids'][0]]
 
