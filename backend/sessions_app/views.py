@@ -26,7 +26,7 @@ from .services.tournament_generator import advance_bracket, build_bracket, rando
 # ---------------------------------------------------------------------------
 
 def _require_admin(request, session: Session):
-    token = request.headers.get('X-Admin-Token') or request.query_params.get('admin_token')
+    token = request.headers.get('X-Admin-Token')
     if str(session.admin_token) != token:
         return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
     return None
@@ -274,6 +274,13 @@ def override_match(request, session_id, match_id):
     match = get_object_or_404(Match, id=match_id, round__session=session)
     ser = ManualMatchOverrideSerializer(data=request.data)
     ser.is_valid(raise_exception=True)
+
+    submitted_ids = {str(x) for x in ser.validated_data['team1_players'] + ser.validated_data['team2_players']}
+    valid_ids = {str(x) for x in session.players.filter(id__in=submitted_ids).values_list('id', flat=True)}
+    unknown = submitted_ids - valid_ids
+    if unknown:
+        return Response({'detail': f'Players not in this session: {", ".join(unknown)}'}, status=400)
+
     with transaction.atomic():
         match.team1_players = [str(x) for x in ser.validated_data['team1_players']]
         match.team2_players = [str(x) for x in ser.validated_data['team2_players']]

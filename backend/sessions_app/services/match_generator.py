@@ -15,6 +15,7 @@ import contextlib
 import hashlib
 import itertools
 import random
+import threading
 from collections import defaultdict
 from typing import TypedDict
 
@@ -223,7 +224,7 @@ def _select_byes_2v2(
         })
 
     for unit in units:
-        unit['jitter'] = random.random()
+        unit['jitter'] = _rng().random()
     units.sort(key=lambda u: (u['wait'], u['jitter']))
 
     bye_players: list[str] = []
@@ -268,7 +269,7 @@ def _pair_singles(active_singles: list[str], hist: dict) -> list[list[str]]:
     if len(active_singles) < 2:
         return [[s] for s in active_singles]
     shuffled = list(active_singles)
-    random.shuffle(shuffled)
+    _rng().shuffle(shuffled)
 
     if len(shuffled) <= PAIRING_ENUM_LIMIT:
         best_cost = float('inf')
@@ -312,7 +313,7 @@ def _generate_2v2(
     courts: list[CourtAssignment] = []
     if len(pool) >= 2:
         # Shuffle so ties are broken randomly (seeded RNG keeps previews deterministic).
-        random.shuffle(pool)
+        _rng().shuffle(pool)
 
         if len(pool) <= PAIRING_ENUM_LIMIT:
             best_cost = float('inf')
@@ -361,7 +362,7 @@ def _generate_2v2_competitive(
     # Sort teams by average wins descending; jitter breaks ties
     pool.sort(key=lambda team: (
         -sum(wins.get(p, 0) for p in team) / max(len(team), 1),
-        random.random(),
+        _rng().random(),
     ))
 
     # Adjacent teams in sorted order face each other (best vs 2nd-best, etc.)
@@ -392,7 +393,7 @@ def _generate_1v1(
     players_needed = min(num_courts * 2, total - (total % 2))
     bye_count = total - players_needed
 
-    jitter = {pid: random.random() for pid in all_ids}
+    jitter = {pid: _rng().random() for pid in all_ids}
     sorted_ids = sorted(all_ids, key=lambda pid: (hist['wait'][pid], jitter[pid]))
     bye_players = sorted_ids[:bye_count]
     active = list(sorted_ids[bye_count:])
@@ -400,7 +401,7 @@ def _generate_1v1(
     courts: list[CourtAssignment] = []
     if len(active) >= 2:
         # Shuffle so ties in cost are broken randomly (seeded RNG keeps previews deterministic).
-        random.shuffle(active)
+        _rng().shuffle(active)
 
         if len(active) <= PAIRING_ENUM_LIMIT:
             best_cost = float('inf')
@@ -442,13 +443,13 @@ def _generate_1v1_competitive(
     players_needed = min(num_courts * 2, total - (total % 2))
     bye_count = total - players_needed
 
-    jitter = {pid: random.random() for pid in all_ids}
+    jitter = {pid: _rng().random() for pid in all_ids}
     sorted_by_wait = sorted(all_ids, key=lambda pid: (hist['wait'][pid], hist['last_sat_out'][pid], jitter[pid]))
     bye_players = sorted_by_wait[:bye_count]
     active = sorted_by_wait[bye_count:]
 
     # Sort active players by wins descending; jitter breaks ties
-    active.sort(key=lambda pid: (-wins.get(pid, 0), random.random()))
+    active.sort(key=lambda pid: (-wins.get(pid, 0), _rng().random()))
 
     courts: list[CourtAssignment] = []
     for i in range(0, len(active) - 1, 2):
@@ -466,21 +467,29 @@ def _generate_1v1_competitive(
 # Public entry point
 # ---------------------------------------------------------------------------
 
+# Per-thread RNG so concurrent requests don't corrupt each other's seeded state.
+_thread_local = threading.local()
+_fallback_rng = random.Random()
+
+
+def _rng() -> random.Random:
+    return getattr(_thread_local, 'rng', _fallback_rng)
+
+
 @contextlib.contextmanager
 def _seeded(session_id, round_number: int):
     """
-    Temporarily seed the global RNG with a value derived from session + round number.
+    Install a thread-local RNG seeded from session + round number.
     Same session + same round = same matchups every time, so preview matches reality.
-    Restores the original RNG state on exit.
     """
     key = f"{session_id}:{round_number}".encode()
     seed = int(hashlib.md5(key).hexdigest(), 16) % (2 ** 32)
-    state = random.getstate()
-    random.seed(seed)
+    prev = getattr(_thread_local, 'rng', None)
+    _thread_local.rng = random.Random(seed)
     try:
         yield
     finally:
-        random.setstate(state)
+        _thread_local.rng = prev
 
 
 def _copy_hist(hist: dict) -> dict:
