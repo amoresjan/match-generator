@@ -49,7 +49,7 @@ func (h *Handler) CreateSession(w http.ResponseWriter, r *http.Request) {
 		SessionMode:    sessMode,
 	})
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "could not create session")
+		writeServerError(w, "could not create session", err)
 		return
 	}
 
@@ -88,20 +88,20 @@ func (h *Handler) GetSession(w http.ResponseWriter, r *http.Request) {
 		if isNotFound(err) {
 			writeError(w, http.StatusNotFound, "not found")
 		} else {
-			writeError(w, http.StatusInternalServerError, "error fetching session")
+			writeServerError(w, "error fetching session", err)
 		}
 		return
 	}
 
 	players, err := h.store.GetPlayersForSession(r.Context(), sessionID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "error fetching players")
+		writeServerError(w, "error fetching players", err)
 		return
 	}
 
 	rounds, err := h.store.GetRoundsWithMatches(r.Context(), sessionID, sinceRound)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "error fetching rounds")
+		writeServerError(w, "error fetching rounds", err)
 		return
 	}
 
@@ -126,7 +126,7 @@ func (h *Handler) UpdateSession(w http.ResponseWriter, r *http.Request) {
 		if isNotFound(err) {
 			writeError(w, http.StatusNotFound, "not found")
 		} else {
-			writeError(w, http.StatusInternalServerError, "error fetching session")
+			writeServerError(w, "error fetching session", err)
 		}
 		return
 	}
@@ -162,7 +162,7 @@ func (h *Handler) UpdateSession(w http.ResponseWriter, r *http.Request) {
 		SessionMode:    body.SessionMode,
 	})
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "could not update session")
+		writeServerError(w, "could not update session", err)
 		return
 	}
 
@@ -190,7 +190,7 @@ func (h *Handler) SetSessionActive(w http.ResponseWriter, r *http.Request) {
 		if isNotFound(err) {
 			writeError(w, http.StatusNotFound, "not found")
 		} else {
-			writeError(w, http.StatusInternalServerError, "error")
+			writeServerError(w, "error", err)
 		}
 		return
 	}
@@ -213,7 +213,7 @@ func (h *Handler) SetSessionActive(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.store.SetSessionActive(r.Context(), sessionID, *body.IsActive); err != nil {
-		writeError(w, http.StatusInternalServerError, "could not update session")
+		writeServerError(w, "could not update session", err)
 		return
 	}
 

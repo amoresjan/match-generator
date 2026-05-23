@@ -21,7 +21,7 @@ func (h *Handler) AddPlayer(w http.ResponseWriter, r *http.Request) {
 		if isNotFound(err) {
 			writeError(w, http.StatusNotFound, "not found")
 		} else {
-			writeError(w, http.StatusInternalServerError, "error")
+			writeServerError(w, "error", err)
 		}
 		return
 	}
@@ -47,7 +47,7 @@ func (h *Handler) AddPlayer(w http.ResponseWriter, r *http.Request) {
 		if isUniqueViolation(err) {
 			writeError(w, http.StatusBadRequest, "a player with that name already exists")
 		} else {
-			writeError(w, http.StatusInternalServerError, "could not add player")
+			writeServerError(w, "could not add player", err)
 		}
 		return
 	}
@@ -72,7 +72,7 @@ func (h *Handler) GetPlayer(w http.ResponseWriter, r *http.Request) {
 		if isNotFound(err) {
 			writeError(w, http.StatusNotFound, "not found")
 		} else {
-			writeError(w, http.StatusInternalServerError, "error")
+			writeServerError(w, "error", err)
 		}
 		return
 	}
@@ -100,7 +100,7 @@ func (h *Handler) UpdatePlayer(w http.ResponseWriter, r *http.Request) {
 		if isNotFound(err) {
 			writeError(w, http.StatusNotFound, "not found")
 		} else {
-			writeError(w, http.StatusInternalServerError, "error")
+			writeServerError(w, "error", err)
 		}
 		return
 	}
@@ -131,7 +131,7 @@ func (h *Handler) UpdatePlayer(w http.ResponseWriter, r *http.Request) {
 		if isNotFound(err) {
 			writeError(w, http.StatusNotFound, "not found")
 		} else {
-			writeError(w, http.StatusInternalServerError, "could not update player")
+			writeServerError(w, "could not update player", err)
 		}
 		return
 	}
@@ -175,7 +175,7 @@ func (h *Handler) DeletePlayer(w http.ResponseWriter, r *http.Request) {
 		if isNotFound(err) {
 			writeError(w, http.StatusNotFound, "not found")
 		} else {
-			writeError(w, http.StatusInternalServerError, "error")
+			writeServerError(w, "error", err)
 		}
 		return
 	}
@@ -193,7 +193,7 @@ func (h *Handler) DeletePlayer(w http.ResponseWriter, r *http.Request) {
 		if isNotFound(err) {
 			writeError(w, http.StatusNotFound, "not found")
 		} else {
-			writeError(w, http.StatusInternalServerError, "error")
+			writeServerError(w, "error", err)
 		}
 		return
 	}
@@ -213,12 +213,12 @@ func (h *Handler) DeletePlayer(w http.ResponseWriter, r *http.Request) {
 	removed[playerID.String()] = player.Name
 	newRemovedJSON, _ := json.Marshal(removed)
 	if err := h.store.SetRemovedPlayers(r.Context(), sessionID, newRemovedJSON); err != nil {
-		writeError(w, http.StatusInternalServerError, "error updating session")
+		writeServerError(w, "error updating session", err)
 		return
 	}
 
 	if err := h.store.DeletePlayer(r.Context(), playerID); err != nil {
-		writeError(w, http.StatusInternalServerError, "could not delete player")
+		writeServerError(w, "could not delete player", err)
 		return
 	}
 	h.hub.Notify(sessionID)
@@ -242,7 +242,7 @@ func (h *Handler) SetPartner(w http.ResponseWriter, r *http.Request) {
 		if isNotFound(err) {
 			writeError(w, http.StatusNotFound, "not found")
 		} else {
-			writeError(w, http.StatusInternalServerError, "error")
+			writeServerError(w, "error", err)
 		}
 		return
 	}
@@ -268,7 +268,7 @@ func (h *Handler) SetPartner(w http.ResponseWriter, r *http.Request) {
 		if isNotFound(err) {
 			writeError(w, http.StatusNotFound, "not found")
 		} else {
-			writeError(w, http.StatusInternalServerError, "error")
+			writeServerError(w, "error", err)
 		}
 		return
 	}
@@ -327,7 +327,7 @@ func (h *Handler) SetPartner(w http.ResponseWriter, r *http.Request) {
 		if isNotFound(err) {
 			writeError(w, http.StatusNotFound, "player not found")
 		} else {
-			writeError(w, http.StatusInternalServerError, "could not set partner")
+			writeServerError(w, "could not set partner", err)
 		}
 		return
 	}
@@ -335,7 +335,7 @@ func (h *Handler) SetPartner(w http.ResponseWriter, r *http.Request) {
 	// Reload with updated partner info.
 	updated, err := h.store.GetPlayer(r.Context(), playerID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "error reloading player")
+		writeServerError(w, "error reloading player", err)
 		return
 	}
 	h.hub.Notify(sessionID)

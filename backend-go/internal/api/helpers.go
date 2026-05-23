@@ -24,6 +24,13 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, map[string]string{"detail": msg})
 }
 
+// writeServerError logs err and writes a 500 response. Use this instead of
+// writeError(w, 500, ...) so every internal failure is visible in logs.
+func writeServerError(w http.ResponseWriter, msg string, err error) {
+	slog.Error(msg, "err", err)
+	writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": msg})
+}
+
 func uuidParam(r *http.Request, key string) (uuid.UUID, error) {
 	return uuid.Parse(chi.URLParam(r, key))
 }
