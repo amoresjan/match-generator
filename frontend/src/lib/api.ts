@@ -2,6 +2,10 @@ import type { Match, Player, PreviewRound, Round, Session, SessionWithToken, Tou
 
 export const BASE = import.meta.env.VITE_API_URL ?? '/api'
 
+// SSE uses the same base as all other API calls so it goes through the Vite proxy
+// in dev (same-origin, no CORS) and directly to the Railway backend in prod.
+export const SSE_BASE = BASE
+
 export function getAdminToken(sessionId: string): string | null {
   return localStorage.getItem(`admin_token:${sessionId}`)
 }

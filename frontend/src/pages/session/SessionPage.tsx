@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useSession, useGenerateRound, useUpdateSession, useSetSessionActive, useTournamentSetup, useTournamentAdvance } from '@/hooks/useSession'
 import { useClaimedPlayer } from '@/hooks/useClaimedPlayer'
+import { useSessionPushSync } from '@/hooks/useSessionPushSync'
 import { SPORTS, getSport } from '@/lib/sports'
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary'
 import { OnboardingWizard, hasBeenOnboarded, hasSeenAdminOnboarding } from '@/features/session/components/OnboardingWizard'
@@ -46,6 +47,7 @@ export function SessionPage() {
   const [showWizard, setShowWizard] = useState(() => !hasBeenOnboarded(sessionId!))
   const [wizardIsCoHost, setWizardIsCoHost] = useState(false)
   const { claimedPlayerId, claimPlayer } = useClaimedPlayer(sessionId!)
+  useSessionPushSync(sessionId!, claimedPlayerId)
   const claimPromptTriggered = useRef(false)
   const [showClaimPrompt, setShowClaimPrompt] = useState(false)
   const [isSlowLoad, setIsSlowLoad] = useState(false)

@@ -55,6 +55,12 @@ export async function subscribeToPush(sessionId: string, playerId?: string): Pro
   if (support !== 'supported') return false
 
   const reg = await navigator.serviceWorker.ready
+
+  // Always start fresh — an existing subscription may be tied to a different
+  // VAPID key (e.g. from a previous backend), which the push service will reject.
+  const existing = await reg.pushManager.getSubscription()
+  if (existing) await existing.unsubscribe()
+
   const { public_key } = await api.getVapidPublicKey()
   const applicationServerKey = urlBase64ToUint8Array(public_key) as BufferSource
 
