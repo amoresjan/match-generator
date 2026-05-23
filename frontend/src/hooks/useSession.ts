@@ -13,6 +13,7 @@ function invalidateSession(qc: QueryClient, sessionId: string) {
   return qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) })
 }
 
+
 export function useSession(sessionId: string) {
   const qc = useQueryClient()
 
@@ -28,7 +29,70 @@ export function useSession(sessionId: string) {
       connected = true
     }
 
-    es.addEventListener('update', () => {
+    es.addEventListener('update', (e: MessageEvent) => {
+      try {
+        const payload = JSON.parse(e.data)
+
+        // Round added: append to rounds array without a GET /session.
+        if (payload?.round) {
+          qc.setQueryData<Session>(sessionKeys.detail(sessionId), (old) => {
+            if (!old) return old
+            // Guard against duplicates (mutation onSuccess may have already added it).
+            if (old.rounds.some((r) => r.id === payload.round.id)) return old
+            return {
+              ...old,
+              rounds: [...old.rounds, payload.round].sort((a, b) => a.number - b.number),
+            }
+          })
+          return
+        }
+
+        // Match updated: patch in place without a GET /session.
+        if (payload?.match) {
+          qc.setQueryData<Session>(sessionKeys.detail(sessionId), (old) => {
+            if (!old) return old
+            return {
+              ...old,
+              rounds: old.rounds.map((r) => ({
+                ...r,
+                matches: r.matches.map((m) =>
+                  m.id === payload.match.id ? payload.match : m
+                ),
+              })),
+            }
+          })
+          return
+        }
+
+        // Player added or updated: upsert in the players array.
+        if (payload?.player) {
+          qc.setQueryData<Session>(sessionKeys.detail(sessionId), (old) => {
+            if (!old) return old
+            const exists = old.players.some((p) => p.id === payload.player.id)
+            return {
+              ...old,
+              players: exists
+                ? old.players.map((p) => p.id === payload.player.id ? payload.player : p)
+                : [...old.players, payload.player],
+            }
+          })
+          return
+        }
+
+        // Player removed: filter out of the players array.
+        if (payload?.player_removed) {
+          qc.setQueryData<Session>(sessionKeys.detail(sessionId), (old) => {
+            if (!old) return old
+            return {
+              ...old,
+              players: old.players.filter((p) => p.id !== payload.player_removed),
+            }
+          })
+          return
+        }
+      } catch {
+        // ignore — fall through to full refetch
+      }
       qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) })
     })
 
@@ -72,7 +136,19 @@ export function useAddPlayer(sessionId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (name: string) => api.addPlayer(sessionId, name),
-    onSuccess: () => invalidateSession(qc, sessionId),
+    onSuccess: (newPlayer) => {
+      // Instant UI feedback via cache patch.
+      qc.setQueryData<Session>(sessionKeys.detail(sessionId), (old) => {
+        if (!old) return old
+        if (old.players.some((p) => p.id === newPlayer.id)) return old
+        return { ...old, players: [...old.players, newPlayer] }
+      })
+      // Full re-sync so the server recomputes round history context and the
+      // upcoming rounds preview regenerates with the correct player pool.
+      // The SSE event for this mutation patches the cache directly (no second
+      // GET /session), so this invalidation results in exactly one GET.
+      invalidateSession(qc, sessionId)
+    },
     onError: () => toast.error('Failed to add player'),
   })
 }
@@ -81,7 +157,13 @@ export function useRemovePlayer(sessionId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (playerId: string) => api.removePlayer(sessionId, playerId),
-    onSuccess: () => invalidateSession(qc, sessionId),
+    onSuccess: (_data, playerId) => {
+      qc.setQueryData<Session>(sessionKeys.detail(sessionId), (old) => {
+        if (!old) return old
+        return { ...old, players: old.players.filter((p) => p.id !== playerId) }
+      })
+      invalidateSession(qc, sessionId)
+    },
     onError: () => toast.error('Failed to remove player'),
   })
 }
@@ -91,7 +173,13 @@ export function useUpdatePlayer(sessionId: string) {
   return useMutation({
     mutationFn: ({ playerId, name }: { playerId: string; name: string }) =>
       api.updatePlayer(sessionId, playerId, name),
-    onSuccess: () => invalidateSession(qc, sessionId),
+    onSuccess: (updatedPlayer) => {
+      // Rename doesn't affect the rotation — cache patch is sufficient.
+      qc.setQueryData<Session>(sessionKeys.detail(sessionId), (old) => {
+        if (!old) return old
+        return { ...old, players: old.players.map((p) => p.id === updatedPlayer.id ? updatedPlayer : p) }
+      })
+    },
     onError: () => toast.error('Failed to rename player'),
   })
 }
@@ -101,7 +189,15 @@ export function useSetSitOut(sessionId: string) {
   return useMutation({
     mutationFn: ({ playerId, sitOut }: { playerId: string; sitOut: boolean }) =>
       api.setSitOut(sessionId, playerId, sitOut),
-    onSuccess: () => invalidateSession(qc, sessionId),
+    onSuccess: (updatedPlayer) => {
+      qc.setQueryData<Session>(sessionKeys.detail(sessionId), (old) => {
+        if (!old) return old
+        return { ...old, players: old.players.map((p) => p.id === updatedPlayer.id ? updatedPlayer : p) }
+      })
+      // sit_out change affects the active player pool — re-sync so the preview
+      // regenerates correctly.
+      invalidateSession(qc, sessionId)
+    },
     onError: () => toast.error('Failed to update sit-out status'),
   })
 }
@@ -120,8 +216,17 @@ export function useGenerateRound(sessionId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: () => api.generateRound(sessionId),
-    onSuccess: () => {
-      invalidateSession(qc, sessionId)
+    onSuccess: (newRound) => {
+      // Patch the cache directly with the returned round — the SSE event will
+      // arrive with the same payload shortly after and is a no-op (duplicate guard).
+      qc.setQueryData<Session>(sessionKeys.detail(sessionId), (old) => {
+        if (!old) return old
+        if (old.rounds.some((r) => r.id === newRound.id)) return old
+        return {
+          ...old,
+          rounds: [...old.rounds, newRound].sort((a, b) => a.number - b.number),
+        }
+      })
       toast.success('Round generated')
     },
     onError: () => toast.error('Failed to generate round'),
@@ -185,7 +290,8 @@ export function useSetMatchResult(sessionId: string) {
       if (context?.previous) qc.setQueryData(sessionKeys.detail(sessionId), context.previous)
       toast.error('Failed to record result')
     },
-    onSettled: () => invalidateSession(qc, sessionId),
+    // No onSettled: the SSE update event carries the match payload and patches
+    // the cache directly, so no extra GET /session is needed.
   })
 }
 

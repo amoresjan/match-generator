@@ -85,14 +85,22 @@ func (h *Handler) GenerateRound(w http.ResponseWriter, r *http.Request) {
 		Payload:   map[string]any{"title": session.Name, "body": fmt.Sprintf("Round %d is ready!", rnd.Number), "url": "/session/" + sessionID.String()},
 		PerPlayer: roundPushPayloads(session.Name, rnd.Number, sessionID.String(), matches, playerNames),
 	})
-	h.hub.Notify(sessionID)
 
-	writeJSON(w, http.StatusCreated, roundResp{
+	resp := roundResp{
 		ID:        rnd.ID,
 		Number:    rnd.Number,
 		CreatedAt: rnd.CreatedAt,
 		Matches:   matchRespSlice(matches),
-	})
+	}
+	// Send the new round in the SSE payload so connected clients can append it
+	// to their local cache without a follow-up GET /session round-trip.
+	if payload, err := json.Marshal(map[string]any{"round": resp}); err == nil {
+		h.hub.NotifyWithPayload(sessionID, payload)
+	} else {
+		h.hub.Notify(sessionID)
+	}
+
+	writeJSON(w, http.StatusCreated, resp)
 }
 
 func (h *Handler) OverrideMatch(w http.ResponseWriter, r *http.Request) {
@@ -245,8 +253,16 @@ func (h *Handler) SetMatchResult(w http.ResponseWriter, r *http.Request) {
 		writeServerError(w, "could not set result", err)
 		return
 	}
-	h.hub.Notify(sessionID)
-	writeJSON(w, http.StatusOK, toMatchResp(updated))
+
+	// Send the updated match inside the SSE payload so connected clients can
+	// patch their local cache directly — no follow-up GET /session needed.
+	matchResp := toMatchResp(updated)
+	if payload, err := json.Marshal(map[string]any{"match": matchResp}); err == nil {
+		h.hub.NotifyWithPayload(sessionID, payload)
+	} else {
+		h.hub.Notify(sessionID)
+	}
+	writeJSON(w, http.StatusOK, matchResp)
 }
 
 func (h *Handler) PreviewRounds(w http.ResponseWriter, r *http.Request) {

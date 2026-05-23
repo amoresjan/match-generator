@@ -55,8 +55,9 @@ func (h *Handler) AddPlayer(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	h.hub.Notify(sessionID)
-	writeJSON(w, http.StatusCreated, toPlayerResp(player))
+	resp := toPlayerResp(player)
+	notifyPlayer(h.hub, sessionID, resp)
+	writeJSON(w, http.StatusCreated, resp)
 }
 
 func (h *Handler) GetPlayer(w http.ResponseWriter, r *http.Request) {
@@ -158,8 +159,9 @@ func (h *Handler) UpdatePlayer(w http.ResponseWriter, r *http.Request) {
 			RestrictTo: map[string]struct{}{playerID.String(): {}},
 		})
 	}
-	h.hub.Notify(sessionID)
-	writeJSON(w, http.StatusOK, toPlayerResp(player))
+	resp := toPlayerResp(player)
+	notifyPlayer(h.hub, sessionID, resp)
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (h *Handler) DeletePlayer(w http.ResponseWriter, r *http.Request) {
@@ -225,7 +227,11 @@ func (h *Handler) DeletePlayer(w http.ResponseWriter, r *http.Request) {
 		writeServerError(w, "could not delete player", err)
 		return
 	}
-	h.hub.Notify(sessionID)
+	if payload, err := json.Marshal(map[string]any{"player_removed": playerID.String()}); err == nil {
+		h.hub.NotifyWithPayload(sessionID, payload)
+	} else {
+		h.hub.Notify(sessionID)
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -351,3 +357,13 @@ var errNotInSession = &appError{"partner not in this session"}
 type appError struct{ msg string }
 
 func (e *appError) Error() string { return e.msg }
+
+// notifyPlayer sends the updated player in the SSE payload so connected clients
+// can patch their local cache without a follow-up GET /session.
+func notifyPlayer(h *Hub, sessionID uuid.UUID, p playerResp) {
+	if payload, err := json.Marshal(map[string]any{"player": p}); err == nil {
+		h.NotifyWithPayload(sessionID, payload)
+	} else {
+		h.Notify(sessionID)
+	}
+}

@@ -55,8 +55,14 @@ func (h *Handler) SessionEvents(w http.ResponseWriter, r *http.Request) {
 		select {
 		case <-r.Context().Done():
 			return
-		case <-updates:
-			fmt.Fprint(w, "event: update\ndata: {}\n\n")
+		case msg := <-updates:
+			if msg.payload != nil {
+				// Carry the payload so the client can patch its cache without
+				// a follow-up GET /session round-trip.
+				fmt.Fprintf(w, "event: update\ndata: %s\n\n", msg.payload)
+			} else {
+				fmt.Fprint(w, "event: update\ndata: {}\n\n")
+			}
 			rc.Flush()
 		case <-heartbeat.C:
 			fmt.Fprint(w, ": heartbeat\n\n")

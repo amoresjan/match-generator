@@ -6,20 +6,27 @@ import (
 	"github.com/google/uuid"
 )
 
-// Hub broadcasts session-change signals to connected SSE clients.
+// hubMsg is the value sent through subscriber channels.
+// payload is the JSON bytes to embed in the SSE data field.
+// A nil payload means "something changed — refetch" (no inline data).
+type hubMsg struct {
+	payload []byte
+}
+
+// Hub broadcasts session-change events to connected SSE clients.
 type Hub struct {
 	mu   sync.RWMutex
-	subs map[uuid.UUID][]chan struct{}
+	subs map[uuid.UUID][]chan hubMsg
 }
 
 func newHub() *Hub {
-	return &Hub{subs: make(map[uuid.UUID][]chan struct{})}
+	return &Hub{subs: make(map[uuid.UUID][]chan hubMsg)}
 }
 
 // Subscribe registers a listener for the given session. Returns a receive
 // channel and an unsubscribe function; the caller must call unsubscribe when done.
-func (h *Hub) Subscribe(sessionID uuid.UUID) (<-chan struct{}, func()) {
-	ch := make(chan struct{}, 1)
+func (h *Hub) Subscribe(sessionID uuid.UUID) (<-chan hubMsg, func()) {
+	ch := make(chan hubMsg, 1)
 
 	h.mu.Lock()
 	h.subs[sessionID] = append(h.subs[sessionID], ch)
@@ -43,14 +50,26 @@ func (h *Hub) Subscribe(sessionID uuid.UUID) (<-chan struct{}, func()) {
 	return ch, unsub
 }
 
-// Notify sends a signal to all listeners for the given session.
-// Non-blocking: listeners that already have a pending signal are skipped.
+// Notify signals all listeners that the session changed.
+// The client will receive an empty payload and must do a full refetch.
 func (h *Hub) Notify(sessionID uuid.UUID) {
+	h.broadcast(sessionID, nil)
+}
+
+// NotifyWithPayload sends payload to all listeners for the given session.
+// Clients that receive a non-nil payload can apply it directly to their local
+// cache without a follow-up GET /session round-trip.
+func (h *Hub) NotifyWithPayload(sessionID uuid.UUID, payload []byte) {
+	h.broadcast(sessionID, payload)
+}
+
+func (h *Hub) broadcast(sessionID uuid.UUID, payload []byte) {
+	msg := hubMsg{payload: payload}
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	for _, ch := range h.subs[sessionID] {
 		select {
-		case ch <- struct{}{}:
+		case ch <- msg:
 		default:
 		}
 	}
