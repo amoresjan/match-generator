@@ -53,21 +53,23 @@ func (c *Client) IsConfigured() bool {
 // SendToSession fans out a push message to all subscriptions for the given session.
 // Stale subscriptions (HTTP 410) are deleted automatically.
 // Each push fires in a goroutine; the method waits for all to finish.
-func (c *Client) SendToSession(ctx context.Context, sessionID uuid.UUID, opts SendOptions) {
+// Safe to call in a goroutine — it uses its own context so the caller's request
+// context being cancelled doesn't abort the DB fetch or the push sends.
+func (c *Client) SendToSession(_ context.Context, sessionID uuid.UUID, opts SendOptions) {
 	if !c.IsConfigured() {
 		return
 	}
+
+	// Detach from the caller's context: this is typically called in a goroutine
+	// that outlives the HTTP handler, so r.Context() may already be cancelled.
+	ctx, cancel := context.WithTimeout(context.Background(), sendTimeout)
+	defer cancel()
 
 	subs, err := c.store.GetPushSubsForSession(ctx, sessionID)
 	if err != nil {
 		slog.Warn("push: failed to fetch subscriptions", "err", err)
 		return
 	}
-
-	// Push goroutines get their own deadline so a slow push service doesn't
-	// block the request context.
-	pushCtx, cancel := context.WithTimeout(context.Background(), sendTimeout)
-	defer cancel()
 
 	var wg sync.WaitGroup
 	for _, sub := range subs {
@@ -93,13 +95,16 @@ func (c *Client) SendToSession(ctx context.Context, sessionID uuid.UUID, opts Se
 		}
 
 		sub := sub // capture loop variable
-		data := data
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := c.send(pushCtx, sub, data); err != nil && isGone(err) {
-				if delErr := c.store.DeletePushSubByID(context.Background(), sub.ID); delErr != nil {
-					slog.Warn("push: failed to delete stale subscription", "err", delErr)
+			if err := c.send(ctx, sub, data); err != nil {
+				if isGone(err) {
+					if delErr := c.store.DeletePushSubByID(context.Background(), sub.ID); delErr != nil {
+						slog.Warn("push: failed to delete stale subscription", "err", delErr)
+					}
+				} else {
+					slog.Warn("push: send failed", "endpoint", sub.Endpoint, "err", err)
 				}
 			}
 		}()
