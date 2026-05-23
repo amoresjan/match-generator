@@ -123,6 +123,49 @@ func (q *Queries) SetRemovedPlayers(ctx context.Context, id uuid.UUID, removed j
 	return err
 }
 
+// GetStaleSessions returns active sessions whose last activity is older than cutoff.
+// Sessions that never generated a round use created_at as the activity timestamp.
+func (q *Queries) GetStaleSessions(ctx context.Context, cutoff time.Time) ([]Session, error) {
+	const sql = `
+		SELECT id, admin_token, name, match_type, num_courts, generation_mode, sport_type,
+		       session_mode, tournament_data, created_at, is_active, auto_deactivated,
+		       last_round_at, removed_players
+		FROM sessions_app_session
+		WHERE is_active = TRUE
+		  AND (
+		    (last_round_at IS NOT NULL AND last_round_at < $1)
+		    OR  (last_round_at IS NULL  AND created_at    < $1)
+		  )`
+
+	rows, err := q.db.Query(ctx, sql, cutoff)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sessions []Session
+	for rows.Next() {
+		s, err := scanSession(rows)
+		if err != nil {
+			return nil, err
+		}
+		sessions = append(sessions, s)
+	}
+	return sessions, rows.Err()
+}
+
+// DeactivateSessionsBatch marks the given sessions as auto-deactivated in one statement.
+func (q *Queries) DeactivateSessionsBatch(ctx context.Context, ids []uuid.UUID) (int64, error) {
+	tag, err := q.db.Exec(ctx,
+		`UPDATE sessions_app_session SET is_active = FALSE, auto_deactivated = TRUE WHERE id = ANY($1)`,
+		ids,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}
+
 func scanSession(row interface{ Scan(...any) error }) (Session, error) {
 	var s Session
 	err := row.Scan(

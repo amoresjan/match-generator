@@ -13,6 +13,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 
@@ -39,7 +40,8 @@ func main() {
 	}
 
 	// Connect.
-	ctx := context.Background()
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	defer cancelCtx()
 	pool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
 		slog.Error("db connect failed", "err", err)
@@ -75,11 +77,32 @@ func main() {
 		}
 	}()
 
+	// Background job: deactivate sessions inactive for 24 h.
+	jobDone := make(chan struct{})
+	go func() {
+		defer close(jobDone)
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		// Run once immediately at startup, then on each tick.
+		deactivateInactiveSessions(ctx, s, pushClient)
+		for {
+			select {
+			case <-ticker.C:
+				deactivateInactiveSessions(ctx, s, pushClient)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
 	// Graceful shutdown on SIGTERM/SIGINT (Railway sends SIGTERM).
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	slog.Info("shutting down...")
+
+	cancelCtx() // stop the background job
+	<-jobDone
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -115,4 +138,35 @@ func envOr(key, def string) string {
 		return v
 	}
 	return def
+}
+
+func deactivateInactiveSessions(ctx context.Context, s *store.Store, pushClient *push.Client) {
+	cutoff := time.Now().Add(-24 * time.Hour)
+	sessions, err := s.GetStaleSessions(ctx, cutoff)
+	if err != nil {
+		slog.Error("deactivate job: query failed", "err", err)
+		return
+	}
+	if len(sessions) == 0 {
+		return
+	}
+
+	ids := make([]uuid.UUID, len(sessions))
+	for i, sess := range sessions {
+		ids[i] = sess.ID
+		pushClient.SendToSession(ctx, sess.ID, push.SendOptions{
+			Payload: map[string]any{
+				"title": sess.Name,
+				"body":  "This session was closed automatically after 24h of inactivity.",
+				"url":   "/session/" + sess.ID.String(),
+			},
+		})
+	}
+
+	count, err := s.DeactivateSessionsBatch(ctx, ids)
+	if err != nil {
+		slog.Error("deactivate job: update failed", "err", err)
+		return
+	}
+	slog.Info("deactivate job: sessions deactivated", "count", count)
 }
