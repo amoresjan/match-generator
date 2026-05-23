@@ -42,7 +42,16 @@ func main() {
 	// Connect.
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	defer cancelCtx()
-	pool, err := pgxpool.New(ctx, dbURL)
+
+	poolCfg, err := pgxpool.ParseConfig(dbURL)
+	if err != nil {
+		slog.Error("db config parse failed", "err", err)
+		os.Exit(1)
+	}
+	poolCfg.MinConns = 2  // keep warm connections; avoids TCP+TLS handshake on first request after idle
+	poolCfg.MaxConns = 10 // headroom for concurrent requests
+
+	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
 		slog.Error("db connect failed", "err", err)
 		os.Exit(1)

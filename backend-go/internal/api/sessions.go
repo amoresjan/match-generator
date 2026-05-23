@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/amoresjan/match-generator/backend/internal/push"
 	"github.com/amoresjan/match-generator/backend/internal/store"
@@ -83,6 +84,7 @@ func (h *Handler) GetSession(w http.ResponseWriter, r *http.Request) {
 		sinceRound = &n
 	}
 
+	// Fetch session first (need to 404-check before fetching related data).
 	session, err := h.store.GetSession(r.Context(), sessionID)
 	if err != nil {
 		if isNotFound(err) {
@@ -93,15 +95,22 @@ func (h *Handler) GetSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	players, err := h.store.GetPlayersForSession(r.Context(), sessionID)
-	if err != nil {
-		writeServerError(w, "error fetching players", err)
-		return
-	}
-
-	rounds, err := h.store.GetRoundsWithMatches(r.Context(), sessionID, sinceRound)
-	if err != nil {
-		writeServerError(w, "error fetching rounds", err)
+	// Players and rounds are independent — fetch in parallel.
+	var players []store.PlayerWithPartner
+	var rounds []store.RoundWithMatches
+	g, gctx := errgroup.WithContext(r.Context())
+	g.Go(func() error {
+		var e error
+		players, e = h.store.GetPlayersForSession(gctx, sessionID)
+		return e
+	})
+	g.Go(func() error {
+		var e error
+		rounds, e = h.store.GetRoundsWithMatches(gctx, sessionID, sinceRound)
+		return e
+	})
+	if err := g.Wait(); err != nil {
+		writeServerError(w, "error fetching session data", err)
 		return
 	}
 

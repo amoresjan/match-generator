@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/amoresjan/match-generator/backend/internal/generator"
 	"github.com/amoresjan/match-generator/backend/internal/push"
 	"github.com/amoresjan/match-generator/backend/internal/store"
@@ -36,24 +38,31 @@ func (h *Handler) GenerateRound(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	players, err := h.store.GetActivePlayers(r.Context(), sessionID)
-	if err != nil {
-		writeServerError(w, "error fetching players", err)
-		return
-	}
-	hist, err := h.store.GetFullHistory(r.Context(), sessionID)
-	if err != nil {
-		writeServerError(w, "error fetching history", err)
-		return
-	}
-
+	// Players, history (and wins for competitive) are independent — fetch in parallel.
+	var players []store.PlayerWithPartner
+	var hist []store.HistoryRow
 	var wins map[string]int
+	g, gctx := errgroup.WithContext(r.Context())
+	g.Go(func() error {
+		var e error
+		players, e = h.store.GetActivePlayers(gctx, sessionID)
+		return e
+	})
+	g.Go(func() error {
+		var e error
+		hist, e = h.store.GetFullHistory(gctx, sessionID)
+		return e
+	})
 	if session.GenerationMode == "competitive" {
-		wins, err = h.store.GetWinCountsForSession(r.Context(), sessionID)
-		if err != nil {
-			writeServerError(w, "error fetching wins", err)
-			return
-		}
+		g.Go(func() error {
+			var e error
+			wins, e = h.store.GetWinCountsForSession(gctx, sessionID)
+			return e
+		})
+	}
+	if err := g.Wait(); err != nil {
+		writeServerError(w, "error fetching round data", err)
+		return
 	}
 
 	generated, err := generator.GenerateRound(session, players, hist, wins)
