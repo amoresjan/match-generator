@@ -1,0 +1,118 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
+
+	"github.com/amoresjan/match-generator/backend/internal/api"
+	"github.com/amoresjan/match-generator/backend/internal/push"
+	"github.com/amoresjan/match-generator/backend/internal/store"
+)
+
+func main() {
+	// Load .env in development; ignore error in production.
+	_ = godotenv.Load()
+
+	dbURL := mustEnv("DATABASE_URL")
+	port := envOr("PORT", "8000")
+	allowedOrigins := envOr("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000")
+	vapidPriv := os.Getenv("VAPID_PRIVATE_KEY")
+	vapidPub := os.Getenv("VAPID_PUBLIC_KEY")
+	vapidEmail := os.Getenv("VAPID_CLAIMS_EMAIL")
+
+	// Run migrations.
+	if err := runMigrations(dbURL); err != nil {
+		slog.Error("migration failed", "err", err)
+		os.Exit(1)
+	}
+
+	// Connect.
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, dbURL)
+	if err != nil {
+		slog.Error("db connect failed", "err", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
+
+	if err := pool.Ping(ctx); err != nil {
+		slog.Error("db ping failed", "err", err)
+		os.Exit(1)
+	}
+	slog.Info("database connected")
+
+	s := store.NewStore(pool)
+	pushClient := push.New(vapidPriv, vapidPub, vapidEmail, s)
+	h := api.NewHandler(s, pushClient, vapidPub)
+	router := h.Router(allowedOrigins)
+
+	srv := &http.Server{
+		Addr:         ":" + port,
+		Handler:      router,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	// Start server in goroutine so we can listen for shutdown signals.
+	go func() {
+		slog.Info("server starting", "port", port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("server error", "err", err)
+			os.Exit(1)
+		}
+	}()
+
+	// Graceful shutdown on SIGTERM/SIGINT (Railway sends SIGTERM).
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	slog.Info("shutting down...")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		slog.Error("shutdown error", "err", err)
+	}
+	slog.Info("server stopped")
+}
+
+func runMigrations(dbURL string) error {
+	m, err := migrate.New("file://migrations", dbURL)
+	if err != nil {
+		return fmt.Errorf("migrate init: %w", err)
+	}
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("migrate up: %w", err)
+	}
+	slog.Info("migrations applied")
+	return nil
+}
+
+func mustEnv(key string) string {
+	v := os.Getenv(key)
+	if v == "" {
+		slog.Error("required env var not set", "key", key)
+		os.Exit(1)
+	}
+	return v
+}
+
+func envOr(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}
