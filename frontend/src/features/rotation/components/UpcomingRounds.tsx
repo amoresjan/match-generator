@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, RefreshCw } from 'lucide-react'
-import { usePreviewRounds } from '@/hooks/useSession'
-import { toast } from '@/lib/toast'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '@/lib/api'
 import type { Player, PreviewRound } from '@/types'
 
 interface Props {
@@ -131,68 +131,71 @@ function PreviewRoundRow({
 const EXIT_DURATION = 300
 
 export function UpcomingRounds({ sessionId, players, roundCount, sessionKey, currentPlayerId }: Props) {
-  const preview = usePreviewRounds(sessionId)
+  // Single query keyed on roundCount + sessionKey — TanStack Query deduplicates
+  // concurrent fetches with the same key, preventing the double-fetch that
+  // occurred when sessionKey changed shortly after mount (window-focus refetch
+  // racing with the initial preview load).
+  const { data: freshRounds, isFetching } = useQuery({
+    queryKey: ['preview-rounds', sessionId, roundCount, sessionKey],
+    queryFn: () => api.previewRounds(sessionId, 5),
+    staleTime: Infinity, // only re-fetch when the key changes, never on a timer
+    gcTime: 0,           // don't keep stale previews in cache
+  })
+
   const [rounds, setRounds] = useState<PreviewRound[] | null>(null)
   const [openNum, setOpenNum] = useState<number | null>(null)
   const [exitingNum, setExitingNum] = useState<number | null>(null)
   const [enteringNum, setEnteringNum] = useState<number | null>(null)
   const [staggeringNums, setStaggeringNums] = useState<Set<number>>(new Set())
 
-  const mutateRef = useRef(preview.mutateAsync)
-  mutateRef.current = preview.mutateAsync
-  const mounted = useRef(false)
+  const prevRoundCount = useRef(roundCount)
+  const isFirstLoad = useRef(true)
 
-  function applyRounds(next: PreviewRound[], stagger = false) {
-    setRounds(next)
-    if (next.length > 0) setOpenNum(next[0].round_number)
-    if (stagger && next.length > 0) {
-      const nums = new Set(next.map((r) => r.round_number))
+  useEffect(() => {
+    if (!freshRounds) return
+
+    const isNewRound = roundCount !== prevRoundCount.current
+    prevRoundCount.current = roundCount
+
+    if (isFirstLoad.current) {
+      // Initial mount: stagger all rows in.
+      isFirstLoad.current = false
+      setRounds(freshRounds)
+      if (freshRounds.length > 0) setOpenNum(freshRounds[0].round_number)
+      const nums = new Set(freshRounds.map((r) => r.round_number))
       setStaggeringNums(nums)
-      const clearAfter = (next.length - 1) * 80 + 400
-      setTimeout(() => setStaggeringNums(new Set()), clearAfter)
+      setTimeout(() => setStaggeringNums(new Set()), (freshRounds.length - 1) * 80 + 400)
+      return
     }
-  }
 
-  useEffect(() => {
-    mutateRef.current(5)
-      .then((data) => applyRounds(data, true))
-      .catch(() => toast.error('Failed to load upcoming rounds'))
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (!mounted.current) return
-    if (rounds === null || rounds.length === 0) return
-
-    const exiting = rounds[0].round_number
-    setExitingNum(exiting)
-
-    const t = setTimeout(() => {
-      setExitingNum(null)
-      mutateRef.current(5).then((next) => {
-        applyRounds(next)
-        if (next.length > 0) {
-          const entering = next[next.length - 1].round_number
+    if (isNewRound && rounds && rounds.length > 0) {
+      // A new round was committed: animate the top row out, then swap in new data.
+      const exiting = rounds[0].round_number
+      setExitingNum(exiting)
+      setTimeout(() => {
+        setExitingNum(null)
+        setRounds(freshRounds)
+        if (freshRounds.length > 0) {
+          setOpenNum(freshRounds[0].round_number)
+          const entering = freshRounds[freshRounds.length - 1].round_number
           setEnteringNum(entering)
           setTimeout(() => setEnteringNum(null), 400)
         }
-      }).catch(() => toast.error('Failed to refresh upcoming rounds'))
-    }, EXIT_DURATION)
+      }, EXIT_DURATION)
+      return
+    }
 
-    return () => clearTimeout(t)
-  }, [roundCount]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (!mounted.current) { mounted.current = true; return }
-    if (rounds === null) return
-    mutateRef.current(5).then((data) => applyRounds(data)).catch(() => toast.error('Failed to refresh upcoming rounds'))
-  }, [sessionKey]) // eslint-disable-line react-hooks/exhaustive-deps
+    // Session state changed (players/settings): just swap data quietly.
+    setRounds(freshRounds)
+    if (freshRounds.length > 0 && openNum === null) setOpenNum(freshRounds[0].round_number)
+  }, [freshRounds]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-1.5">
         <h3 className="text-sm font-semibold text-muted-foreground">Upcoming</h3>
         <span className="text-[10px] text-muted-foreground/40">· preview</span>
-        {preview.isPending && (
+        {isFetching && (
           <RefreshCw className="h-3 w-3 animate-spin text-muted-foreground/50 ml-auto" />
         )}
       </div>
