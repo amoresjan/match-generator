@@ -89,7 +89,7 @@ func selectByes2v2(players []historyPlayer, numCourts int, h History, rng *rand.
 	})
 
 	byeSet := make(map[string]bool)
-	var byes []string
+	byes := make([]string, 0)
 	for _, u := range units {
 		if remainingByes <= 0 {
 			break
@@ -104,13 +104,13 @@ func selectByes2v2(players []historyPlayer, numCourts int, h History, rng *rand.
 		remainingByes -= u.cost
 	}
 
-	var activePairs [][]string
+	activePairs := make([][]string, 0)
 	for _, pair := range pairs {
 		if !byeSet[pair[0]] {
 			activePairs = append(activePairs, pair)
 		}
 	}
-	var activeSingles []string
+	activeSingles := make([]string, 0)
 	for _, s := range singles {
 		if !byeSet[s] {
 			activeSingles = append(activeSingles, s)

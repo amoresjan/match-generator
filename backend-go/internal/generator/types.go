@@ -16,6 +16,17 @@ type GeneratedRound struct {
 	ByePlayers  []string          `json:"bye_players"`
 }
 
+// Normalize ensures Courts and ByePlayers are never nil so they serialize
+// as [] rather than null in JSON responses.
+func (g *GeneratedRound) Normalize() {
+	if g.Courts == nil {
+		g.Courts = []CourtAssignment{}
+	}
+	if g.ByePlayers == nil {
+		g.ByePlayers = []string{}
+	}
+}
+
 // History holds aggregated per-player state used by the cost functions.
 type History struct {
 	Partner     map[string]map[string]int // partner_counts[a][b]

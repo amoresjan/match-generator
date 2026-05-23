@@ -242,7 +242,7 @@ func generate2v2(players []historyPlayer, numCourts int, h History, roundNum int
 	as := selectByes2v2(players, numCourts, h, rng)
 	pool := append(as.pairs, pairSingles(as.singles, h, rng)...)
 	courts := assignCourts(pool, numCourts, h, roundNum, rng)
-	return GeneratedRound{RoundNumber: roundNum, Courts: courts, ByePlayers: as.byes}, nil
+	g := GeneratedRound{RoundNumber: roundNum, Courts: courts, ByePlayers: as.byes}; g.Normalize(); return g, nil
 }
 
 func generate2v2Competitive(players []historyPlayer, numCourts int, h History, wins map[string]int, roundNum int, rng *rand.Rand) (GeneratedRound, error) {
@@ -280,7 +280,7 @@ func generate2v2Competitive(players []historyPlayer, numCourts int, h History, w
 	for i := len(courts) * 2; i < len(r); i++ {
 		byes = append(byes, r[i].team...)
 	}
-	return GeneratedRound{RoundNumber: roundNum, Courts: courts, ByePlayers: byes}, nil
+	g := GeneratedRound{RoundNumber: roundNum, Courts: courts, ByePlayers: byes}; g.Normalize(); return g, nil
 }
 
 // ---- 1v1 --------------------------------------------------------------------
@@ -302,7 +302,7 @@ func generate1v1(players []historyPlayer, numCourts int, h History, roundNum int
 	pool := singletonPool(active)
 	courts := assignCourts(pool, numCourts, h, roundNum, rng)
 
-	return GeneratedRound{RoundNumber: roundNum, Courts: courts, ByePlayers: byes}, nil
+	g := GeneratedRound{RoundNumber: roundNum, Courts: courts, ByePlayers: byes}; g.Normalize(); return g, nil
 }
 
 func generate1v1Competitive(players []historyPlayer, numCourts int, h History, wins map[string]int, roundNum int, rng *rand.Rand) (GeneratedRound, error) {
@@ -334,7 +334,7 @@ func generate1v1Competitive(players []historyPlayer, numCourts int, h History, w
 	for i := len(courts) * 2; i < len(active); i++ {
 		byes = append(byes, active[i])
 	}
-	return GeneratedRound{RoundNumber: roundNum, Courts: courts, ByePlayers: byes}, nil
+	g := GeneratedRound{RoundNumber: roundNum, Courts: courts, ByePlayers: byes}; g.Normalize(); return g, nil
 }
 
 // ---- helpers ----------------------------------------------------------------
