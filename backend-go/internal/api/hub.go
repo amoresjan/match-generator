@@ -50,6 +50,13 @@ func (h *Hub) Subscribe(sessionID uuid.UUID) (<-chan hubMsg, func()) {
 	return ch, unsub
 }
 
+// ConnectedCount returns the number of active SSE subscribers for a session.
+func (h *Hub) ConnectedCount(sessionID uuid.UUID) int {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return len(h.subs[sessionID])
+}
+
 // Notify signals all listeners that the session changed.
 // The client will receive an empty payload and must do a full refetch.
 func (h *Hub) Notify(sessionID uuid.UUID) {

@@ -9,6 +9,8 @@ export const sessionKeys = {
   detail: (id: string) => ['sessions', id] as const,
 }
 
+const onlineKey = (sessionId: string) => ['online', sessionId] as const
+
 function invalidateSession(qc: QueryClient, sessionId: string) {
   return qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) })
 }
@@ -88,6 +90,12 @@ export function useSession(sessionId: string) {
               players: old.players.filter((p) => p.id !== payload.player_removed),
             }
           })
+          return
+        }
+
+        // Online count update.
+        if (payload?.online !== undefined) {
+          qc.setQueryData(onlineKey(sessionId), payload.online)
           return
         }
       } catch {
@@ -350,4 +358,16 @@ export function useTournamentAdvance(sessionId: string) {
     },
     onError: () => toast.error('Failed to record result'),
   })
+}
+
+// Returns the number of connected SSE clients for a session.
+// Updated in real-time via the "online" SSE payload — no polling needed.
+export function useOnlineCount(sessionId: string): number {
+  const qc = useQueryClient()
+  return useQuery({
+    queryKey: onlineKey(sessionId),
+    queryFn: () => qc.getQueryData<number>(onlineKey(sessionId)) ?? 0,
+    initialData: 0,
+    staleTime: Infinity,
+  }).data ?? 0
 }
