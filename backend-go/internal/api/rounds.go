@@ -76,6 +76,7 @@ func (h *Handler) GenerateRound(w http.ResponseWriter, r *http.Request) {
 		Payload:   map[string]any{"title": session.Name, "body": fmt.Sprintf("Round %d is ready!", rnd.Number), "url": "/session/" + sessionID.String()},
 		PerPlayer: roundPushPayloads(session.Name, rnd.Number, sessionID.String(), matches, playerNames),
 	})
+	h.hub.Notify(sessionID)
 
 	writeJSON(w, http.StatusCreated, roundResp{
 		ID:        rnd.ID,
@@ -174,6 +175,7 @@ func (h *Handler) OverrideMatch(w http.ResponseWriter, r *http.Request) {
 		PerPlayer:  overridePushPayloads(session.Name, sessionID.String(), updatedMatch.CourtNumber, updatedMatch.Team1Players, updatedMatch.Team2Players, playerNames),
 		RestrictTo: affected,
 	})
+	h.hub.Notify(sessionID)
 
 	writeJSON(w, http.StatusOK, toMatchResp(updatedMatch))
 }
@@ -234,6 +236,7 @@ func (h *Handler) SetMatchResult(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "could not set result")
 		return
 	}
+	h.hub.Notify(sessionID)
 	writeJSON(w, http.StatusOK, toMatchResp(updated))
 }
 

@@ -175,6 +175,7 @@ func (h *Handler) UpdateSession(w http.ResponseWriter, r *http.Request) {
 	if resp.Rounds == nil {
 		resp.Rounds = []roundResp{}
 	}
+	h.hub.Notify(sessionID)
 	writeJSON(w, http.StatusOK, resp)
 }
 
@@ -236,6 +237,7 @@ func (h *Handler) SetSessionActive(w http.ResponseWriter, r *http.Request) {
 	if resp.Rounds == nil {
 		resp.Rounds = []roundResp{}
 	}
+	h.hub.Notify(sessionID)
 	writeJSON(w, http.StatusOK, resp)
 }
 

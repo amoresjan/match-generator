@@ -51,6 +51,7 @@ func (h *Handler) AddPlayer(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	h.hub.Notify(sessionID)
 	writeJSON(w, http.StatusCreated, toPlayerResp(player))
 }
 
@@ -153,7 +154,7 @@ func (h *Handler) UpdatePlayer(w http.ResponseWriter, r *http.Request) {
 			RestrictTo: map[string]struct{}{playerID.String(): {}},
 		})
 	}
-
+	h.hub.Notify(sessionID)
 	writeJSON(w, http.StatusOK, toPlayerResp(player))
 }
 
@@ -220,6 +221,7 @@ func (h *Handler) DeletePlayer(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "could not delete player")
 		return
 	}
+	h.hub.Notify(sessionID)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -336,6 +338,7 @@ func (h *Handler) SetPartner(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "error reloading player")
 		return
 	}
+	h.hub.Notify(sessionID)
 	writeJSON(w, http.StatusOK, toPlayerResp(updated))
 }
 
