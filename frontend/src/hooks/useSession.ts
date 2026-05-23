@@ -1,5 +1,6 @@
+import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
+import { api, SSE_BASE } from '@/lib/api'
 import { toast } from '@/lib/toast'
 import type { PreviewRound, Session } from '@/types'
 
@@ -14,25 +15,55 @@ function invalidateSession(qc: QueryClient, sessionId: string) {
 
 export function useSession(sessionId: string) {
   const qc = useQueryClient()
+
+  useEffect(() => {
+    const es = new EventSource(`${SSE_BASE}/sessions/${sessionId}/events/`)
+    let connected = false
+
+    es.onopen = () => {
+      if (connected) {
+        // Reconnected after a drop — catch up on missed events.
+        qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) })
+      }
+      connected = true
+    }
+
+    es.addEventListener('update', () => {
+      qc.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) })
+    })
+
+    return () => es.close()
+  }, [sessionId, qc])
+
   return useQuery({
     queryKey: sessionKeys.detail(sessionId),
     queryFn: async () => {
       const previous = qc.getQueryData<Session>(sessionKeys.detail(sessionId))
-      const sinceRound = previous?.rounds.length
+      const latestRound = previous?.rounds.length
         ? Math.max(...previous.rounds.map(r => r.number))
+        : undefined
+
+      // Fetch from latestRound-1 so the current round is always re-fetched.
+      // This ensures match result/override updates on the latest round are included.
+      const sinceRound = latestRound !== undefined && latestRound > 0
+        ? latestRound - 1
         : undefined
 
       const patch = await api.getSession(sessionId, sinceRound)
 
       if (sinceRound === undefined || !previous) return patch
 
-      const existingIds = new Set(previous.rounds.map(r => r.id))
+      // Replace rounds returned by the server (fresh data) and keep the rest from cache.
+      const patchRoundIds = new Set(patch.rounds.map(r => r.id))
       return {
         ...patch,
-        rounds: [...previous.rounds, ...patch.rounds.filter(r => !existingIds.has(r.id))],
+        rounds: [
+          ...previous.rounds.filter(r => !patchRoundIds.has(r.id)),
+          ...patch.rounds,
+        ].sort((a, b) => a.number - b.number),
       }
     },
-    refetchInterval: (query) => (query.state.data?.is_active === false ? 15_000 : 3_000),
+    refetchInterval: 30_000, // fallback if SSE drops
     refetchIntervalInBackground: false,
   })
 }
