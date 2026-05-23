@@ -23,7 +23,7 @@ func (h *Handler) GenerateRound(w http.ResponseWriter, r *http.Request) {
 		if isNotFound(err) {
 			writeError(w, http.StatusNotFound, "not found")
 		} else {
-			writeError(w, http.StatusInternalServerError, "error")
+			writeServerError(w, "error", err)
 		}
 		return
 	}
@@ -38,12 +38,12 @@ func (h *Handler) GenerateRound(w http.ResponseWriter, r *http.Request) {
 
 	players, err := h.store.GetActivePlayers(r.Context(), sessionID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "error fetching players")
+		writeServerError(w, "error fetching players", err)
 		return
 	}
 	hist, err := h.store.GetFullHistory(r.Context(), sessionID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "error fetching history")
+		writeServerError(w, "error fetching history", err)
 		return
 	}
 
@@ -51,7 +51,7 @@ func (h *Handler) GenerateRound(w http.ResponseWriter, r *http.Request) {
 	if session.GenerationMode == "competitive" {
 		wins, err = h.store.GetWinCountsForSession(r.Context(), sessionID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "error fetching wins")
+			writeServerError(w, "error fetching wins", err)
 			return
 		}
 	}
@@ -64,7 +64,7 @@ func (h *Handler) GenerateRound(w http.ResponseWriter, r *http.Request) {
 
 	rnd, err := generator.CommitRound(r.Context(), h.store, sessionID, generated)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "could not commit round")
+		writeServerError(w, "could not commit round", err)
 		return
 	}
 
@@ -103,7 +103,7 @@ func (h *Handler) OverrideMatch(w http.ResponseWriter, r *http.Request) {
 		if isNotFound(err) {
 			writeError(w, http.StatusNotFound, "not found")
 		} else {
-			writeError(w, http.StatusInternalServerError, "error")
+			writeServerError(w, "error", err)
 		}
 		return
 	}
@@ -121,7 +121,7 @@ func (h *Handler) OverrideMatch(w http.ResponseWriter, r *http.Request) {
 		if isNotFound(err) {
 			writeError(w, http.StatusNotFound, "not found")
 		} else {
-			writeError(w, http.StatusInternalServerError, "error")
+			writeServerError(w, "error", err)
 		}
 		return
 	}
@@ -161,7 +161,7 @@ func (h *Handler) OverrideMatch(w http.ResponseWriter, r *http.Request) {
 		return generator.ReconcileRoundHistory(r.Context(), q, store.Round{ID: match.RoundID}, sessionID)
 	})
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "could not override match")
+		writeServerError(w, "could not override match", err)
 		return
 	}
 
@@ -197,7 +197,7 @@ func (h *Handler) SetMatchResult(w http.ResponseWriter, r *http.Request) {
 		if isNotFound(err) {
 			writeError(w, http.StatusNotFound, "not found")
 		} else {
-			writeError(w, http.StatusInternalServerError, "error")
+			writeServerError(w, "error", err)
 		}
 		return
 	}
@@ -214,7 +214,7 @@ func (h *Handler) SetMatchResult(w http.ResponseWriter, r *http.Request) {
 		if isNotFound(err) {
 			writeError(w, http.StatusNotFound, "not found")
 		} else {
-			writeError(w, http.StatusInternalServerError, "error")
+			writeServerError(w, "error", err)
 		}
 		return
 	}
@@ -233,7 +233,7 @@ func (h *Handler) SetMatchResult(w http.ResponseWriter, r *http.Request) {
 
 	updated, err := h.store.SetMatchWinner(r.Context(), matchID, body.Winner)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "could not set result")
+		writeServerError(w, "could not set result", err)
 		return
 	}
 	h.hub.Notify(sessionID)
@@ -251,7 +251,7 @@ func (h *Handler) PreviewRounds(w http.ResponseWriter, r *http.Request) {
 		if isNotFound(err) {
 			writeError(w, http.StatusNotFound, "not found")
 		} else {
-			writeError(w, http.StatusInternalServerError, "error")
+			writeServerError(w, "error", err)
 		}
 		return
 	}
