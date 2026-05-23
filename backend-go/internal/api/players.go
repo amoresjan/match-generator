@@ -41,6 +41,10 @@ func (h *Handler) AddPlayer(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "name is required")
 		return
 	}
+	if len(body.Name) > 80 {
+		writeError(w, http.StatusBadRequest, "name must be 80 characters or fewer")
+		return
+	}
 
 	player, err := h.store.CreatePlayer(r.Context(), sessionID, uuid.New(), body.Name)
 	if err != nil {

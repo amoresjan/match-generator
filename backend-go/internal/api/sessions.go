@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -29,6 +30,10 @@ func (h *Handler) CreateSession(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "name is required")
 		return
 	}
+	if len(body.Name) > 120 {
+		writeError(w, http.StatusBadRequest, "name must be 120 characters or fewer")
+		return
+	}
 
 	matchType := or(body.MatchType, "2v2")
 	genMode := or(body.GenerationMode, "fair")
@@ -37,6 +42,11 @@ func (h *Handler) CreateSession(w http.ResponseWriter, r *http.Request) {
 	numCourts := 1
 	if body.NumCourts != nil {
 		numCourts = *body.NumCourts
+	}
+
+	if err := validateSessionFields(matchType, genMode, sportType, sessMode, numCourts); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
 	}
 
 	session, err := h.store.CreateSession(r.Context(), store.CreateSessionParams{
@@ -161,6 +171,25 @@ func (h *Handler) UpdateSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if body.Name != nil && len(*body.Name) > 120 {
+		writeError(w, http.StatusBadRequest, "name must be 120 characters or fewer")
+		return
+	}
+	if body.MatchType != nil || body.GenerationMode != nil || body.SportType != nil || body.SessionMode != nil || body.NumCourts != nil {
+		mt := derefOr(body.MatchType, session.MatchType)
+		gm := derefOr(body.GenerationMode, session.GenerationMode)
+		st := derefOr(body.SportType, session.SportType)
+		sm := derefOr(body.SessionMode, session.SessionMode)
+		nc := session.NumCourts
+		if body.NumCourts != nil {
+			nc = *body.NumCourts
+		}
+		if err := validateSessionFields(mt, gm, st, sm, nc); err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+	}
+
 	updated, err := h.store.UpdateSession(r.Context(), store.UpdateSessionParams{
 		ID:             sessionID,
 		Name:           body.Name,
@@ -257,4 +286,39 @@ func or(s, def string) string {
 		return def
 	}
 	return s
+}
+
+func derefOr(p *string, def string) string {
+	if p != nil {
+		return *p
+	}
+	return def
+}
+
+// validateSessionFields checks that all enum and range fields are legal.
+func validateSessionFields(matchType, generationMode, sportType, sessionMode string, numCourts int) error {
+	valid := func(val string, allowed ...string) bool {
+		for _, a := range allowed {
+			if val == a {
+				return true
+			}
+		}
+		return false
+	}
+	if !valid(matchType, "1v1", "2v2") {
+		return fmt.Errorf("match_type must be '1v1' or '2v2'")
+	}
+	if !valid(generationMode, "fair", "competitive") {
+		return fmt.Errorf("generation_mode must be 'fair' or 'competitive'")
+	}
+	if !valid(sportType, "pickleball", "tennis", "badminton", "squash", "other") {
+		return fmt.Errorf("sport_type is not valid")
+	}
+	if !valid(sessionMode, "rotation", "tournament") {
+		return fmt.Errorf("session_mode must be 'rotation' or 'tournament'")
+	}
+	if numCourts < 1 || numCourts > 20 {
+		return fmt.Errorf("num_courts must be between 1 and 20")
+	}
+	return nil
 }

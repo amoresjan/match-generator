@@ -31,6 +31,10 @@ func (h *Handler) TournamentSetup(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "Forbidden")
 		return
 	}
+	if !session.IsActive {
+		writeError(w, http.StatusForbidden, "Session is deactivated.")
+		return
+	}
 
 	players, err := h.store.GetPlayersForSession(r.Context(), sessionID)
 	if err != nil {
@@ -90,6 +94,8 @@ func (h *Handler) TournamentSetup(w http.ResponseWriter, r *http.Request) {
 
 	bracket, err := tournament.BuildBracket(rawTeams, session.NumCourts)
 	if err != nil {
+		// BuildBracket returns user-facing validation errors (e.g. "need at least 2 teams"),
+		// so it is safe to surface the message directly.
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -246,7 +252,7 @@ func (h *Handler) TournamentAdvance(w http.ResponseWriter, r *http.Request) {
 		return q.SetTournamentData(r.Context(), sessionID, data)
 	})
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "could not advance bracket: "+err.Error())
+		writeServerError(w, "could not advance bracket", err)
 		return
 	}
 

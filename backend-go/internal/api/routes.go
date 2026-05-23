@@ -27,6 +27,9 @@ func NewHandler(s *store.Store, p *push.Client, vapidPub string) *Handler {
 func (h *Handler) Router(allowedOrigins string) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
+	r.Use(rateLimitMiddleware(20, 40)) // 20 req/s sustained, burst of 40 per IP
+	r.Use(bodyLimitMiddleware)
+	r.Use(securityHeadersMiddleware)
 	r.Use(corsMiddleware(allowedOrigins))
 
 	r.Route("/api", func(r chi.Router) {

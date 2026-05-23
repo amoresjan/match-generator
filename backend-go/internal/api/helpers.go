@@ -1,6 +1,7 @@
 package api
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -36,7 +37,9 @@ func uuidParam(r *http.Request, key string) (uuid.UUID, error) {
 }
 
 func requireAdmin(r *http.Request, adminToken uuid.UUID) bool {
-	return r.Header.Get("X-Admin-Token") == adminToken.String()
+	got := r.Header.Get("X-Admin-Token")
+	want := adminToken.String()
+	return subtle.ConstantTimeCompare([]byte(got), []byte(want)) == 1
 }
 
 func isNotFound(err error) bool {

@@ -69,6 +69,9 @@ func main() {
 	h := api.NewHandler(s, pushClient, vapidPub)
 	router := h.Router(allowedOrigins)
 
+	// Start background cleanup for the per-IP rate limiter store.
+	api.StartLimiterCleanup(ctx)
+
 	srv := &http.Server{
 		Addr:         ":" + port,
 		Handler:      router,
