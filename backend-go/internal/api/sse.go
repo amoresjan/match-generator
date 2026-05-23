@@ -1,12 +1,9 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 const heartbeatInterval = 15 * time.Second
@@ -45,14 +42,7 @@ func (h *Handler) SessionEvents(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Accel-Buffering", "no") // prevents nginx/Railway from buffering the stream
 
 	updates, unsub := h.hub.Subscribe(sessionID)
-	defer func() {
-		unsub()
-		// Broadcast decremented count to remaining subscribers.
-		h.hub.NotifyWithPayload(sessionID, onlinePayload(h.hub, sessionID))
-	}()
-
-	// Broadcast new count to all subscribers (including this one).
-	h.hub.NotifyWithPayload(sessionID, onlinePayload(h.hub, sessionID))
+	defer unsub()
 
 	// Initial ping so the client knows the connection is established.
 	fmt.Fprint(w, ": connected\n\n")
@@ -79,11 +69,4 @@ func (h *Handler) SessionEvents(w http.ResponseWriter, r *http.Request) {
 			rc.Flush()
 		}
 	}
-}
-
-// onlinePayload builds the {"online": N} SSE payload for a session.
-func onlinePayload(h *Hub, sessionID uuid.UUID) []byte {
-	count := h.ConnectedCount(sessionID)
-	payload, _ := json.Marshal(map[string]any{"online": count})
-	return payload
 }
